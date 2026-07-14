@@ -14,55 +14,76 @@ App({
 
   onLaunch() {
     this.initCloud();
-    this.bootstrap();
+    this.bootstrap().catch(() => {
+      // startup 页面会展示失败状态；这里收口 onLaunch 发起的同一个 Promise。
+    });
   },
 
   initCloud() {
+    logger.info('CloudBase init started.');
+
+    if (!env.DB_ENV) {
+      logger.info('CloudBase init skipped: DB_ENV is empty.');
+      logger.info('CloudBase init finished.');
+      return;
+    }
+
     if (!wx.cloud) {
       logger.warn('CloudBase is not available in this runtime.');
+      logger.info('CloudBase init finished.');
       return;
     }
 
     const cloudOptions = {
+      env: env.DB_ENV,
       traceUser: true
     };
-
-    if (env.DB_ENV) {
-      cloudOptions.env = env.DB_ENV;
-    }
 
     try {
       wx.cloud.init(cloudOptions);
     } catch (error) {
       logger.error('CloudBase init failed.', error);
+    } finally {
+      logger.info('CloudBase init finished.');
     }
   },
 
   bootstrap(options = {}) {
-    if (!options.force && this.bootstrapPromise) {
+    if (this.globalData.bootstrapStatus === 'loading' && this.bootstrapPromise) {
       return this.bootstrapPromise;
     }
 
+    if (!options.force && this.globalData.bootstrapStatus === 'success') {
+      return Promise.resolve({
+        user: this.globalData.user,
+        currentTeam: this.globalData.currentTeam,
+        currentRole: this.globalData.currentRole
+      });
+    }
+
+    logger.info('Bootstrap started.');
     this.globalData.bootstrapStatus = 'loading';
-    this.bootstrapPromise = userService.bootstrap()
+    const currentPromise = userService.bootstrap()
       .then((result) => {
         this.globalData.user = result.user;
         this.globalData.currentTeam = result.currentTeam;
         this.globalData.currentRole = result.currentRole;
         this.globalData.bootstrapStatus = 'success';
+        logger.info('Bootstrap succeeded.');
         return result;
       })
       .catch((error) => {
         this.globalData.bootstrapStatus = 'failed';
-        logger.error('App bootstrap failed.', error);
+        logger.error('Bootstrap failed.', error);
         throw error;
       })
       .finally(() => {
-        if (options.force) {
+        if (this.bootstrapPromise === currentPromise) {
           this.bootstrapPromise = null;
         }
       });
 
-    return this.bootstrapPromise;
+    this.bootstrapPromise = currentPromise;
+    return currentPromise;
   }
 });
