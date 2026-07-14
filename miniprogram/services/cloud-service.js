@@ -18,6 +18,10 @@ function hideLoading(title) {
 }
 
 function callApi(action, data = {}, options = {}) {
+  if (!env.WAREHOUSE_CLOUD_ENV) {
+    return Promise.reject(normalizeError(null, ERROR_CODES.CLOUD_ENV_NOT_CONFIGURED));
+  }
+
   if (!wx.cloud || !wx.cloud.callFunction) {
     return Promise.reject(normalizeError(null, ERROR_CODES.CLOUD_NOT_AVAILABLE));
   }

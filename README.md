@@ -11,15 +11,16 @@
 ## 目录
 
 - `miniprogram/`：小程序端代码
-- `cloudfunctions/api/`：统一云函数入口
+- `cloudfunctions/warehouse-api/`：仓库管理器独立统一云函数入口
 - `database/`：集合、索引和权限规划
 - `docs/`：项目架构、数据模型、权限矩阵和验收文档
 
 ## 本地配置
 
 1. 复制 `project.private.config.json.example` 为 `project.private.config.json`，填写真实 AppID。
-2. 如需指定云环境，在 `miniprogram/config/env.js` 中填写 `DB_ENV`。
-3. `DB_ENV` 为空时，小程序使用云开发默认环境初始化，避免占位环境 ID 导致启动失败。
+2. 创建仓库管理器专用的 AppID 和 CloudBase 环境后，在 `miniprogram/config/env.js` 中填写 `WAREHOUSE_CLOUD_ENV`。
+3. `WAREHOUSE_CLOUD_ENV` 为空时，小程序不会初始化或调用云服务，只运行本地 UI 骨架。
+4. 部署前阅读 [`docs/云环境隔离与部署说明.md`](docs/云环境隔离与部署说明.md)。
 
 ## 阶段0范围
 
@@ -29,7 +30,7 @@
 - 库存、记录、团队、我的四个 tab 页
 - loading、empty、error 基础组件
 - 前端 `services`、`constants`、`utils` 基础层
-- 云函数 `api` 和 `system.ping`
+- 云函数 `warehouse-api` 和 `system.ping`
 - 数据库与权限规划文档
 
 暂不包含：

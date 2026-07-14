@@ -22,8 +22,8 @@ App({
   initCloud() {
     logger.info('CloudBase init started.');
 
-    if (!env.DB_ENV) {
-      logger.info('CloudBase init skipped: DB_ENV is empty.');
+    if (!env.WAREHOUSE_CLOUD_ENV) {
+      logger.info('仓库管理器云环境尚未配置，当前运行本地骨架模式。');
       logger.info('CloudBase init finished.');
       return;
     }
@@ -35,7 +35,7 @@ App({
     }
 
     const cloudOptions = {
-      env: env.DB_ENV,
+      env: env.WAREHOUSE_CLOUD_ENV,
       traceUser: true
     };
 
