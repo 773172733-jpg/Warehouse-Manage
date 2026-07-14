@@ -5,7 +5,8 @@
   min-height: 100vh;
   background: #F7F8F7;
   padding: 0 28rpx;
-  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+  padding-top: calc(96rpx + env(safe-area-inset-top));
+  padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
@@ -377,7 +378,7 @@
   position: fixed;
   z-index: 80;
   right: 32rpx;
-  bottom: calc(128rpx + env(safe-area-inset-bottom));
+  bottom: calc(168rpx + env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
   justify-content: center;

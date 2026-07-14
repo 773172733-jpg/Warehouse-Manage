@@ -1,8 +1,21 @@
+<!-- 自定义导航栏 -->
+<view class="pd-nav" style="{{navStyle}}">
+  <view class="pd-nav-back" catchtap="onBack">
+    <view class="pd-nav-back-arrow"></view>
+  </view>
+  <text class="pd-nav-title">{{product?product.name:'产品详情'}}</text>
+  <view class="pd-nav-placeholder"></view>
+</view>
+
+<!-- 页面主体内容 -->
 <view class="pd-page">
+
+
   <!-- 产品存在时 -->
   <block wx:if="{{product}}">
-    <!-- 顶部产品信息 -->
+    <!-- 顶部产品信息（全息标题区域已移到自定义导航栏下方） -->
     <view class="pd-hero">
+      <!-- 产品封面（使用与首页相同的文字封面样式） -->
       <view class="pd-cover {{product.status==='out'?'pd-cover--out':''}} {{product.status==='low'?'pd-cover--low':''}}">
         <text class="pd-cover-text">{{product.displayText}}</text>
       </view>

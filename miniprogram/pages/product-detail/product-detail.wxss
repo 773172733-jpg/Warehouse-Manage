@@ -1,11 +1,53 @@
 /* 产品详情页 WXSS — 苹果绿简约风 */
 
+/* ===== 自定义导航栏 ===== */
+.pd-nav {
+  display: flex;
+  align-items: center;
+  box-sizing: content-box;
+  padding-left: 28rpx;
+  background: #078B4B;
+  color: #FFFFFF;
+}
+.pd-nav-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 68rpx;
+  height: 68rpx;
+  margin-left: -12rpx;
+  flex-shrink: 0;
+}
+.pd-nav-back-arrow {
+  width: 20rpx;
+  height: 20rpx;
+  border-left: 4rpx solid #FFFFFF;
+  border-bottom: 4rpx solid #FFFFFF;
+  transform: rotate(45deg);
+}
+.pd-nav-title {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-nav-placeholder {
+  width: 68rpx;
+  flex-shrink: 0;
+}
+
 .pd-page {
   min-height: 100vh;
   background: #F7F8F7;
   padding: 0 28rpx;
   padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
+  padding-top: 24rpx;
 }
 
 /* ===== 顶部产品信息 ===== */

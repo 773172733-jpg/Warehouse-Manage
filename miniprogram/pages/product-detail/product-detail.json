@@ -1,6 +1,4 @@
 {
-  "navigationBarTitleText": "产品详情",
-  "navigationBarBackgroundColor": "#078B4B",
-  "navigationBarTextStyle": "white",
+  "navigationStyle": "custom",
   "usingComponents": {}
 }
