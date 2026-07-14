@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "库存",
+  "navigationBarBackgroundColor": "#078B4B",
+  "navigationBarTextStyle": "white",
   "usingComponents": {
     "empty-state": "/components/empty-state/empty-state"
   }

@@ -1,7 +1,113 @@
-<view class="page">
-  <view class="placeholder-panel">
-    <view class="placeholder-title">库存</view>
-    <view class="placeholder-text">阶段0仅提供页面入口和基础结构，正式产品列表将在后续阶段实现。</view>
+<view class="inv-page">
+  <!-- 顶部团队信息栏 -->
+  <view class="inv-header">
+    <view class="inv-header-left">
+      <text class="inv-header-title">轻仓</text>
+      <view class="inv-warehouse-badge">
+        <view class="inv-warehouse-dot"></view>
+        <text class="inv-warehouse-name">默认仓库</text>
+      </view>
+    </view>
+    <view class="inv-header-right">
+      <view class="inv-avatar-group">
+        <view class="inv-avatar">
+          <view class="inv-avatar-head"></view>
+          <view class="inv-avatar-body"></view>
+        </view>
+        <view class="inv-avatar inv-avatar--offset">
+          <view class="inv-avatar-head"></view>
+          <view class="inv-avatar-body"></view>
+        </view>
+      </view>
+      <view class="inv-team-arrow"></view>
+    </view>
   </view>
-  <empty-state title="暂无库存数据" description="当前未接入真实产品和库存业务。"></empty-state>
+
+  <!-- 大型搜索栏 -->
+  <view class="inv-search-box {{searchFocused?'inv-search-box--focused':''}}">
+    <view class="inv-search-icon"></view>
+    <input class="inv-search-input"
+           value="{{searchText}}"
+           placeholder="{{placeholder}}"
+           confirm-type="search"
+           bindinput="onSearchInput"
+           bindfocus="onSearchFocus"
+           bindblur="onSearchBlur"/>
+    <view wx:if="{{searchText}}" class="inv-search-clear" catchtap="onSearchClear">
+      <view class="inv-search-clear-x"></view>
+    </view>
+  </view>
+
+  <!-- 库存摘要 -->
+  <view class="inv-summary">
+    <view class="inv-summary-item {{activeStockFilter===''?'inv-summary-item--active':''}}"
+          data-key="" catchtap="onSummaryTap">
+      <text class="inv-summary-value inv-summary-value--primary">{{summary.total}}种</text>
+      <text class="inv-summary-label">产品</text>
+    </view>
+    <view class="inv-summary-divider"></view>
+    <view class="inv-summary-item {{activeStockFilter==='low'?'inv-summary-item--active':''}}"
+          data-key="low" catchtap="onSummaryTap">
+      <text class="inv-summary-value inv-summary-value--warning">{{summary.lowCount}}种</text>
+      <text class="inv-summary-label">低库存</text>
+    </view>
+    <view class="inv-summary-divider"></view>
+    <view class="inv-summary-item {{activeStockFilter==='out'?'inv-summary-item--active':''}}"
+          data-key="out" catchtap="onSummaryTap">
+      <text class="inv-summary-value inv-summary-value--danger">{{summary.outCount}}种</text>
+      <text class="inv-summary-label">已缺货</text>
+    </view>
+  </view>
+
+  <!-- 分类横向筛选 -->
+  <scroll-view class="inv-categories" scroll-x enhanced show-scrollbar="{{false}}">
+    <view wx:for="{{categories}}" wx:key="*this"
+          class="inv-cat-chip {{activeCategory===item&&!activeStockFilter?'inv-cat-chip--active':''}}"
+          data-category="{{item}}" catchtap="onCategoryTap">
+      {{item}}
+    </view>
+  </scroll-view>
+
+  <!-- 产品列表 / 空状态 -->
+  <empty-state wx:if="{{!filteredList.length}}"
+    title="{{searchText||activeStockFilter?'没有找到产品':'产品列表为空'}}"
+    description="{{searchText||activeStockFilter?'试试调整筛选条件或更换关键词':'当前仓库还没有产品'}}">
+  </empty-state>
+  <view wx:else class="inv-list">
+    <view wx:for="{{filteredList}}" wx:key="id" class="inv-card">
+      <view class="inv-card-left">
+        <view class="inv-card-cover {{item.status==='out'?'inv-card-cover--out':''}} {{item.status==='low'?'inv-card-cover--low':''}}">
+          <text class="inv-card-cover-text">{{item.displayText}}</text>
+        </view>
+        <view class="inv-card-info">
+          <text class="inv-card-name">{{item.name}}</text>
+          <view class="inv-card-meta">
+            <text class="inv-card-code">{{item.code}}</text>
+            <view class="inv-card-category-tag">{{item.category}}</view>
+          </view>
+        </view>
+      </view>
+      <view class="inv-card-right">
+        <view class="inv-card-stock">
+          <text class="inv-card-stock-value {{item.status==='out'?'text--danger':''}} {{item.status==='low'?'text--warning':''}}">{{item.stock}}</text>
+          <text class="inv-card-stock-unit">{{item.unit}}</text>
+        </view>
+        <view class="inv-card-status">
+          <view wx:if="{{item.status==='out'}}" class="inv-status-tag inv-status-tag--out">缺货</view>
+          <view wx:elif="{{item.status==='low'}}" class="inv-status-tag inv-status-tag--low">低库存</view>
+          <view wx:else class="inv-status-tag inv-status-tag--normal">正常</view>
+        </view>
+        <view class="inv-card-more">
+          <view class="inv-card-more-dot"></view>
+          <view class="inv-card-more-dot"></view>
+          <view class="inv-card-more-dot"></view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 悬浮新增按钮（模拟管理员）-->
+  <view class="inv-fab" catchtap="onAddTap">
+    <text class="inv-fab-icon">＋</text>
+  </view>
 </view>

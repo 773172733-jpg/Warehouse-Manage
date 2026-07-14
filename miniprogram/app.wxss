@@ -1,34 +1,47 @@
+/* 轻仓 · 全局样式基础 */
 page {
   min-height: 100%;
   background: #F7F8F7;
-  color: #1F2A24;
+  color: #171917;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
-.page {
-  min-height: 100vh;
-  box-sizing: border-box;
-  padding: 32rpx;
-  background: #F7F8F7;
+/* empty-state 全局样式 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 60rpx;
 }
-
-.placeholder-title {
-  margin: 0 0 16rpx;
-  font-size: 40rpx;
+.empty-mark {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: #F2F4F2;
+  margin-bottom: 28rpx;
+  position: relative;
+}
+.empty-mark::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 6rpx;
+  background: #D8DCD8;
+}
+.empty-title {
+  font-size: 30rpx;
   font-weight: 600;
-  color: #1F2A24;
+  color: #171917;
+  margin-bottom: 12rpx;
 }
-
-.placeholder-text {
-  margin: 0;
-  font-size: 28rpx;
-  line-height: 1.7;
-  color: #647067;
-}
-
-.placeholder-panel {
-  padding: 32rpx;
-  background: #FFFFFF;
-  border: 1rpx solid #E4E8E5;
-  border-radius: 8rpx;
+.empty-description {
+  font-size: 26rpx;
+  color: #747A76;
+  text-align: center;
+  line-height: 1.6;
 }
