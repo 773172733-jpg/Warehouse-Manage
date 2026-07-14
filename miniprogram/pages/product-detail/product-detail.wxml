@@ -1,0 +1,138 @@
+<view class="pd-page">
+  <!-- 产品存在时 -->
+  <block wx:if="{{product}}">
+    <!-- 顶部产品信息 -->
+    <view class="pd-hero">
+      <view class="pd-cover {{product.status==='out'?'pd-cover--out':''}} {{product.status==='low'?'pd-cover--low':''}}">
+        <text class="pd-cover-text">{{product.displayText}}</text>
+      </view>
+      <view class="pd-hero-info">
+        <text class="pd-hero-name">{{product.name}}</text>
+        <view class="pd-hero-meta">
+          <text class="pd-hero-code">{{product.code}}</text>
+          <view class="pd-hero-category">{{product.category}}</view>
+          <view wx:if="{{product.brand}}" class="pd-hero-brand">{{product.brand}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 库存主卡片 -->
+    <view class="pd-stock-card {{product.status==='out'?'pd-stock-card--out':''}} {{product.status==='low'?'pd-stock-card--low':''}}">
+      <view class="pd-stock-left">
+        <text class="pd-stock-label">当前库存</text>
+        <view class="pd-stock-value-row">
+          <text class="pd-stock-value {{product.status==='out'?'text--danger':''}} {{product.status==='low'?'text--warning':''}}">{{product.stock}}</text>
+          <text class="pd-stock-unit">{{product.unit}}</text>
+        </view>
+      </view>
+      <view class="pd-stock-right">
+        <view wx:if="{{product.status==='out'}}" class="pd-status-badge pd-status-badge--out">已缺货</view>
+        <view wx:elif="{{product.status==='low'}}" class="pd-status-badge pd-status-badge--low">库存偏低</view>
+        <view wx:else class="pd-status-badge pd-status-badge--normal">库存正常</view>
+      </view>
+    </view>
+
+    <!-- 产品介绍 -->
+    <view class="pd-section">
+      <text class="pd-section-title">产品介绍</text>
+      <view wx:if="{{product.description}}" class="pd-desc-card">
+        <text class="pd-desc-text {{!descExpanded?'pd-desc-text--clamped':''}}">{{product.description}}</text>
+        <text wx:if="{{descNeedsExpand}}" class="pd-desc-toggle" catchtap="toggleDesc">
+          {{descExpanded?'收起':'展开全部'}}
+        </text>
+      </view>
+      <view wx:else class="pd-desc-empty">暂无产品介绍</view>
+    </view>
+
+    <!-- 基本信息 -->
+    <view class="pd-section">
+      <text class="pd-section-title">基本信息</text>
+      <view class="pd-info-card">
+        <view class="pd-info-row">
+          <text class="pd-info-key">产品编号</text>
+          <text class="pd-info-val">{{product.code||'—'}}</text>
+        </view>
+        <view class="pd-info-row">
+          <text class="pd-info-key">单位</text>
+          <text class="pd-info-val">{{product.unit||'—'}}</text>
+        </view>
+        <view class="pd-info-row">
+          <text class="pd-info-key">规格</text>
+          <text class="pd-info-val">{{product.specification||'—'}}</text>
+        </view>
+        <view class="pd-info-row">
+          <text class="pd-info-key">品牌</text>
+          <text class="pd-info-val">{{product.brand||'—'}}</text>
+        </view>
+        <view class="pd-info-row">
+          <text class="pd-info-key">分类</text>
+          <text class="pd-info-val">{{product.category||'—'}}</text>
+        </view>
+        <view class="pd-info-row">
+          <text class="pd-info-key">最低库存</text>
+          <text class="pd-info-val">{{product.minStock||0}}{{product.unit||''}}</text>
+        </view>
+        <view class="pd-info-row">
+          <text class="pd-info-key">创建时间</text>
+          <text class="pd-info-val">{{product.createdAt||'—'}}</text>
+        </view>
+        <view class="pd-info-row">
+          <text class="pd-info-key">创建人</text>
+          <text class="pd-info-val">{{product.creatorName||'—'}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 最近库存记录 -->
+    <view class="pd-section">
+      <text class="pd-section-title">最近库存记录</text>
+      <view wx:if="{{product.stockRecords&&product.stockRecords.length}}" class="pd-records-card">
+        <view wx:for="{{product.stockRecords}}" wx:key="index" class="pd-record-item">
+          <view class="pd-record-icon {{item.type==='inbound'?'pd-record-icon--in':''}} {{item.type==='outbound'?'pd-record-icon--out':''}}">
+            <text wx:if="{{item.type==='inbound'}}" class="pd-record-sign">+</text>
+            <text wx:elif="{{item.type==='outbound'}}" class="pd-record-sign">-</text>
+          </view>
+          <view class="pd-record-body">
+            <text class="pd-record-type">{{item.type==='inbound'?'入库':'出库'}}</text>
+            <text class="pd-record-qty {{item.type==='inbound'?'text--primary':''}} {{item.type==='outbound'?'text--danger':''}}">
+              {{item.type==='inbound'?'+':''}}{{item.quantity}}{{product.unit}}
+            </text>
+          </view>
+          <view class="pd-record-extra">
+            <text class="pd-record-time">{{item.createdAt}}</text>
+            <text class="pd-record-operator">{{item.operatorName}}</text>
+          </view>
+        </view>
+      </view>
+      <view wx:else class="pd-records-empty">暂无库存记录</view>
+    </view>
+
+    <!-- 底部安全区占位 -->
+    <view class="pd-bottom-spacer"></view>
+  </block>
+
+  <!-- 产品不存在 -->
+  <block wx:else>
+    <view class="pd-notfound">
+      <view class="pd-notfound-mark"></view>
+      <text class="pd-notfound-title">未找到产品</text>
+      <text class="pd-notfound-desc">该产品可能已被删除或数据不存在</text>
+      <view class="pd-notfound-btn" catchtap="goToInventory">
+        <text>返回库存首页</text>
+      </view>
+    </view>
+  </block>
+</view>
+
+<!-- 底部操作栏（产品存在时）-->
+<view wx:if="{{product}}" class="pd-action-bar">
+  <view class="pd-action-btn pd-action-btn--primary" catchtap="onInbound">
+    <text>入库</text>
+  </view>
+  <view class="pd-action-btn pd-action-btn--outline" catchtap="onOutbound">
+    <text>出库</text>
+  </view>
+  <view class="pd-action-btn pd-action-btn--outline" catchtap="onMore">
+    <text>更多</text>
+  </view>
+</view>

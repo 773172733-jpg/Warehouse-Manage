@@ -1,0 +1,387 @@
+/* 产品详情页 WXSS — 苹果绿简约风 */
+
+.pd-page {
+  min-height: 100vh;
+  background: #F7F8F7;
+  padding: 0 28rpx;
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+/* ===== 顶部产品信息 ===== */
+.pd-hero {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 4rpx 28rpx;
+}
+.pd-cover {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 24rpx;
+  background: #F7F8F7;
+  margin-right: 24rpx;
+}
+.pd-cover--out { background: #FDF2F2; }
+.pd-cover--low { background: #FFFBF0; }
+.pd-cover-text {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #078B4B;
+  text-align: center;
+  line-height: 1.3;
+}
+.pd-hero-info {
+  flex: 1;
+  min-width: 0;
+}
+.pd-hero-name {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #171917;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-hero-meta {
+  display: flex;
+  align-items: center;
+  margin-top: 10rpx;
+  gap: 14rpx;
+  flex-wrap: wrap;
+}
+.pd-hero-code {
+  font-size: 24rpx;
+  color: #747A76;
+}
+.pd-hero-category {
+  padding: 2rpx 14rpx;
+  border-radius: 8rpx;
+  background: #F7F8F7;
+  font-size: 22rpx;
+  color: #747A76;
+}
+.pd-hero-brand {
+  padding: 2rpx 14rpx;
+  border-radius: 8rpx;
+  background: #EAF6EF;
+  font-size: 22rpx;
+  color: #078B4B;
+}
+
+/* ===== 库存主卡片 ===== */
+.pd-stock-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 28rpx 28rpx;
+  margin-bottom: 28rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+  border-left: 6rpx solid #078B4B;
+}
+.pd-stock-card--low {
+  border-left-color: #E59A23;
+}
+.pd-stock-card--out {
+  border-left-color: #D94A45;
+}
+.pd-stock-left {
+  display: flex;
+  flex-direction: column;
+}
+.pd-stock-label {
+  font-size: 24rpx;
+  color: #747A76;
+  margin-bottom: 8rpx;
+}
+.pd-stock-value-row {
+  display: flex;
+  align-items: baseline;
+}
+.pd-stock-value {
+  font-size: 56rpx;
+  font-weight: 700;
+  color: #078B4B;
+  line-height: 1;
+}
+.pd-stock-unit {
+  font-size: 26rpx;
+  color: #747A76;
+  margin-left: 8rpx;
+}
+.pd-stock-right {
+  flex-shrink: 0;
+}
+.pd-status-badge {
+  padding: 8rpx 24rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+.pd-status-badge--normal {
+  background: #EAF6EF;
+  color: #078B4B;
+}
+.pd-status-badge--low {
+  background: #FFFBF0;
+  color: #E59A23;
+}
+.pd-status-badge--out {
+  background: #FDF2F2;
+  color: #D94A45;
+}
+
+/* ===== 通用区域 ===== */
+.pd-section {
+  margin-bottom: 28rpx;
+}
+.pd-section-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #171917;
+  margin-bottom: 16rpx;
+  padding-left: 4rpx;
+}
+
+/* ===== 产品介绍 ===== */
+.pd-desc-card {
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+.pd-desc-text {
+  font-size: 26rpx;
+  color: #3A3D3A;
+  line-height: 1.7;
+}
+.pd-desc-text--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pd-desc-toggle {
+  display: inline-block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #078B4B;
+  font-weight: 600;
+}
+.pd-desc-empty {
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 32rpx 24rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #747A76;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+
+/* ===== 基本信息 ===== */
+.pd-info-card {
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 8rpx 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+.pd-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #F2F4F2;
+}
+.pd-info-row:last-child {
+  border-bottom: 0;
+}
+.pd-info-key {
+  font-size: 26rpx;
+  color: #747A76;
+  flex-shrink: 0;
+}
+.pd-info-val {
+  font-size: 26rpx;
+  color: #171917;
+  text-align: right;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== 最近库存记录 ===== */
+.pd-records-card {
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 8rpx 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+.pd-record-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #F2F4F2;
+}
+.pd-record-item:last-child {
+  border-bottom: 0;
+}
+.pd-record-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  background: #F7F8F7;
+  margin-right: 18rpx;
+}
+.pd-record-icon--in { background: #EAF6EF; }
+.pd-record-icon--out { background: #FDF2F2; }
+.pd-record-sign {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #078B4B;
+}
+.pd-record-icon--out .pd-record-sign {
+  color: #D94A45;
+}
+.pd-record-body {
+  flex: 1;
+  min-width: 0;
+}
+.pd-record-type {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #171917;
+}
+.pd-record-qty {
+  font-size: 24rpx;
+  margin-top: 2rpx;
+}
+.text--primary { color: #078B4B; }
+.text--danger { color: #D94A45; }
+.pd-record-extra {
+  flex-shrink: 0;
+  text-align: right;
+  margin-left: 16rpx;
+}
+.pd-record-time {
+  display: block;
+  font-size: 22rpx;
+  color: #747A76;
+}
+.pd-record-operator {
+  display: block;
+  font-size: 22rpx;
+  color: #747A76;
+  margin-top: 2rpx;
+}
+.pd-records-empty {
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 32rpx 24rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #747A76;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+
+/* ===== 底部安全区占位 ===== */
+.pd-bottom-spacer {
+  height: 40rpx;
+}
+
+/* ===== 底部操作栏 ===== */
+.pd-action-bar {
+  position: fixed;
+  z-index: 80;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 16rpx;
+  padding: 16rpx 28rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1rpx solid #E7EBE8;
+}
+.pd-action-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 26rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pd-action-btn--primary {
+  background: #078B4B;
+  color: #FFFFFF;
+}
+.pd-action-btn--primary:active {
+  background: #06713E;
+}
+.pd-action-btn--outline {
+  background: #FFFFFF;
+  color: #078B4B;
+  border: 2rpx solid #078B4B;
+  box-sizing: border-box;
+}
+.pd-action-btn--outline:active {
+  background: #EAF6EF;
+}
+
+/* ===== 未找到产品 ===== */
+.pd-notfound {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 140rpx 60rpx;
+}
+.pd-notfound-mark {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: #F2F4F2;
+  margin-bottom: 28rpx;
+}
+.pd-notfound-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #171917;
+  margin-bottom: 12rpx;
+}
+.pd-notfound-desc {
+  font-size: 26rpx;
+  color: #747A76;
+  text-align: center;
+  line-height: 1.6;
+  margin-bottom: 32rpx;
+}
+.pd-notfound-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80rpx;
+  padding: 0 48rpx;
+  border-radius: 26rpx;
+  background: #078B4B;
+  color: #FFFFFF;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+.pd-notfound-btn:active {
+  background: #06713E;
+}

@@ -68,6 +68,28 @@ Page({
     wx.showToast({ title: '新增产品功能将在后续阶段开放', icon: 'none', duration: 2000 });
   },
 
+  onCardTap: function (e) {
+    var id = e.currentTarget.dataset.id;
+    if (id) {
+      wx.navigateTo({ url: '/pages/product-detail/product-detail?id=' + id });
+    }
+  },
+
+  onCardMenu: function (e) {
+    var id = e.currentTarget.dataset.id;
+    var self = this;
+    wx.showActionSheet({
+      itemList: ['查看详情', '入库', '出库'],
+      success: function (res) {
+        if (res.tapIndex === 0) {
+          if (id) wx.navigateTo({ url: '/pages/product-detail/product-detail?id=' + id });
+        } else {
+          wx.showToast({ title: '该功能将在后续阶段开放', icon: 'none', duration: 2000 });
+        }
+      }
+    });
+  },
+
   applyFilters: function () {
     var searchText = this.data.searchText.trim().toLowerCase();
     var activeCategory = this.data.activeCategory;

@@ -74,7 +74,7 @@
     description="{{searchText||activeStockFilter?'试试调整筛选条件或更换关键词':'当前仓库还没有产品'}}">
   </empty-state>
   <view wx:else class="inv-list">
-    <view wx:for="{{filteredList}}" wx:key="id" class="inv-card">
+    <view wx:for="{{filteredList}}" wx:key="id" class="inv-card" data-id="{{item.id}}" bindtap="onCardTap">
       <view class="inv-card-left">
         <view class="inv-card-cover {{item.status==='out'?'inv-card-cover--out':''}} {{item.status==='low'?'inv-card-cover--low':''}}">
           <text class="inv-card-cover-text">{{item.displayText}}</text>
@@ -97,7 +97,7 @@
           <view wx:elif="{{item.status==='low'}}" class="inv-status-tag inv-status-tag--low">低库存</view>
           <view wx:else class="inv-status-tag inv-status-tag--normal">正常</view>
         </view>
-        <view class="inv-card-more">
+        <view class="inv-card-more" catchtap="onCardMenu">
           <view class="inv-card-more-dot"></view>
           <view class="inv-card-more-dot"></view>
           <view class="inv-card-more-dot"></view>

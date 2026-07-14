@@ -2,6 +2,7 @@
   "pages": [
     "pages/startup/startup",
     "pages/inventory/inventory",
+    "pages/product-detail/product-detail",
     "pages/records/records",
     "pages/team/team",
     "pages/profile/profile"
