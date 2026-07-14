@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "团队",
+  "usingComponents": {
+    "empty-state": "/components/empty-state/empty-state"
+  }
+}

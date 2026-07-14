@@ -1,0 +1,9 @@
+<view class="page startup-page">
+  <app-loading wx:if="{{status === 'loading'}}" text="正在启动轻仓"></app-loading>
+  <error-state
+    wx:elif="{{status === 'failed'}}"
+    title="启动失败"
+    message="{{errorMessage}}"
+    bind:retry="handleRetry"
+  ></error-state>
+</view>

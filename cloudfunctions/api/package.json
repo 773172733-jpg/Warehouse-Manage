@@ -1,0 +1,10 @@
+{
+  "name": "light-warehouse-api",
+  "version": "0.0.1",
+  "description": "轻仓统一云函数入口",
+  "main": "index.js",
+  "private": true,
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "pages": [
+    "pages/startup/startup",
+    "pages/inventory/inventory",
+    "pages/records/records",
+    "pages/team/team",
+    "pages/profile/profile"
+  ],
+  "window": {
+    "navigationBarTitleText": "轻仓",
+    "navigationBarBackgroundColor": "#078B4B",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F7F8F7"
+  },
+  "tabBar": {
+    "color": "#7A7A7A",
+    "selectedColor": "#078B4B",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/inventory/inventory",
+        "text": "库存",
+        "iconPath": "assets/tabbar/inventory.png",
+        "selectedIconPath": "assets/tabbar/inventory-active.png"
+      },
+      {
+        "pagePath": "pages/records/records",
+        "text": "记录",
+        "iconPath": "assets/tabbar/records.png",
+        "selectedIconPath": "assets/tabbar/records-active.png"
+      },
+      {
+        "pagePath": "pages/team/team",
+        "text": "团队",
+        "iconPath": "assets/tabbar/team.png",
+        "selectedIconPath": "assets/tabbar/team-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "assets/tabbar/profile.png",
+        "selectedIconPath": "assets/tabbar/profile-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

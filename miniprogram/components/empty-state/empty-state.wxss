@@ -1,0 +1,31 @@
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 360rpx;
+  padding: 32rpx;
+  text-align: center;
+  color: #647067;
+}
+
+.empty-mark {
+  width: 96rpx;
+  height: 96rpx;
+  margin-bottom: 24rpx;
+  border: 4rpx solid #DCE4DE;
+  border-radius: 8rpx;
+  background: #FFFFFF;
+}
+
+.empty-title {
+  margin-bottom: 12rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1F2A24;
+}
+
+.empty-description {
+  font-size: 26rpx;
+  line-height: 1.6;
+}

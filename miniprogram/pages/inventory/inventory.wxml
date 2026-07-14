@@ -1,0 +1,7 @@
+<view class="page">
+  <view class="placeholder-panel">
+    <view class="placeholder-title">库存</view>
+    <view class="placeholder-text">阶段0仅提供页面入口和基础结构，正式产品列表将在后续阶段实现。</view>
+  </view>
+  <empty-state title="暂无库存数据" description="当前未接入真实产品和库存业务。"></empty-state>
+</view>

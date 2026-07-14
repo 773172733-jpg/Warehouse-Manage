@@ -1,0 +1,7 @@
+<view class="page">
+  <view class="placeholder-panel">
+    <view class="placeholder-title">我的</view>
+    <view class="placeholder-text">阶段0不做微信头像昵称授权，仅展示本地启动状态占位。</view>
+  </view>
+  <empty-state title="暂无个人信息" description="真实用户资料将在授权和团队能力阶段接入。"></empty-state>
+</view>

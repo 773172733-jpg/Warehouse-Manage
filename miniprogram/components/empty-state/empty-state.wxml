@@ -1,0 +1,5 @@
+<view class="empty-state">
+  <view class="empty-mark"></view>
+  <text class="empty-title">{{title}}</text>
+  <text class="empty-description">{{description}}</text>
+</view>

@@ -1,0 +1,7 @@
+<view class="page">
+  <view class="placeholder-panel">
+    <view class="placeholder-title">记录</view>
+    <view class="placeholder-text">阶段0不实现库存流水查询，仅保留底部导航页面。</view>
+  </view>
+  <empty-state title="暂无记录" description="库存流水将在后续阶段由云函数统一生成。"></empty-state>
+</view>
