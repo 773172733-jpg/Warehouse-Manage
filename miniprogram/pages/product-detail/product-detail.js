@@ -7,6 +7,7 @@ Page({
     descNeedsExpand: false,
     loading: true,
     navStyle: '',
+    navSideStyle: '',
     showFullStock: false,
     stockLabel: '当前库存',
     stockSub: ''
@@ -14,8 +15,8 @@ Page({
 
   onLoad: function (query) {
     this.calcNavStyle();
-    var id = query.id || '';
-    if (!id) {
+    var id = query && query.id;
+    if (id === undefined || id === null || id === '') {
       this.setData({ loading: false });
       return;
     }
@@ -40,10 +41,12 @@ Page({
     var system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
     var menu = wx.getMenuButtonBoundingClientRect ? wx.getMenuButtonBoundingClientRect() : null;
     var statusBar = system.statusBarHeight || 20;
-    var navHeight = menu ? (menu.top - statusBar) * 2 + menu.height : 44;
-    var right = menu ? Math.max(96, system.windowWidth - menu.left + 8) : 16;
+    var hasMenuRect = menu && menu.width > 0 && menu.height > 0 && menu.left > 0;
+    var navHeight = hasMenuRect ? Math.max(44, (menu.top - statusBar) * 2 + menu.height) : 44;
+    var sideWidth = hasMenuRect ? Math.max(48, system.windowWidth - menu.left + 8) : 48;
     this.setData({
-      navStyle: 'padding-top:' + statusBar + 'px;height:' + navHeight + 'px;padding-right:' + right + 'px'
+      navStyle: 'padding-top:' + statusBar + 'px;height:' + navHeight + 'px',
+      navSideStyle: 'width:' + sideWidth + 'px'
     });
   },
 
@@ -79,7 +82,12 @@ Page({
   },
 
   onBack: function () {
-    wx.navigateBack({ delta: 1 });
+    wx.navigateBack({
+      delta: 1,
+      fail: function () {
+        wx.switchTab({ url: '/pages/inventory/inventory' });
+      }
+    });
   }
 });
 
@@ -90,7 +98,8 @@ function computeStockMeta(product) {
   if (status === 'out') return { label: '当前库存', sub: '无可用库存，需尽快补货' };
   if (status === 'low') {
     var gap = minStock - product.stock;
-    return { label: '当前库存', sub: '低于安全库存' + gap + product.unit + '，建议补货' };
+    if (gap <= 0) return { label: '当前库存', sub: '已达到安全库存下限，建议补货' };
+    return { label: '当前库存', sub: '低于安全库存' + gap + (product.unit || '') + '，建议补货' };
   }
   return { label: '当前库存', sub: '库存充足，无需补货' };
 }

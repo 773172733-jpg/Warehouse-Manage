@@ -70,9 +70,7 @@ Page({
 
   onCardTap: function (e) {
     var id = e.currentTarget.dataset.id;
-    if (id) {
-      wx.navigateTo({ url: '/pages/product-detail/product-detail?id=' + id });
-    }
+    navigateToProduct(id);
   },
 
   onCardMenu: function (e) {
@@ -82,7 +80,7 @@ Page({
       itemList: ['查看详情', '入库', '出库'],
       success: function (res) {
         if (res.tapIndex === 0) {
-          if (id) wx.navigateTo({ url: '/pages/product-detail/product-detail?id=' + id });
+          navigateToProduct(id);
         } else {
           wx.showToast({ title: '该功能将在后续阶段开放', icon: 'none', duration: 2000 });
         }
@@ -120,3 +118,10 @@ Page({
     this.setData({ filteredList: list });
   }
 });
+
+function navigateToProduct(id) {
+  if (id === undefined || id === null || id === '') return;
+  wx.navigateTo({
+    url: '/pages/product-detail/product-detail?id=' + encodeURIComponent(String(id))
+  });
+}

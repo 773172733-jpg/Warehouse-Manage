@@ -5,17 +5,17 @@
   display: flex;
   align-items: center;
   box-sizing: content-box;
-  padding-left: 28rpx;
+  padding-left: 0;
   background: #078B4B;
   color: #FFFFFF;
 }
 .pd-nav-back {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 68rpx;
-  height: 68rpx;
-  margin-left: -12rpx;
+  justify-content: flex-start;
+  height: 100%;
+  padding-left: 28rpx;
+  box-sizing: border-box;
   flex-shrink: 0;
 }
 .pd-nav-back-arrow {
@@ -37,7 +37,6 @@
   white-space: nowrap;
 }
 .pd-nav-placeholder {
-  width: 68rpx;
   flex-shrink: 0;
 }
 
@@ -156,6 +155,11 @@
   font-size: 26rpx;
   color: #747A76;
   margin-left: 8rpx;
+}
+.pd-stock-sub {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #747A76;
 }
 .pd-stock-right {
   flex-shrink: 0;
