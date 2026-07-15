@@ -3,6 +3,7 @@
     "pages/startup/startup",
     "pages/inventory/inventory",
     "pages/product-detail/product-detail",
+    "pages/product-edit/product-edit",
     "pages/records/records",
     "pages/team/team",
     "pages/profile/profile"

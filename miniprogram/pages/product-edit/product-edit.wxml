@@ -1,0 +1,293 @@
+<!-- 新增产品页 WXML — 三步式本地表单 --><!-- 自定义导航栏 --><view class="pe-nav" style="{{navStyle}}">
+  <view class="pe-nav-back" style="{{navSideStyle}}" catchtap="onBack">
+    <view class="pe-nav-back-arrow"></view>
+  </view>
+  <text class="pe-nav-title">新增产品</text>
+  <view class="pe-nav-placeholder" style="{{navSideStyle}}"></view>
+</view>
+
+<view class="pe-page"><!-- ===== 步骤指示器 ===== --><view class="pe-steps"><block wx:for="{{[1,2,3]}}" wx:key="*this"><view class="pe-step-item">
+      <view class="pe-step-dot {{currentStep===item?'pe-step-dot--active':''}} {{currentStep>item?'pe-step-dot--done':''}}">
+        <text wx:if="{{currentStep>item}}" class="pe-step-check">✓</text>
+        <text wx:else>{{item}}</text>
+      </view>
+      <text class="pe-step-label {{currentStep>=item?'pe-step-label--active':''}}">{{item===1?'基本信息':item===2?'库存设置':'完成'}}</text>
+    </view>
+    <view wx:if="{{index<2}}" class="pe-step-line {{currentStep>item?'pe-step-line--done':''}}"></view></block></view>
+
+<!-- ===== 第一步：基本信息 ===== --><view wx:if="{{currentStep===1}}" class="pe-step-body">
+
+<!-- A/B/C: 封面模式选择 --><text class="pe-field-label pe-field-label--section">产品封面</text>
+<view class="pe-cover-mode-row">
+  <view class="pe-cover-mode-card {{form.coverMode==='text'?'pe-cover-mode-card--active':''}}" data-mode="text" catchtap="onCoverModeTap">
+    <view class="pe-cover-mode-icon pe-cover-mode-icon--text">Aa</view>
+    <text class="pe-cover-mode-name">文字封面</text>
+  </view>
+  <view class="pe-cover-mode-card {{form.coverMode==='system'?'pe-cover-mode-card--active':''}}" data-mode="system" catchtap="onCoverModeTap">
+    <view class="pe-cover-mode-icon pe-cover-mode-icon--system">▦</view>
+    <text class="pe-cover-mode-name">系统贴图</text>
+  </view>
+  <view class="pe-cover-mode-card {{form.coverMode==='custom'?'pe-cover-mode-card--active':''}}" data-mode="custom" catchtap="onCoverModeTap">
+    <view class="pe-cover-mode-icon pe-cover-mode-icon--custom">▣</view>
+    <text class="pe-cover-mode-name">上传图片</text>
+  </view>
+</view>
+
+<!-- 封面预览 --><view class="pe-cover-preview">
+  <block wx:if="{{form.coverMode==='text'}}">
+    <view class="pe-cover-preview-box" style="background:{{form.coverColor}}">
+      <text class="pe-cover-preview-text">{{form.displayText||'封面'}}</text>
+    </view>
+  </block>
+  <block wx:elif="{{form.coverMode==='system'}}">
+    <view class="pe-cover-preview-box pe-cover-preview-box--system {{form.systemAssetKey?'pe-cover-preview-box--active':''}}">
+      <text wx:if="{{form.systemAssetKey}}" class="pe-system-icon">{{form.systemAssetEmoji}}</text>
+      <text wx:else class="pe-cover-preview-hint">请选择贴图</text>
+    </view>
+  </block>
+  <block wx:elif="{{form.coverMode==='custom'}}">
+    <image wx:if="{{form.localImagePath}}" class="pe-cover-preview-img" src="{{form.localImagePath}}" mode="aspectFill"></image>
+    <view wx:else class="pe-cover-preview-box pe-cover-preview-box--empty">
+      <text class="pe-cover-preview-hint">请选择图片</text>
+    </view>
+  </block>
+</view>
+
+<!-- 文字封面设置 --><block wx:if="{{form.coverMode==='text'}}">
+  <view class="pe-field">
+    <text class="pe-field-label">封面文字</text>
+    <input class="pe-input {{fieldErrors.displayText?'pe-input--error':''}}" placeholder="请输入封面显示文字" value="{{form.displayText}}" maxlength="6" bindinput="onDisplayTextInput"/>
+    <text wx:if="{{fieldErrors.displayText}}" class="pe-field-error">{{fieldErrors.displayText}}</text>
+  </view>
+
+  <view class="pe-field">
+    <text class="pe-field-label">封面颜色</text>
+    <view class="pe-color-row">
+      <block wx:for="{{coverColors}}" wx:key="value">
+        <view class="pe-color-chip {{form.coverColor===item.value?'pe-color-chip--active':''}}" style="background:{{item.value}}" data-color="{{item.value}}" catchtap="onCoverColorTap">
+          <text wx:if="{{form.coverColor===item.value}}" class="pe-color-check">✓</text>
+        </view>
+      </block>
+    </view>
+  </view>
+</block>
+
+<!-- 系统贴图设置 --><block wx:if="{{form.coverMode==='system'}}">
+  <view class="pe-field">
+    <text class="pe-field-label">选择贴图</text>
+    <view class="pe-asset-grid">
+      <block wx:for="{{systemAssets}}" wx:key="key">
+        <view class="pe-asset-card {{form.systemAssetKey===item.key?'pe-asset-card--active':''}}" data-key="{{item.key}}" catchtap="onSystemAssetTap">
+          <text class="pe-asset-emoji">{{item.emoji}}</text>
+          <text class="pe-asset-label">{{item.label}}</text>
+        </view>
+      </block>
+    </view>
+    <text wx:if="{{fieldErrors.systemAssetKey}}" class="pe-field-error">{{fieldErrors.systemAssetKey}}</text>
+  </view>
+</block>
+
+<!-- 图片上传设置 --><block wx:if="{{form.coverMode==='custom'}}">
+  <view class="pe-field">
+    <text class="pe-field-label">选择图片</text>
+    <view wx:if="{{form.localImagePath}}" class="pe-image-actions">
+      <view class="pe-btn-pe pe-btn-pe--outline" catchtap="onChooseImage">重新选择</view>
+      <view class="pe-btn-pe pe-btn-pe--ghost" catchtap="onClearImage">清除图片</view>
+    </view>
+    <view wx:else class="pe-upload-box" catchtap="onChooseImage">
+      <text class="pe-upload-plus">+</text>
+      <text class="pe-upload-text">点击选择图片</text>
+    </view>
+    <text wx:if="{{fieldErrors.image}}" class="pe-field-error">{{fieldErrors.image}}</text>
+  </view>
+</block>
+
+<!-- 产品名称 --><view class="pe-field">
+  <text class="pe-field-label">产品名称 <text class="pe-required">*</text></text>
+  <input class="pe-input {{fieldErrors.name?'pe-input--error':''}}" placeholder="请输入产品名称" value="{{form.name}}" maxlength="40" bindinput="onNameInput"/>
+  <text wx:if="{{fieldErrors.name}}" class="pe-field-error">{{fieldErrors.name}}</text>
+</view>
+
+<!-- 产品编号 --><view class="pe-field">
+  <text class="pe-field-label">产品编号</text>
+  <input class="pe-input" placeholder="选填，例如 GZ-800-H" value="{{form.code}}" maxlength="40" bindinput="onCodeInput"/>
+</view>
+
+<!-- 分类 --><view class="pe-field">
+  <text class="pe-field-label">分类 <text class="pe-required">*</text></text>
+  <view class="pe-select-row" catchtap="onCategoryTap">
+    <text class="pe-select-text {{!form.category?'pe-select-text--placeholder':''}}">{{form.category||'请选择分类'}}</text>
+    <view class="pe-select-arrow"></view>
+  </view>
+  <text wx:if="{{fieldErrors.category}}" class="pe-field-error">{{fieldErrors.category}}</text>
+</view>
+
+<!-- 单位 --><view class="pe-field">
+  <text class="pe-field-label">单位 <text class="pe-required">*</text></text>
+  <view class="pe-select-row" catchtap="onUnitTap">
+    <text class="pe-select-text {{!form.unit?'pe-select-text--placeholder':''}}">{{form.unit==='其他'?('其他 - '+form.customUnit):(form.unit||'请选择单位')}}</text>
+    <view class="pe-select-arrow"></view>
+  </view>
+  <block wx:if="{{form.unit==='其他'}}">
+    <input class="pe-input pe-input--mt" placeholder="请输入自定义单位（10字内）" value="{{form.customUnit}}" maxlength="10" bindinput="onCustomUnitInput"/>
+  </block>
+  <text wx:if="{{fieldErrors.unit}}" class="pe-field-error">{{fieldErrors.unit}}</text>
+</view>
+
+<!-- 规格 --><view class="pe-field">
+  <text class="pe-field-label">规格</text>
+  <input class="pe-input" placeholder="选填，例如 800×800mm" value="{{form.specification}}" bindinput="onSpecInput"/>
+</view>
+
+<!-- 品牌 --><view class="pe-field">
+  <text class="pe-field-label">品牌</text>
+  <input class="pe-input" placeholder="选填，例如 冠珠" value="{{form.brand}}" bindinput="onBrandInput"/>
+</view>
+
+<!-- 产品介绍 --><view class="pe-field">
+  <text class="pe-field-label">产品介绍</text>
+  <textarea class="pe-textarea" placeholder="请填写产品介绍（选填）" value="{{form.description}}" maxlength="200" bindinput="onDescInput" auto-height/>
+  <text class="pe-char-count">{{form.description.length||0}}/200</text>
+</view>
+
+<!-- 搜索关键词 --><view class="pe-field">
+  <text class="pe-field-label">搜索关键词</text>
+  <input class="pe-input" placeholder="选填，多个关键词用逗号分隔" value="{{form.keywords}}" bindinput="onKeywordsInput"/>
+</view>
+
+</view><!-- /第一步 -->
+
+
+<!-- ===== 第二步：库存设置 ===== --><view wx:if="{{currentStep===2}}" class="pe-step-body">
+
+<!-- 初始库存 --><view class="pe-field">
+  <text class="pe-field-label">初始库存</text>
+  <view class="pe-number-row">
+    <view class="pe-number-btn {{form.stock<=0?'pe-number-btn--disabled':''}}" catchtap="onStockDecrease">−</view>
+    <input class="pe-number-input {{fieldErrors.stock?'pe-input--error':''}}" type="number" value="{{form.stock}}" bindinput="onStockInput"/>
+    <view class="pe-number-btn {{form.stock>=999999999?'pe-number-btn--disabled':''}}" catchtap="onStockIncrease">+</view>
+  </view>
+  <text wx:if="{{fieldErrors.stock}}" class="pe-field-error">{{fieldErrors.stock}}</text>
+</view>
+
+<!-- 最低库存 --><view class="pe-field">
+  <text class="pe-field-label">最低库存</text>
+  <view class="pe-number-row">
+    <view class="pe-number-btn {{form.minStock<=0?'pe-number-btn--disabled':''}}" catchtap="onMinStockDecrease">−</view>
+    <input class="pe-number-input" type="number" value="{{form.minStock}}" bindinput="onMinStockInput"/>
+    <view class="pe-number-btn {{form.minStock>=999999999?'pe-number-btn--disabled':''}}" catchtap="onMinStockIncrease">+</view>
+  </view>
+</view>
+
+<!-- 低库存提示开关 --><view class="pe-field">
+  <text class="pe-field-label">低库存提示</text>
+  <view class="pe-toggle-row" catchtap="onLowStockToggle">
+    <text class="pe-toggle-text">{{form.lowStockEnabled?'已启用':'已关闭'}}</text>
+    <view class="pe-toggle {{form.lowStockEnabled?'pe-toggle--on':''}}">
+      <view class="pe-toggle-knob {{form.lowStockEnabled?'pe-toggle-knob--on':''}}"></view>
+    </view>
+  </view>
+</view>
+
+<!-- 库存状态预览 --><view class="pe-stock-preview-card">
+  <text class="pe-section-subtitle">库存状态预览</text>
+  <view class="pe-stock-preview-row">
+    <text class="pe-sp-label">初始库存</text>
+    <text class="pe-sp-value">{{form.stock||0}}</text>
+  </view>
+  <view class="pe-stock-preview-row">
+    <text class="pe-sp-label">最低库存</text>
+    <text class="pe-sp-value">{{form.minStock||0}}</text>
+  </view>
+  <view class="pe-stock-preview-divider"></view>
+  <view class="pe-stock-preview-row">
+    <text class="pe-sp-label">当前状态</text>
+    <text class="pe-sp-status pe-sp-status--{{stockStatus.color}}">{{stockStatus.label}}</text>
+  </view>
+</view>
+
+</view><!-- /第二步 -->
+
+
+<!-- ===== 第三步：确认完成 ===== --><view wx:if="{{currentStep===3}}" class="pe-step-body">
+
+<view class="pe-confirm-card">
+  <text class="pe-section-subtitle">新增产品预览</text>
+
+  <!-- 封面 --><view class="pe-confirm-cover">
+    <block wx:if="{{form.coverMode==='text'}}">
+      <view class="pe-confirm-cover-box" style="background:{{form.coverColor}}">
+        <text class="pe-confirm-cover-text">{{form.displayText||'—'}}</text>
+      </view>
+    </block>
+    <block wx:elif="{{form.coverMode==='system'}}">
+      <view class="pe-confirm-cover-box pe-confirm-cover-box--system">
+        <text class="pe-confirm-cover-emoji">{{form.systemAssetEmoji}}</text>
+      </view>
+    </block>
+    <block wx:elif="{{form.coverMode==='custom'}}">
+      <image wx:if="{{form.localImagePath}}" class="pe-confirm-cover-img" src="{{form.localImagePath}}" mode="aspectFill"></image>
+      <view wx:else class="pe-confirm-cover-box pe-confirm-cover-box--empty">
+        <text class="pe-cover-preview-hint">无图片</text>
+      </view>
+    </block>
+  </view>
+
+  <!-- 预览字段 --><view class="pe-confirm-rows">
+    <view class="pe-confirm-row">
+      <text class="pe-cr-key">产品名称</text>
+      <text class="pe-cr-val">{{form.name||'—'}}</text>
+    </view>
+    <view class="pe-confirm-row">
+      <text class="pe-cr-key">产品编号</text>
+      <text class="pe-cr-val">{{form.code||'—'}}</text>
+    </view>
+    <view class="pe-confirm-row">
+      <text class="pe-cr-key">分类</text>
+      <text class="pe-cr-val">{{form.category||'—'}}</text>
+    </view>
+    <view class="pe-confirm-row">
+      <text class="pe-cr-key">单位</text>
+      <text class="pe-cr-val">{{form.unit==='其他'?form.customUnit:form.unit||'—'}}</text>
+    </view>
+    <view class="pe-confirm-row">
+      <text class="pe-cr-key">初始库存</text>
+      <text class="pe-cr-val pe-cr-val--stock pe-cr-val--{{stockStatus.color}}">{{form.stock||0}}</text>
+    </view>
+    <view class="pe-confirm-row">
+      <text class="pe-cr-key">最低库存</text>
+      <text class="pe-cr-val">{{form.minStock||0}}</text>
+    </view>
+    <view class="pe-confirm-row">
+      <text class="pe-cr-key">库存状态</text>
+      <text class="pe-cr-val pe-cr-val--{{stockStatus.color}}">{{stockStatus.label}}</text>
+    </view>
+    <view wx:if="{{form.specification}}" class="pe-confirm-row">
+      <text class="pe-cr-key">规格</text>
+      <text class="pe-cr-val">{{form.specification}}</text>
+    </view>
+    <view wx:if="{{form.brand}}" class="pe-confirm-row">
+      <text class="pe-cr-key">品牌</text>
+      <text class="pe-cr-val">{{form.brand}}</text>
+    </view>
+    <view wx:if="{{form.description}}" class="pe-confirm-row pe-confirm-row--desc">
+      <text class="pe-cr-key">产品介绍</text>
+      <text class="pe-cr-val pe-cr-val--desc">{{form.description}}</text>
+    </view>
+  </view>
+</view>
+
+<!-- 操作按钮 --><view class="pe-confirm-actions">
+  <view class="pe-btn-pe pe-btn-pe--outline" catchtap="onPrevStep">返回修改</view>
+  <view class="pe-btn-pe pe-btn-pe--primary" catchtap="onComplete">完成</view>
+</view>
+
+</view><!-- /第三步 -->
+
+
+<!-- ===== 底部步骤按钮（第一步&第二步）===== --><view wx:if="{{currentStep<3}}" class="pe-step-footer">
+  <view wx:if="{{currentStep===2}}" class="pe-btn-pe pe-btn-pe--outline" catchtap="onPrevStep">上一步</view>
+  <view class="pe-btn-pe pe-btn-pe--primary pe-btn-pe--expand" catchtap="onNextStep">下一步</view>
+</view>
+
+</view><!-- /pe-page -->

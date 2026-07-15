@@ -65,7 +65,9 @@ Page({
   },
 
   onAddTap: function () {
-    wx.showToast({ title: '新增产品功能将在后续阶段开放', icon: 'none', duration: 2000 });
+    wx.navigateTo({
+      url: '/pages/product-edit/product-edit?mode=create'
+    });
   },
 
   onCardTap: function (e) {

@@ -1,0 +1,668 @@
+/* 新增产品页 WXSS — 苹果绿简约风，与库存首页/产品详情统一 */
+
+/* ===== 自定义导航栏 ===== */
+.pe-nav {
+  display: flex;
+  align-items: center;
+  box-sizing: content-box;
+  background: #078B4B;
+  color: #FFFFFF;
+}
+.pe-nav-back {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100%;
+  padding-left: 28rpx;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.pe-nav-back-arrow {
+  width: 20rpx;
+  height: 20rpx;
+  border-left: 4rpx solid #FFFFFF;
+  border-bottom: 4rpx solid #FFFFFF;
+  transform: rotate(45deg);
+}
+.pe-nav-title {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pe-nav-placeholder {
+  flex-shrink: 0;
+}
+
+/* ===== 页面容器 ===== */
+.pe-page {
+  min-height: 100vh;
+  background: #F7F8F7;
+  padding: 0 28rpx;
+  padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+/* ===== 步骤指示器 ===== */
+.pe-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx 40rpx;
+  background: #FFFFFF;
+  margin: 0 -28rpx 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+.pe-step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pe-step-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  background: #F2F4F2;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #747A76;
+  margin-bottom: 8rpx;
+}
+.pe-step-dot--active {
+  background: #078B4B;
+  color: #FFFFFF;
+}
+.pe-step-dot--done {
+  background: #EAF6EF;
+  color: #078B4B;
+}
+.pe-step-check {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #078B4B;
+}
+.pe-step-label {
+  font-size: 22rpx;
+  color: #747A76;
+}
+.pe-step-label--active {
+  color: #078B4B;
+  font-weight: 600;
+}
+.pe-step-line {
+  width: 80rpx;
+  height: 2rpx;
+  background: #E7EBE8;
+  margin: 0 16rpx;
+  margin-bottom: 24rpx;
+}
+.pe-step-line--done {
+  background: #078B4B;
+}
+
+/* ===== 步骤主体 ===== */
+.pe-step-body {
+  padding-bottom: 40rpx;
+}
+
+/* ===== 封面模式卡片 ===== */
+.pe-cover-mode-row {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+.pe-cover-mode-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24rpx 12rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  border: 2rpx solid #E7EBE8;
+  transition: all 0.15s;
+}
+.pe-cover-mode-card--active {
+  border-color: #078B4B;
+  background: #EAF6EF;
+}
+.pe-cover-mode-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 16rpx;
+  background: #F7F8F7;
+  margin-bottom: 10rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #078B4B;
+}
+.pe-cover-mode-icon--text {
+  font-size: 28rpx;
+}
+.pe-cover-mode-icon--system {
+  font-size: 34rpx;
+}
+.pe-cover-mode-icon--custom {
+  font-size: 32rpx;
+}
+.pe-cover-mode-name {
+  font-size: 22rpx;
+  color: #747A76;
+}
+
+/* ===== 封面预览 ===== */
+.pe-cover-preview {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 28rpx;
+}
+.pe-cover-preview-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 24rpx;
+  background: #F2F4F2;
+}
+.pe-cover-preview-box--system {
+  background: #F7F8F7;
+}
+.pe-cover-preview-box--active {
+  border: 3rpx solid #078B4B;
+}
+.pe-cover-preview-box--empty {
+  border: 2rpx dashed #E7EBE8;
+}
+.pe-cover-preview-text {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #078B4B;
+  text-align: center;
+  line-height: 1.3;
+  padding: 8rpx;
+}
+.pe-cover-preview-hint {
+  font-size: 24rpx;
+  color: #747A76;
+}
+.pe-system-icon {
+  font-size: 56rpx;
+}
+.pe-cover-preview-img {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 24rpx;
+}
+
+/* ===== 颜色选择 ===== */
+.pe-color-row {
+  display: flex;
+  gap: 16rpx;
+  flex-wrap: wrap;
+}
+.pe-color-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
+  border: 3rpx solid transparent;
+  box-sizing: border-box;
+}
+.pe-color-chip--active {
+  border-color: #078B4B;
+  box-shadow: 0 4rpx 12rpx rgba(7, 139, 75, 0.18);
+}
+.pe-color-check {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #078B4B;
+}
+
+/* ===== 系统贴图网格 ===== */
+.pe-asset-grid {
+  display: flex;
+  gap: 16rpx;
+  flex-wrap: wrap;
+}
+.pe-asset-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 156rpx;
+  padding: 24rpx 12rpx 18rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  border: 2rpx solid #E7EBE8;
+}
+.pe-asset-card--active {
+  border-color: #078B4B;
+  background: #EAF6EF;
+}
+.pe-asset-emoji {
+  font-size: 44rpx;
+  margin-bottom: 8rpx;
+}
+.pe-asset-label {
+  font-size: 22rpx;
+  color: #747A76;
+}
+
+/* ===== 上传图片 ===== */
+.pe-upload-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 160rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  border: 2rpx dashed #E7EBE8;
+}
+.pe-upload-plus {
+  font-size: 48rpx;
+  color: #078B4B;
+  font-weight: 300;
+  margin-bottom: 8rpx;
+}
+.pe-upload-text {
+  font-size: 24rpx;
+  color: #747A76;
+}
+.pe-image-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+/* ===== 字段 ===== */
+.pe-field {
+  margin-bottom: 24rpx;
+}
+.pe-field--last {
+  margin-bottom: 0;
+}
+.pe-field-label {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #171917;
+  margin-bottom: 12rpx;
+  padding-left: 4rpx;
+}
+.pe-field-label--section {
+  font-size: 28rpx;
+  margin-bottom: 16rpx;
+}
+.pe-required {
+  color: #D94A45;
+  font-size: 24rpx;
+}
+.pe-field-error {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #D94A45;
+  padding-left: 4rpx;
+}
+
+/* ===== 输入框 ===== */
+.pe-input {
+  display: block;
+  height: 88rpx;
+  padding: 0 24rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  border: 2rpx solid #E7EBE8;
+  font-size: 28rpx;
+  color: #171917;
+  box-sizing: border-box;
+}
+.pe-input--error {
+  border-color: #D94A45;
+}
+.pe-input--mt {
+  margin-top: 16rpx;
+}
+
+/* ===== 多行输入 ===== */
+.pe-textarea {
+  display: block;
+  min-height: 160rpx;
+  padding: 20rpx 24rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  border: 2rpx solid #E7EBE8;
+  font-size: 28rpx;
+  color: #171917;
+  box-sizing: border-box;
+  line-height: 1.6;
+}
+.pe-char-count {
+  display: block;
+  text-align: right;
+  font-size: 22rpx;
+  color: #747A76;
+  margin-top: 8rpx;
+  padding-right: 4rpx;
+}
+
+/* ===== 选择行 ===== */
+.pe-select-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 88rpx;
+  padding: 0 24rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  border: 2rpx solid #E7EBE8;
+  box-sizing: border-box;
+}
+.pe-select-text {
+  font-size: 28rpx;
+  color: #171917;
+}
+.pe-select-text--placeholder {
+  color: #B6BAB7;
+}
+.pe-select-arrow {
+  width: 18rpx;
+  height: 18rpx;
+  border-right: 3rpx solid #747A76;
+  border-top: 3rpx solid #747A76;
+  transform: rotate(45deg);
+}
+
+/* ===== 数字控件 ===== */
+.pe-number-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.pe-number-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 16rpx;
+  background: #FFFFFF;
+  border: 2rpx solid #078B4B;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #078B4B;
+  box-sizing: border-box;
+}
+.pe-number-btn:active {
+  background: #EAF6EF;
+}
+.pe-number-btn--disabled {
+  border-color: #E7EBE8;
+  color: #B6BAB7;
+}
+.pe-number-input {
+  flex: 1;
+  height: 80rpx;
+  padding: 0 24rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  border: 2rpx solid #E7EBE8;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #171917;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* ===== 开关 ===== */
+.pe-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 88rpx;
+  padding: 0 24rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+}
+.pe-toggle-text {
+  font-size: 28rpx;
+  color: #171917;
+}
+.pe-toggle {
+  width: 88rpx;
+  height: 50rpx;
+  border-radius: 25rpx;
+  background: #E7EBE8;
+  display: flex;
+  align-items: center;
+  padding: 0 6rpx;
+  box-sizing: border-box;
+  transition: background 0.15s;
+}
+.pe-toggle--on {
+  background: #078B4B;
+}
+.pe-toggle-knob {
+  width: 38rpx;
+  height: 38rpx;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.12);
+  transition: transform 0.15s;
+}
+.pe-toggle-knob--on {
+  transform: translateX(38rpx);
+}
+
+/* ===== 库存状态预览 ===== */
+.pe-stock-preview-card {
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+.pe-section-subtitle {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #171917;
+  margin-bottom: 20rpx;
+}
+.pe-stock-preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12rpx 0;
+}
+.pe-stock-preview-divider {
+  height: 1rpx;
+  background: #F2F4F2;
+  margin: 8rpx 0;
+}
+.pe-sp-label {
+  font-size: 26rpx;
+  color: #747A76;
+}
+.pe-sp-value {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #171917;
+}
+.pe-sp-status {
+  font-size: 26rpx;
+  font-weight: 600;
+}
+.pe-sp-status--primary {
+  color: #078B4B;
+}
+.pe-sp-status--warning {
+  color: #E59A23;
+}
+.pe-sp-status--danger {
+  color: #D94A45;
+}
+
+/* ===== 确认卡片 ===== */
+.pe-confirm-card {
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+  margin-bottom: 24rpx;
+}
+.pe-confirm-cover {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 28rpx;
+}
+.pe-confirm-cover-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 24rpx;
+}
+.pe-confirm-cover-box--system {
+  background: #F7F8F7;
+}
+.pe-confirm-cover-box--empty {
+  background: #F7F8F7;
+}
+.pe-confirm-cover-text {
+  font-size: 38rpx;
+  font-weight: 700;
+  color: #078B4B;
+}
+.pe-confirm-cover-emoji {
+  font-size: 60rpx;
+}
+.pe-confirm-cover-img {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 24rpx;
+}
+
+.pe-confirm-rows {
+  border-top: 1rpx solid #F2F4F2;
+}
+.pe-confirm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #F2F4F2;
+}
+.pe-confirm-row--desc {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.pe-cr-key {
+  font-size: 26rpx;
+  color: #747A76;
+  flex-shrink: 0;
+}
+.pe-cr-val {
+  font-size: 26rpx;
+  color: #171917;
+  font-weight: 500;
+  text-align: right;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pe-cr-val--desc {
+  text-align: left;
+  max-width: 100%;
+  white-space: normal;
+  margin-top: 8rpx;
+  line-height: 1.6;
+}
+.pe-cr-val--stock {
+  font-size: 30rpx;
+  font-weight: 700;
+}
+.pe-cr-val--primary {
+  color: #078B4B;
+}
+.pe-cr-val--warning {
+  color: #E59A23;
+}
+.pe-cr-val--danger {
+  color: #D94A45;
+}
+
+/* ===== 确认操作按钮 ===== */
+.pe-confirm-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+/* ===== 底部步骤按钮 ===== */
+.pe-step-footer {
+  position: fixed;
+  z-index: 80;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 16rpx;
+  padding: 16rpx 28rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1rpx solid #E7EBE8;
+}
+
+/* ===== 通用按钮 ===== */
+.pe-btn-pe {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 26rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pe-btn-pe--expand {
+  flex: 2;
+}
+.pe-btn-pe--primary {
+  background: #078B4B;
+  color: #FFFFFF;
+}
+.pe-btn-pe--primary:active {
+  background: #06713E;
+}
+.pe-btn-pe--outline {
+  background: #FFFFFF;
+  color: #078B4B;
+  border: 2rpx solid #078B4B;
+  box-sizing: border-box;
+}
+.pe-btn-pe--outline:active {
+  background: #EAF6EF;
+}
+.pe-btn-pe--ghost {
+  background: #F7F8F7;
+  color: #747A76;
+}
+.pe-btn-pe--ghost:active {
+  background: #E7EBE8;
+}
