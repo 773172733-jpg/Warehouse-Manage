@@ -1,6 +1,6 @@
 # 轻仓｜微信小程序仓库管理器
 
-当前进入阶段2B1：在阶段2A可信身份和团队基础上，建立邀请码、加入申请、成员查询、owner审核、角色管理、成员移除和主动退出的云端核心。阶段1团队页尚未接入这些真实接口，UI接入属于阶段2B2。
+当前进入阶段2B2A：在阶段2B1团队云端核心之上，接入申请人侧真实加入团队页面、待审核状态和启动路由。owner审核、真实成员列表和邀请码生成UI仍属于后续阶段。
 
 ## 技术栈
 
@@ -21,6 +21,8 @@
 - [`docs/阶段2A部署与验收.md`](docs/阶段2A部署与验收.md)
 - [`docs/阶段2B1团队邀请与成员权限.md`](docs/阶段2B1团队邀请与成员权限.md)
 - [`docs/阶段2B1部署与验收.md`](docs/阶段2B1部署与验收.md)
+- [`docs/阶段2B2A加入团队页面.md`](docs/阶段2B2A加入团队页面.md)
+- [`docs/阶段2B2A部署与验收.md`](docs/阶段2B2A部署与验收.md)
 - [`database/collections.md`](database/collections.md)
 - [`database/indexes.md`](database/indexes.md)
 - [`database/permissions.md`](database/permissions.md)
@@ -45,16 +47,17 @@
 - `users`、`teams`、`team_members`、`warehouses`、`invites` 数据模型和权限规划
 - 无团队用户的首次团队创建流程
 - owner邀请与成员管理、admin/viewer成员查看及主动退出的云端service
+- 无团队用户的邀请码申请、待审核/拒绝状态和审核通过后身份刷新流程
 
 暂不包含：
 
 - 产品列表、搜索、新增、编辑
 - 入库、出库、库存调整
-- 团队页、邀请弹层和加入申请页面的真实接口接入
+- 团队页真实成员管理、owner审核和邀请码生成UI
 - 邀请二维码、微信分享卡片和owner转让
 - 微信头像昵称授权
 - 图片上传、统计图表、Excel 导入导出、订阅消息
 
 ## 导入微信开发者工具
 
-选择“导入项目”，项目目录选择本目录。确认开发者工具显示轻仓正式 AppID 和独立 CloudBase 环境后，从 `pages/startup/startup` 编译。首次用户会进入团队创建页；创建成功后进入库存 tab。
+选择“导入项目”，项目目录选择本目录。确认开发者工具显示轻仓正式 AppID 和独立 CloudBase 环境后，从 `pages/startup/startup` 编译。无申请的新用户进入团队创建页；pending用户进入加入团队状态页；active团队用户进入库存tab。

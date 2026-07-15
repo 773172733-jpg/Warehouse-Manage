@@ -28,11 +28,15 @@ function refreshInvite(input) {
   });
 }
 
-function applyToJoin(input) {
-  return cloudService.callApi('team.join.apply', {
+function buildJoinApplyPayload(input = {}) {
+  return {
     code: input.code,
     requestKey: input.requestKey
-  });
+  };
+}
+
+function applyToJoin(input) {
+  return cloudService.callApi('team.join.apply', buildJoinApplyPayload(input));
 }
 
 function getJoinStatus() {
@@ -81,6 +85,7 @@ module.exports = {
   getCurrentTeam,
   getCurrentInvite,
   refreshInvite,
+  buildJoinApplyPayload,
   applyToJoin,
   getJoinStatus,
   listMembers,

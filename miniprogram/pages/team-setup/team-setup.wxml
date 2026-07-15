@@ -29,18 +29,23 @@
       />
     </view>
 
-    <text class="form-error" wx:if="{{errorMessage}}">{{errorMessage}}</text>
+    <text class="form-error" wx:if="{{accessError || errorMessage}}">{{accessError || errorMessage}}</text>
+    <button
+      class="access-retry-button"
+      wx:if="{{accessError}}"
+      bindtap="ensureNoActiveTeam"
+    >重新检查状态</button>
 
     <button
       class="create-button"
       loading="{{submitting}}"
-      disabled="{{submitting}}"
+      disabled="{{submitting || accessChecking || accessError}}"
       bindtap="handleCreate"
     >{{submitting ? '正在创建' : '创建并进入轻仓'}}</button>
   </view>
 
-  <view class="join-entry" bindtap="handleJoinPlaceholder">
+  <view class="join-entry" bindtap="handleJoinTeam">
     <text class="join-label">已有团队？</text>
-    <text class="join-action">通过邀请加入</text>
+    <text class="join-action">加入已有团队</text>
   </view>
 </view>

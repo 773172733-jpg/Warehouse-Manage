@@ -1,0 +1,106 @@
+<view class="join-page">
+  <app-loading
+    wx:if="{{viewState === 'loading' || viewState === 'approved'}}"
+    text="{{viewState === 'approved' ? '正在刷新团队身份' : '正在读取申请状态'}}"
+  ></app-loading>
+
+  <view class="input-section" wx:elif="{{viewState === 'input'}}">
+    <view class="page-header">
+      <text class="page-title">加入团队</text>
+      <text class="page-subtitle">输入团队创建者提供的邀请码</text>
+    </view>
+
+    <view class="input-card">
+      <text class="field-label">团队邀请码</text>
+      <view class="code-field {{errorMessage ? 'code-field-error' : ''}}">
+        <input
+          class="code-input"
+          value="{{code}}"
+          maxlength="{{maxCodeLength}}"
+          placeholder="请输入团队邀请码"
+          confirm-type="done"
+          adjust-position="true"
+          cursor-spacing="32"
+          bindinput="handleInput"
+          bindconfirm="handleSubmit"
+        />
+        <button
+          class="clear-button"
+          wx:if="{{code}}"
+          aria-label="清除邀请码"
+          bindtap="handleClear"
+        >×</button>
+      </view>
+      <text class="field-help">向团队创建者获取邀请码，提交后需要等待创建者审核。</text>
+      <text class="form-error" wx:if="{{errorMessage}}">{{errorMessage}}</text>
+
+      <button
+        class="primary-button"
+        loading="{{submitting}}"
+        disabled="{{submitting}}"
+        bindtap="handleSubmit"
+      >{{submitting ? '正在提交' : '申请加入'}}</button>
+    </view>
+
+    <button class="text-button" bindtap="handleBackToSetup">返回创建团队</button>
+  </view>
+
+  <view class="status-section" wx:elif="{{viewState === 'pending'}}">
+    <view class="status-mark status-mark-pending">待</view>
+    <text class="status-title">申请已提交</text>
+    <text class="status-description">等待团队创建者审核</text>
+
+    <view class="status-card">
+      <view class="detail-row">
+        <text class="detail-label">团队名称</text>
+        <text class="detail-value">{{teamName}}</text>
+      </view>
+      <view class="detail-row">
+        <text class="detail-label">申请时间</text>
+        <text class="detail-value">{{appliedAtText}}</text>
+      </view>
+      <view class="detail-row">
+        <text class="detail-label">当前状态</text>
+        <text class="detail-value pending-text">待审核</text>
+      </view>
+    </view>
+
+    <button
+      class="primary-button"
+      loading="{{refreshing}}"
+      disabled="{{refreshing}}"
+      bindtap="handleRefreshStatus"
+    >{{refreshing ? '正在刷新' : '刷新状态'}}</button>
+    <text class="status-note">如需取消申请，请联系团队创建者处理。</text>
+  </view>
+
+  <view class="status-section" wx:elif="{{viewState === 'rejected' || viewState === 'removed'}}">
+    <view class="status-mark status-mark-rejected">!</view>
+    <text class="status-title">{{viewState === 'rejected' ? '申请未通过' : '团队关系已移除'}}</text>
+    <text class="status-description">{{viewState === 'rejected' ? reviewMessage : '你可以使用新的邀请码重新申请'}}</text>
+
+    <view class="status-card" wx:if="{{teamName}}">
+      <view class="detail-row">
+        <text class="detail-label">团队名称</text>
+        <text class="detail-value">{{teamName}}</text>
+      </view>
+      <view class="detail-row">
+        <text class="detail-label">原申请时间</text>
+        <text class="detail-value">{{appliedAtText}}</text>
+      </view>
+      <view class="detail-row">
+        <text class="detail-label">当前状态</text>
+        <text class="detail-value rejected-text">{{viewState === 'rejected' ? '未通过' : '已移除'}}</text>
+      </view>
+    </view>
+
+    <button class="primary-button" bindtap="handleReapply">重新申请</button>
+  </view>
+
+  <error-state
+    wx:elif="{{viewState === 'error'}}"
+    title="申请状态读取失败"
+    message="{{errorMessage}}"
+    bind:retry="handleRetryStatus"
+  ></error-state>
+</view>

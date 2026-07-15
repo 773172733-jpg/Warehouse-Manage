@@ -1,10 +1,12 @@
 const ROUTES = require('../../constants/routes.js');
 const { ERROR_CODES, ERROR_MESSAGES } = require('../../constants/errors.js');
 const teamService = require('../../services/team-service.js');
-
-function createRequestKey() {
-  return `team_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
-}
+const { createRequestKey } = require('../../utils/request-key.js');
+const {
+  STARTUP_DESTINATIONS,
+  decideStartupDestination,
+  getJoinErrorMessage
+} = require('../../utils/team-join.js');
 
 function normalizeInput(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -15,18 +17,21 @@ Page({
     teamName: '',
     warehouseName: '默认仓库',
     submitting: false,
-    errorMessage: ''
+    errorMessage: '',
+    accessChecking: true,
+    accessError: ''
   },
 
   onLoad() {
     this.isActive = true;
+    this.isNavigating = false;
+    this.accessPromise = null;
     this.pendingRequestKey = '';
     this.pendingSignature = '';
+  },
 
-    const app = getApp();
-    if (app.globalData.currentTeam) {
-      this.openInventory();
-    }
+  onShow() {
+    this.ensureNoActiveTeam();
   },
 
   onUnload() {
@@ -49,7 +54,7 @@ Page({
   },
 
   handleCreate() {
-    if (this.data.submitting) {
+    if (this.data.submitting || this.data.accessChecking || this.data.accessError) {
       return;
     }
 
@@ -63,7 +68,7 @@ Page({
 
     const signature = `${name}\n${warehouseName}`;
     if (!this.pendingRequestKey || this.pendingSignature !== signature) {
-      this.pendingRequestKey = createRequestKey();
+      this.pendingRequestKey = createRequestKey('team');
       this.pendingSignature = signature;
     }
 
@@ -128,20 +133,26 @@ Page({
         }
         this.setData({
           submitting: false,
-          errorMessage: ERROR_MESSAGES[ERROR_CODES.NO_ACTIVE_TEAM]
+          accessChecking: false,
+          accessError: ERROR_MESSAGES[ERROR_CODES.NO_ACTIVE_TEAM]
         });
       })
       .catch((error) => {
         if (this.isActive) {
           this.setData({
             submitting: false,
-            errorMessage: this.getErrorMessage(error)
+            accessChecking: false,
+            accessError: this.getErrorMessage(error)
           });
         }
       });
   },
 
   openInventory() {
+    if (this.isNavigating) {
+      return;
+    }
+    this.isNavigating = true;
     wx.switchTab({
       url: ROUTES.INVENTORY,
       success: () => {
@@ -149,6 +160,7 @@ Page({
         this.pendingSignature = '';
       },
       fail: () => {
+        this.isNavigating = false;
         if (this.isActive) {
           this.setData({
             submitting: false,
@@ -159,10 +171,90 @@ Page({
     });
   },
 
-  handleJoinPlaceholder() {
-    wx.showToast({
-      title: '邀请加入功能将在后续阶段开放',
-      icon: 'none'
+  ensureNoActiveTeam() {
+    if (this.accessPromise || this.isNavigating) {
+      return this.accessPromise || Promise.resolve();
+    }
+
+    const app = getApp();
+    this.setData({ accessChecking: true, accessError: '' });
+    const currentPromise = app.bootstrap()
+      .then((result) => {
+        if (!this.isActive) {
+          return;
+        }
+        if (!result.onboardingRequired) {
+          this.openInventory();
+          return;
+        }
+
+        return teamService.getJoinStatus()
+          .then((joinStatus) => {
+            if (!this.isActive) {
+              return;
+            }
+            const destination = decideStartupDestination(result, joinStatus);
+            if (destination === STARTUP_DESTINATIONS.TEAM_JOIN) {
+              this.openTeamJoinFromStatus();
+              return;
+            }
+            if (destination === STARTUP_DESTINATIONS.REFRESH_BOOTSTRAP) {
+              return this.refreshExistingTeam();
+            }
+            if (destination === STARTUP_DESTINATIONS.TEAM_SETUP) {
+              this.setData({ accessChecking: false, accessError: '' });
+              return;
+            }
+            const error = new Error('申请状态读取失败，请稍后重试。');
+            error.code = ERROR_CODES.INTERNAL_ERROR;
+            throw error;
+          });
+      })
+      .catch((error) => {
+        if (this.isActive) {
+          this.setData({
+            accessChecking: false,
+            accessError: getJoinErrorMessage(error)
+          });
+        }
+      })
+      .finally(() => {
+        if (this.accessPromise === currentPromise) {
+          this.accessPromise = null;
+        }
+      });
+
+    this.accessPromise = currentPromise;
+    return currentPromise;
+  },
+
+  openTeamJoinFromStatus() {
+    if (this.isNavigating) {
+      return;
+    }
+    this.isNavigating = true;
+    wx.redirectTo({
+      url: ROUTES.TEAM_JOIN,
+      fail: () => {
+        this.isNavigating = false;
+        if (this.isActive) {
+          this.setData({
+            accessChecking: false,
+            accessError: '加入团队页面打开失败，请稍后重试。'
+          });
+        }
+      }
+    });
+  },
+
+  handleJoinTeam() {
+    wx.navigateTo({
+      url: ROUTES.TEAM_JOIN,
+      fail: () => {
+        if (this.isActive) {
+          this.setData({ errorMessage: '加入团队页面打开失败，请稍后重试。' });
+        }
+      }
     });
   }
 });

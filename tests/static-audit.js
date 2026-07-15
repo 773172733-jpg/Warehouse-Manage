@@ -17,9 +17,9 @@ function isStage2AStrictRequireFile(file) {
     file.startsWith('cloudfunctions/warehouse-api/') ||
     file.startsWith('miniprogram/pages/startup/') ||
     file.startsWith('miniprogram/pages/team-setup/') ||
+    file.startsWith('miniprogram/pages/team-join/') ||
     file.startsWith('miniprogram/services/') ||
-    file === 'miniprogram/utils/error-handler.js' ||
-    file === 'miniprogram/utils/permission.js' ||
+    file.startsWith('miniprogram/utils/') ||
     file.startsWith('tests/');
 }
 

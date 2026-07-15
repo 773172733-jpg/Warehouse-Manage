@@ -1,5 +1,10 @@
 const ROUTES = require('../../constants/routes.js');
 const { ERROR_MESSAGES, ERROR_CODES } = require('../../constants/errors.js');
+const teamService = require('../../services/team-service.js');
+const {
+  STARTUP_DESTINATIONS,
+  decideStartupDestination
+} = require('../../utils/team-join.js');
 const logger = require('../../utils/logger.js');
 
 Page({
@@ -35,17 +40,62 @@ Page({
           return;
         }
 
-        if (result.onboardingRequired) {
-          this.openTeamSetup(sequence);
+        if (!result.onboardingRequired) {
+          this.openInventory(sequence);
           return;
         }
 
-        this.openInventory(sequence);
+        return this.resolveOnboarding(result, sequence);
       })
       .catch((error) => {
         if (this.isActive && sequence === this.startSequence) {
           this.showFailure(error);
         }
+      });
+  },
+
+  resolveOnboarding(bootstrapResult, sequence) {
+    return teamService.getJoinStatus()
+      .then((joinStatus) => {
+        if (!this.isActive || sequence !== this.startSequence) {
+          return;
+        }
+
+        const destination = decideStartupDestination(bootstrapResult, joinStatus);
+        if (destination === STARTUP_DESTINATIONS.TEAM_SETUP) {
+          this.openTeamSetup(sequence);
+          return;
+        }
+        if (destination === STARTUP_DESTINATIONS.TEAM_JOIN) {
+          this.openTeamJoin(sequence);
+          return;
+        }
+        if (destination === STARTUP_DESTINATIONS.REFRESH_BOOTSTRAP) {
+          return this.refreshApprovedTeam(sequence);
+        }
+        if (destination === STARTUP_DESTINATIONS.INVENTORY) {
+          this.openInventory(sequence);
+          return;
+        }
+
+        const error = new Error(ERROR_MESSAGES[ERROR_CODES.BOOTSTRAP_FAILED]);
+        error.code = ERROR_CODES.BOOTSTRAP_FAILED;
+        throw error;
+      });
+  },
+
+  refreshApprovedTeam(sequence) {
+    return getApp().bootstrap({ forceRefresh: true })
+      .then((result) => {
+        if (!this.isActive || sequence !== this.startSequence) {
+          return;
+        }
+        if (result.onboardingRequired) {
+          const error = new Error('团队身份刷新失败，请稍后重试。');
+          error.code = ERROR_CODES.BOOTSTRAP_FAILED;
+          throw error;
+        }
+        this.openInventory(sequence);
       });
   },
 
@@ -75,6 +125,23 @@ Page({
       },
       fail: (error) => {
         logger.error('Startup team setup navigation failed.', error);
+
+        if (this.isActive && sequence === this.startSequence) {
+          this.showFailure(error);
+        }
+      }
+    });
+  },
+
+  openTeamJoin(sequence) {
+    logger.info('Startup is ready to open team join.');
+    wx.redirectTo({
+      url: ROUTES.TEAM_JOIN,
+      success: () => {
+        logger.info('Startup team join navigation succeeded.');
+      },
+      fail: (error) => {
+        logger.error('Startup team join navigation failed.', error);
 
         if (this.isActive && sequence === this.startSequence) {
           this.showFailure(error);

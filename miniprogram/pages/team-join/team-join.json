@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "加入团队",
+  "navigationBarBackgroundColor": "#078B4B",
+  "navigationBarTextStyle": "white",
+  "usingComponents": {
+    "app-loading": "/components/app-loading/app-loading",
+    "error-state": "/components/error-state/error-state"
+  }
+}
