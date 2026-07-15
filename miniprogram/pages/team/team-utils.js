@@ -2,9 +2,21 @@ const { ERROR_CODES } = require('../../constants/errors.js');
 const { createRequestKey } = require('../../utils/request-key.js');
 
 const ROLE_META = {
-  owner: { label: '创建者', className: 'owner' },
-  admin: { label: '管理员', className: 'admin' },
-  viewer: { label: '普通成员', className: 'viewer' }
+  owner: {
+    label: '创建者',
+    className: 'owner',
+    description: '团队创建者，负责成员审核与团队管理。'
+  },
+  admin: {
+    label: '管理员',
+    className: 'admin',
+    description: '管理员可参与后续仓库管理，也可以主动退出团队。'
+  },
+  viewer: {
+    label: '普通成员',
+    className: 'viewer',
+    description: '普通成员可查看团队数据，也可以主动退出团队。'
+  }
 };
 
 const AVATAR_COLORS = ['#078B4B', '#3F7D66', '#56758A', '#8A6F4D', '#7A668B'];
@@ -31,6 +43,42 @@ const REVIEW_ERROR_MESSAGES = {
   [ERROR_CODES.CLOUD_NOT_AVAILABLE]: '网络连接失败，请检查网络后重试'
 };
 
+const ROLE_ACTION_ERROR_MESSAGES = {
+  [ERROR_CODES.FORBIDDEN]: '你没有修改成员角色的权限',
+  [ERROR_CODES.INVALID_ROLE]: '不支持设置该角色',
+  [ERROR_CODES.CANNOT_CHANGE_OWNER]: '团队创建者角色不能修改',
+  [ERROR_CODES.MEMBER_NOT_FOUND]: '该成员不存在或已不属于当前团队',
+  [ERROR_CODES.MEMBERSHIP_NOT_ACTIVE]: '该成员当前不是有效成员',
+  [ERROR_CODES.DUPLICATE_REQUEST]: '该操作已经提交，请刷新查看结果',
+  [ERROR_CODES.DATABASE_ERROR]: '服务暂时不可用，请稍后重试',
+  [ERROR_CODES.INTERNAL_ERROR]: '操作失败，请稍后重试',
+  [ERROR_CODES.CLOUD_CALL_FAILED]: '网络连接失败，请检查网络后重试',
+  [ERROR_CODES.CLOUD_NOT_AVAILABLE]: '网络连接失败，请检查网络后重试'
+};
+
+const REMOVE_ACTION_ERROR_MESSAGES = {
+  [ERROR_CODES.CANNOT_REMOVE_OWNER]: '不能移除团队创建者',
+  [ERROR_CODES.CANNOT_REMOVE_SELF]: '不能将自己移出团队',
+  [ERROR_CODES.MEMBER_NOT_FOUND]: '该成员不存在或已经被移除',
+  [ERROR_CODES.MEMBERSHIP_NOT_ACTIVE]: '该成员当前不是有效成员',
+  [ERROR_CODES.FORBIDDEN]: '你没有移除成员的权限',
+  [ERROR_CODES.DUPLICATE_REQUEST]: '该操作已经提交，请刷新查看结果',
+  [ERROR_CODES.DATABASE_ERROR]: '服务暂时不可用，请稍后重试',
+  [ERROR_CODES.INTERNAL_ERROR]: '操作失败，请稍后重试',
+  [ERROR_CODES.CLOUD_CALL_FAILED]: '网络连接失败，请检查网络后重试',
+  [ERROR_CODES.CLOUD_NOT_AVAILABLE]: '网络连接失败，请检查网络后重试'
+};
+
+const LEAVE_ACTION_ERROR_MESSAGES = {
+  [ERROR_CODES.OWNER_CANNOT_LEAVE]: '团队创建者暂不支持退出团队',
+  [ERROR_CODES.NO_ACTIVE_TEAM]: '你当前已不在该团队中',
+  [ERROR_CODES.MEMBERSHIP_NOT_ACTIVE]: '当前成员状态已发生变化',
+  [ERROR_CODES.DATABASE_ERROR]: '服务暂时不可用，请稍后重试',
+  [ERROR_CODES.INTERNAL_ERROR]: '操作失败，请稍后重试',
+  [ERROR_CODES.CLOUD_CALL_FAILED]: '网络连接失败，请检查网络后重试',
+  [ERROR_CODES.CLOUD_NOT_AVAILABLE]: '网络连接失败，请检查网络后重试'
+};
+
 function normalizeText(value) {
   return String(value || '').trim().toLowerCase();
 }
@@ -41,7 +89,11 @@ function getSafeText(value, fallback = '—') {
 }
 
 function formatRole(role) {
-  return ROLE_META[role] || { label: '未知角色', className: 'unknown' };
+  return ROLE_META[role] || {
+    label: '未知角色',
+    className: 'unknown',
+    description: '当前角色信息暂不可用。'
+  };
 }
 
 function formatDateTime(value) {
@@ -90,6 +142,7 @@ function mapMember(member, expectedStatus) {
     role,
     roleLabel: roleMeta.label,
     roleClass: roleMeta.className,
+    roleDescription: roleMeta.description,
     status,
     statusLabel: status === 'pending' ? '待审核' : '已加入',
     joinedAtText: formatDateTime(member.joinedAt),
@@ -129,12 +182,32 @@ function getMemberStatistics(activeMembers, pendingMembers, isOwner) {
 
 function getPagePermissionFlags(currentRole) {
   const isOwner = currentRole === 'owner';
+  const canLeaveTeam = currentRole === 'admin' || currentRole === 'viewer';
   return {
     isOwner,
     canManageInvites: isOwner,
     canViewPending: isOwner,
     canReviewMembers: isOwner,
-    canSeeReadonlyNotice: currentRole === 'admin' || currentRole === 'viewer'
+    canManageMembers: isOwner,
+    canLeaveTeam,
+    canSeeReadonlyNotice: canLeaveTeam
+  };
+}
+
+function getMemberDetailActions(currentRole, member) {
+  const manageable = Boolean(
+    currentRole === 'owner' && member && member.status === 'active' &&
+    !member.isCurrentUser && ['admin', 'viewer'].includes(member.role)
+  );
+  const targetRole = manageable && member.role === 'viewer' ? 'admin' :
+    (manageable && member.role === 'admin' ? 'viewer' : '');
+  return {
+    canChangeRole: Boolean(targetRole),
+    canRemove: manageable,
+    targetRole,
+    roleActionLabel: targetRole === 'admin' ? '设为管理员' :
+      (targetRole === 'viewer' ? '取消管理员' : ''),
+    isOwnerSelf: Boolean(member && member.isCurrentUser && member.role === 'owner')
   };
 }
 
@@ -196,6 +269,17 @@ function getReviewErrorMessage(error) {
   return REVIEW_ERROR_MESSAGES[error && error.code] || '审核操作失败，请稍后重试';
 }
 
+function getMembershipActionErrorMessage(action, error) {
+  const mappings = {
+    role: ROLE_ACTION_ERROR_MESSAGES,
+    remove: REMOVE_ACTION_ERROR_MESSAGES,
+    leave: LEAVE_ACTION_ERROR_MESSAGES
+  };
+  const fallback = action === 'leave' ? '退出团队失败，请稍后重试' : '操作失败，请稍后重试';
+  const messages = mappings[action] || {};
+  return messages[error && error.code] || fallback;
+}
+
 function getTeamLoadErrorMessage(error) {
   if (error && [ERROR_CODES.CLOUD_CALL_FAILED, ERROR_CODES.CLOUD_NOT_AVAILABLE].includes(error.code)) {
     return '网络连接失败，请检查网络后重试';
@@ -230,9 +314,40 @@ function shouldReuseReviewRequestKey(error) {
   ].includes(error.code));
 }
 
+function shouldReuseMembershipRequestKey(error) {
+  return Boolean(error && [
+    ERROR_CODES.CLOUD_CALL_FAILED,
+    ERROR_CODES.DATABASE_ERROR,
+    ERROR_CODES.INTERNAL_ERROR
+  ].includes(error.code));
+}
+
+function shouldRefreshAfterMembershipActionError(error) {
+  return Boolean(error && [
+    ERROR_CODES.CLOUD_CALL_FAILED,
+    ERROR_CODES.DATABASE_ERROR,
+    ERROR_CODES.INTERNAL_ERROR,
+    ERROR_CODES.DUPLICATE_REQUEST,
+    ERROR_CODES.MEMBER_NOT_FOUND,
+    ERROR_CODES.MEMBERSHIP_NOT_ACTIVE,
+    ERROR_CODES.NO_ACTIVE_TEAM
+  ].includes(error.code));
+}
+
+function isMembershipContextInvalid(error) {
+  return Boolean(error && [
+    ERROR_CODES.NO_ACTIVE_TEAM,
+    ERROR_CODES.MEMBERSHIP_NOT_ACTIVE,
+    ERROR_CODES.TEAM_NOT_ACTIVE
+  ].includes(error.code));
+}
+
 module.exports = {
   INVITE_ERROR_MESSAGES,
   REVIEW_ERROR_MESSAGES,
+  ROLE_ACTION_ERROR_MESSAGES,
+  REMOVE_ACTION_ERROR_MESSAGES,
+  LEAVE_ACTION_ERROR_MESSAGES,
   formatRole,
   formatDateTime,
   mapMember,
@@ -240,14 +355,19 @@ module.exports = {
   filterMembers,
   getMemberStatistics,
   getPagePermissionFlags,
+  getMemberDetailActions,
   getRoleOptions,
   mapInviteResponse,
   ensureActionIntent,
   getInviteErrorMessage,
   getReviewErrorMessage,
+  getMembershipActionErrorMessage,
   getTeamLoadErrorMessage,
   shouldRefreshAfterReviewError,
   shouldReuseInviteRequestKey,
   shouldReuseReviewRequestKey,
+  shouldReuseMembershipRequestKey,
+  shouldRefreshAfterMembershipActionError,
+  isMembershipContextInvalid,
   getSafeText
 };

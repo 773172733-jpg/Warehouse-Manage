@@ -68,24 +68,46 @@ function reviewMember(input) {
   return cloudService.callApi('team.member.review', buildMemberReviewPayload(input));
 }
 
-function updateMemberRole(input) {
-  return cloudService.callApi('team.member.role.update', {
+function buildMemberRolePayload(input = {}) {
+  const role = String(input.role || '');
+  if (!['admin', 'viewer'].includes(role)) {
+    const error = new Error('目标角色只能是管理员或普通成员。');
+    error.code = 'INVALID_ROLE';
+    throw error;
+  }
+  return {
     memberId: input.memberId,
-    role: input.role,
+    role,
     requestKey: input.requestKey
-  });
+  };
 }
 
-function removeMember(input) {
-  return cloudService.callApi('team.member.remove', {
+function updateMemberRole(input) {
+  try {
+    return cloudService.callApi('team.member.role.update', buildMemberRolePayload(input));
+  } catch (error) {
+    return Promise.reject(error);
+  }
+}
+
+function buildMemberRemovePayload(input = {}) {
+  return {
     memberId: input.memberId,
     reason: input.reason,
     requestKey: input.requestKey
-  });
+  };
 }
 
-function leaveTeam(requestKey) {
-  return cloudService.callApi('team.leave', { requestKey });
+function removeMember(input) {
+  return cloudService.callApi('team.member.remove', buildMemberRemovePayload(input));
+}
+
+function buildLeavePayload(input = {}) {
+  return { requestKey: input.requestKey };
+}
+
+function leaveTeam(input) {
+  return cloudService.callApi('team.leave', buildLeavePayload(input));
 }
 
 module.exports = {
@@ -100,7 +122,10 @@ module.exports = {
   listMembers,
   buildMemberReviewPayload,
   reviewMember,
+  buildMemberRolePayload,
   updateMemberRole,
+  buildMemberRemovePayload,
   removeMember,
+  buildLeavePayload,
   leaveTeam
 };

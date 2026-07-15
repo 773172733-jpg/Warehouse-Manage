@@ -1,6 +1,6 @@
 # 轻仓｜微信小程序仓库管理器
 
-当前进入阶段2B2B1：在阶段2B2A申请人流程之上，接入owner真实邀请码、pending审核和全角色真实active成员列表，形成可由两个微信账号验收的最小团队闭环。
+当前进入阶段2B2B2：在真实邀请、审核和active成员列表之上，接入owner成员角色管理与移除，以及admin/viewer主动退出团队流程。
 
 ## 技术栈
 
@@ -25,6 +25,8 @@
 - [`docs/阶段2B2A部署与验收.md`](docs/阶段2B2A部署与验收.md)
 - [`docs/阶段2B2B1真实邀请码与审核界面.md`](docs/阶段2B2B1真实邀请码与审核界面.md)
 - [`docs/阶段2B2B1部署与验收.md`](docs/阶段2B2B1部署与验收.md)
+- [`docs/阶段2B2B2成员管理与退出团队.md`](docs/阶段2B2B2成员管理与退出团队.md)
+- [`docs/阶段2B2B2部署与验收.md`](docs/阶段2B2B2部署与验收.md)
 - [`database/collections.md`](database/collections.md)
 - [`database/indexes.md`](database/indexes.md)
 - [`database/permissions.md`](database/permissions.md)
@@ -51,13 +53,15 @@
 - owner邀请与成员管理、admin/viewer成员查看及主动退出的云端service
 - 无团队用户的邀请码申请、待审核/拒绝状态和审核通过后身份刷新流程
 - owner真实邀请码生成、pending批准/拒绝及全角色真实active成员页面
+- owner将viewer升级为admin、将admin降为viewer及移除active成员
+- admin/viewer主动退出团队、统一团队上下文清理及startup重新路由
 
 暂不包含：
 
 - 产品列表、搜索、新增、编辑
 - 入库、出库、库存调整
-- 成员角色升降级、移除成员、admin/viewer退出团队UI
 - 邀请二维码、微信分享卡片和owner转让
+- 团队解散、多团队切换和实时成员状态推送
 - 微信头像昵称授权
 - 图片上传、统计图表、Excel 导入导出、订阅消息
 

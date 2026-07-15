@@ -28,7 +28,11 @@ Page({
     inviteLoading: false,
     inviteRefreshing: false,
     inviteError: '',
-    reviewingMemberId: ''
+    reviewingMemberId: '',
+    memberSheetOpen: false,
+    selectedMember: null,
+    memberOperation: { memberId: '', action: '' },
+    leaving: false
   },
 
   onLoad() {
@@ -38,10 +42,13 @@ Page({
     this.refreshPromise = null;
     this.inviteRefreshIntent = null;
     this.reviewIntent = null;
+    this.memberRoleIntent = null;
+    this.memberRemoveIntent = null;
+    this.leaveIntent = null;
   },
 
   onShow() {
-    this.refreshPage();
+    this.refreshPage({ forceBootstrap: true });
   },
 
   onUnload() {
@@ -49,6 +56,9 @@ Page({
     this.refreshSequence += 1;
     this.inviteRefreshIntent = null;
     this.reviewIntent = null;
+    this.memberRoleIntent = null;
+    this.memberRemoveIntent = null;
+    this.leaveIntent = null;
   },
 
   onPullDownRefresh() {
@@ -136,6 +146,16 @@ Page({
         const inviteError = payload.permission.canManageInvites && !payload.inviteResult.ok
           ? utils.getInviteErrorMessage(payload.inviteResult.error)
           : '';
+        const selectedMember = this.data.memberSheetOpen && this.data.selectedMember
+          ? activeMembers.find((item) => item.id === this.data.selectedMember.id)
+          : null;
+        const nextSelectedMember = selectedMember
+          ? Object.assign(
+            {},
+            selectedMember,
+            utils.getMemberDetailActions(payload.currentRole, selectedMember)
+          )
+          : null;
 
         this.setData({
           pageStatus: 'ready',
@@ -148,10 +168,18 @@ Page({
             ? invite
             : utils.mapInviteResponse({ invite: null }),
           inviteLoading: false,
-          inviteError
+          inviteError,
+          memberSheetOpen: Boolean(nextSelectedMember),
+          selectedMember: nextSelectedMember
         });
       })
       .catch((error) => {
+        if (!this.isActive || sequence !== this.refreshSequence) {
+          return;
+        }
+        if (utils.isMembershipContextInvalid(error)) {
+          return this.recoverMembershipContext();
+        }
         if (this.isActive && sequence === this.refreshSequence) {
           this.setData({
             pageStatus: 'error',
@@ -201,6 +229,283 @@ Page({
         role: this.data.activeRole
       })
     });
+  },
+
+  handleMemberTap(event) {
+    const memberId = String(event.currentTarget.dataset.id || '');
+    const member = this.data.activeMembers.find((item) => item.id === memberId);
+    if (!member) {
+      wx.showToast({ title: '该成员已不在当前列表', icon: 'none' });
+      return;
+    }
+    this.memberRoleIntent = null;
+    this.memberRemoveIntent = null;
+    this.setData({
+      memberSheetOpen: true,
+      selectedMember: Object.assign(
+        {},
+        member,
+        utils.getMemberDetailActions(this.data.currentRole, member)
+      )
+    });
+  },
+
+  closeMemberSheet() {
+    if (this.data.memberOperation.memberId) {
+      return;
+    }
+    this.dismissMemberSheet();
+    this.memberRoleIntent = null;
+    this.memberRemoveIntent = null;
+  },
+
+  dismissMemberSheet() {
+    if (this.isActive) {
+      this.setData({ memberSheetOpen: false, selectedMember: null });
+    }
+  },
+
+  stopPropagation() {},
+
+  handleMemberRoleAction() {
+    const member = this.data.selectedMember;
+    if (!member || !member.canChangeRole || this.data.memberOperation.memberId) {
+      return;
+    }
+    const promoting = member.targetRole === 'admin';
+    wx.showModal({
+      title: promoting ? '设为管理员' : '取消管理员',
+      content: promoting
+        ? `确认将“${member.name}”设为管理员？管理员将获得后续仓库管理权限。`
+        : `确认取消“${member.name}”的管理员角色？该成员将恢复为普通成员。`,
+      confirmText: promoting ? '确认设置' : '确认取消',
+      confirmColor: '#078B4B',
+      success: (result) => {
+        if (result.confirm) {
+          this.executeMemberRoleChange(member);
+        } else {
+          this.memberRoleIntent = null;
+        }
+      }
+    });
+  },
+
+  executeMemberRoleChange(member) {
+    if (this.data.memberOperation.memberId) {
+      return;
+    }
+    const signature = `${member.id}:${member.targetRole}`;
+    this.memberRoleIntent = utils.ensureActionIntent(
+      signature,
+      this.memberRoleIntent,
+      'member-role'
+    );
+    this.setData({ memberOperation: { memberId: member.id, action: 'role' } });
+
+    return teamService.updateMemberRole({
+      memberId: member.id,
+      role: member.targetRole,
+      requestKey: this.memberRoleIntent.requestKey
+    })
+      .then(() => {
+        if (!this.isActive) {
+          return;
+        }
+        this.memberRoleIntent = null;
+        this.setData({ memberOperation: { memberId: '', action: '' } });
+        this.dismissMemberSheet();
+        wx.showToast({
+          title: member.targetRole === 'admin' ? '已设为管理员' : '已取消管理员',
+          icon: 'success'
+        });
+        return this.refreshPage();
+      })
+      .catch((error) => {
+        if (!this.isActive) {
+          return;
+        }
+        if (!utils.shouldReuseMembershipRequestKey(error)) {
+          this.memberRoleIntent = null;
+        }
+        wx.showToast({
+          title: utils.getMembershipActionErrorMessage('role', error),
+          icon: 'none'
+        });
+        if (utils.shouldRefreshAfterMembershipActionError(error)) {
+          return this.refreshPage({ forceBootstrap: true });
+        }
+      })
+      .finally(() => {
+        if (this.isActive) {
+          this.setData({ memberOperation: { memberId: '', action: '' } });
+        }
+      });
+  },
+
+  handleRemoveMember() {
+    const member = this.data.selectedMember;
+    if (!member || !member.canRemove || this.data.memberOperation.memberId) {
+      return;
+    }
+    wx.showModal({
+      title: '移出团队',
+      content: `确定将“${member.name}”移出团队吗？移出后，该成员将无法继续访问当前团队数据。`,
+      confirmText: '确认移出',
+      confirmColor: '#D94A45',
+      success: (result) => {
+        if (result.confirm) {
+          this.executeRemoveMember(member);
+        } else {
+          this.memberRemoveIntent = null;
+        }
+      }
+    });
+  },
+
+  executeRemoveMember(member) {
+    if (this.data.memberOperation.memberId) {
+      return;
+    }
+    this.memberRemoveIntent = utils.ensureActionIntent(
+      member.id,
+      this.memberRemoveIntent,
+      'member-remove'
+    );
+    this.setData({ memberOperation: { memberId: member.id, action: 'remove' } });
+
+    return teamService.removeMember({
+      memberId: member.id,
+      reason: '由团队创建者移出团队',
+      requestKey: this.memberRemoveIntent.requestKey
+    })
+      .then(() => {
+        if (!this.isActive) {
+          return;
+        }
+        this.memberRemoveIntent = null;
+        this.setData({ memberOperation: { memberId: '', action: '' } });
+        this.dismissMemberSheet();
+        wx.showToast({ title: '成员已移出团队', icon: 'success' });
+        return this.refreshPage();
+      })
+      .catch((error) => {
+        if (!this.isActive) {
+          return;
+        }
+        if (!utils.shouldReuseMembershipRequestKey(error)) {
+          this.memberRemoveIntent = null;
+        }
+        wx.showToast({
+          title: utils.getMembershipActionErrorMessage('remove', error),
+          icon: 'none'
+        });
+        if (utils.shouldRefreshAfterMembershipActionError(error)) {
+          return this.refreshPage({ forceBootstrap: true });
+        }
+      })
+      .finally(() => {
+        if (this.isActive) {
+          this.setData({ memberOperation: { memberId: '', action: '' } });
+        }
+      });
+  },
+
+  handleLeaveTeam() {
+    if (!this.data.permission.canLeaveTeam || this.data.leaving) {
+      return;
+    }
+    wx.showModal({
+      title: '退出团队',
+      content: '确定退出当前团队吗？退出后将无法继续访问团队仓库和成员数据。',
+      confirmText: '确认退出',
+      confirmColor: '#D94A45',
+      success: (result) => {
+        if (result.confirm) {
+          this.executeLeaveTeam();
+        } else {
+          this.leaveIntent = null;
+        }
+      }
+    });
+  },
+
+  executeLeaveTeam() {
+    if (this.data.leaving || !this.data.permission.canLeaveTeam) {
+      return;
+    }
+    this.leaveIntent = utils.ensureActionIntent('leave-team', this.leaveIntent, 'team-leave');
+    this.setData({ leaving: true });
+
+    return teamService.leaveTeam({ requestKey: this.leaveIntent.requestKey })
+      .then(() => {
+        if (!this.isActive) {
+          return;
+        }
+        this.leaveIntent = null;
+        wx.showToast({ title: '已退出团队', icon: 'success' });
+        return this.finishMembershipExit();
+      })
+      .catch((error) => {
+        if (!this.isActive) {
+          return;
+        }
+        if (!utils.shouldReuseMembershipRequestKey(error)) {
+          this.leaveIntent = null;
+        }
+        wx.showToast({
+          title: utils.getMembershipActionErrorMessage('leave', error),
+          icon: 'none'
+        });
+        if (utils.shouldRefreshAfterMembershipActionError(error)) {
+          return this.reconcileLeaveState();
+        }
+      })
+      .finally(() => {
+        if (this.isActive) {
+          this.setData({ leaving: false });
+        }
+      });
+  },
+
+  reconcileLeaveState() {
+    return getApp().bootstrap({ forceRefresh: true })
+      .then((result) => {
+        if (this.isActive && result.onboardingRequired) {
+          this.leaveIntent = null;
+          this.openStartup();
+        }
+      })
+      .catch(() => {
+        // 保留原操作错误提示，由用户手动重试，不自动循环请求。
+      });
+  },
+
+  finishMembershipExit() {
+    const app = getApp();
+    app.clearTeamContext();
+    return app.bootstrap({ forceRefresh: true })
+      .catch(() => null)
+      .then(() => {
+        if (this.isActive) {
+          this.openStartup();
+        }
+      });
+  },
+
+  recoverMembershipContext() {
+    const app = getApp();
+    app.clearTeamContext();
+    this.memberRoleIntent = null;
+    this.memberRemoveIntent = null;
+    this.leaveIntent = null;
+    this.dismissMemberSheet();
+    return app.bootstrap({ forceRefresh: true })
+      .catch(() => null)
+      .then(() => {
+        if (this.isActive) {
+          this.openStartup();
+        }
+      });
   },
 
   copyInviteCode() {

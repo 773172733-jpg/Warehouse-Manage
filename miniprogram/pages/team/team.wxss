@@ -241,7 +241,10 @@
 .primary-button::after,
 .review-button::after,
 .search-clear::after,
-.text-button::after {
+.text-button::after,
+.danger-outline-button::after,
+.sheet-close::after,
+.member-action-button::after {
   border: 0;
 }
 
@@ -514,6 +517,14 @@
   padding: 22rpx 24rpx;
 }
 
+.member-card--interactive {
+  transition: background-color 120ms ease;
+}
+
+.member-card--pressed {
+  background: #F3F7F4;
+}
+
 .member-meta {
   display: flex;
   align-items: center;
@@ -537,4 +548,202 @@
   color: #078B4B;
   font-size: 24rpx;
   line-height: 72rpx;
+}
+
+.danger-card {
+  padding: 24rpx;
+  border: 1rpx solid #E7EBE8;
+  border-radius: 16rpx;
+  background: #FFFFFF;
+}
+
+.owner-leave-note {
+  display: block;
+  color: #747A76;
+  font-size: 24rpx;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.danger-outline-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 78rpx;
+  margin: 0;
+  border: 1rpx solid #D94A45;
+  border-radius: 14rpx;
+  background: #FFFFFF;
+  color: #D94A45;
+  font-size: 26rpx;
+  font-weight: 600;
+  line-height: 78rpx;
+}
+
+.danger-outline-button[disabled] {
+  opacity: 0.55;
+}
+
+.member-sheet-mask {
+  position: fixed;
+  z-index: 1000;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(23, 25, 23, 0.42);
+}
+
+.member-sheet {
+  width: 100%;
+  max-height: 84vh;
+  padding: 12rpx 28rpx calc(28rpx + env(safe-area-inset-bottom));
+  border-radius: 16rpx 16rpx 0 0;
+  background: #FFFFFF;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.sheet-handle {
+  width: 72rpx;
+  height: 8rpx;
+  margin: 0 auto 10rpx;
+  border-radius: 4rpx;
+  background: #D9DEDB;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 76rpx;
+}
+
+.sheet-title {
+  color: #171917;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.sheet-close {
+  width: 64rpx;
+  height: 64rpx;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: #747A76;
+  font-size: 40rpx;
+  line-height: 64rpx;
+}
+
+.sheet-member {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  padding: 20rpx 0 26rpx;
+}
+
+.member-avatar--large {
+  width: 92rpx;
+  height: 92rpx;
+  font-size: 34rpx;
+}
+
+.sheet-member-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.sheet-member-main .role-badge {
+  margin-top: 12rpx;
+}
+
+.sheet-member-name {
+  min-width: 0;
+  color: #171917;
+  font-size: 32rpx;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.sheet-details {
+  border-top: 1rpx solid #E7EBE8;
+  border-bottom: 1rpx solid #E7EBE8;
+}
+
+.sheet-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  min-height: 76rpx;
+  color: #747A76;
+  font-size: 24rpx;
+}
+
+.sheet-detail-row + .sheet-detail-row {
+  border-top: 1rpx solid #F0F2F1;
+}
+
+.sheet-detail-row text:last-child {
+  min-width: 0;
+  color: #171917;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.role-description {
+  display: block;
+  margin-top: 22rpx;
+  color: #747A76;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.owner-sheet-note {
+  margin-top: 20rpx;
+  padding: 20rpx 22rpx;
+  border: 1rpx solid #CFE6D8;
+  border-radius: 14rpx;
+  background: #EAF6EF;
+  color: #06713E;
+  font-size: 23rpx;
+  line-height: 1.55;
+}
+
+.member-action-list {
+  display: grid;
+  gap: 14rpx;
+  margin-top: 28rpx;
+}
+
+.member-action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 80rpx;
+  margin: 0;
+  border-radius: 14rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  line-height: 80rpx;
+}
+
+.member-action-button--primary {
+  background: #078B4B;
+  color: #FFFFFF;
+}
+
+.member-action-button--danger {
+  border: 1rpx solid #D94A45;
+  background: #FFFFFF;
+  color: #D94A45;
+}
+
+.member-action-button[disabled] {
+  opacity: 0.55;
 }

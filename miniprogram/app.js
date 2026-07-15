@@ -52,12 +52,24 @@ App({
 
   applyBootstrapResult(result) {
     this.globalData.user = result.user;
-    this.globalData.currentMembership = result.membership;
-    this.globalData.currentTeam = result.team;
-    this.globalData.currentRole = result.membership ? result.membership.role : null;
-    this.globalData.currentWarehouse = result.warehouse;
-    this.globalData.bootstrapStatus = 'success';
+    if (result.membership && result.team) {
+      this.globalData.currentMembership = result.membership;
+      this.globalData.currentTeam = result.team;
+      this.globalData.currentRole = result.membership.role;
+      this.globalData.currentWarehouse = result.warehouse;
+      this.globalData.bootstrapStatus = 'success';
+    } else {
+      this.clearTeamContext({ bootstrapStatus: 'success' });
+    }
     return result;
+  },
+
+  clearTeamContext(options = {}) {
+    this.globalData.currentMembership = null;
+    this.globalData.currentTeam = null;
+    this.globalData.currentRole = null;
+    this.globalData.currentWarehouse = null;
+    this.globalData.bootstrapStatus = options.bootstrapStatus || 'idle';
   },
 
   bootstrap(options = {}) {
