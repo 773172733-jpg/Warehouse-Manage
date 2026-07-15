@@ -59,18 +59,35 @@ Page({
   },
 
   onInbound: function () {
-    wx.showToast({ title: '入库功能将在后续阶段开放', icon: 'none', duration: 2000 });
+    var id = this.data.product && this.data.product.id;
+    if (!id) return;
+    wx.navigateTo({
+      url: '/pages/stock-operation/stock-operation?id=' + encodeURIComponent(String(id)) + '&mode=inbound'
+    });
   },
 
   onOutbound: function () {
-    wx.showToast({ title: '出库功能将在后续阶段开放', icon: 'none', duration: 2000 });
+    var id = this.data.product && this.data.product.id;
+    if (!id) return;
+    wx.navigateTo({
+      url: '/pages/stock-operation/stock-operation?id=' + encodeURIComponent(String(id)) + '&mode=outbound'
+    });
   },
 
   onMore: function () {
+    var self = this;
+    var id = self.data.product && self.data.product.id;
     wx.showActionSheet({
       itemList: ['编辑产品', '调整库存', '移入回收站'],
       success: function (res) {
-        if (res.tapIndex !== undefined) {
+        if (res.tapIndex === 0) {
+          wx.showToast({ title: '该功能将在后续阶段开放', icon: 'none', duration: 2000 });
+        } else if (res.tapIndex === 1) {
+          if (!id) return;
+          wx.navigateTo({
+            url: '/pages/stock-operation/stock-operation?id=' + encodeURIComponent(String(id)) + '&mode=adjustment'
+          });
+        } else if (res.tapIndex === 2) {
           wx.showToast({ title: '该功能将在后续阶段开放', icon: 'none', duration: 2000 });
         }
       }

@@ -4,6 +4,7 @@
     "pages/inventory/inventory",
     "pages/product-detail/product-detail",
     "pages/product-edit/product-edit",
+    "pages/stock-operation/stock-operation",
     "pages/records/records",
     "pages/team/team",
     "pages/profile/profile"

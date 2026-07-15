@@ -1,0 +1,161 @@
+<!-- 库存操作页 WXML — 入库/出库/库存调整统一页面 -->
+
+<!-- 自定义导航栏 -->
+<view class="so-nav" style="{{navStyle}}">
+  <view class="so-nav-back" style="{{navSideStyle}}" catchtap="onBack">
+    <view class="so-nav-back-arrow"></view>
+  </view>
+  <text class="so-nav-title">{{pageTitle}}</text>
+  <view class="so-nav-placeholder" style="{{navSideStyle}}"></view>
+</view>
+
+<!-- ===== 错误状态 ===== -->
+<view wx:if="{{invalidPage}}" class="so-page">
+  <view class="so-error-card">
+    <view class="so-error-mark">!</view>
+    <text class="so-error-title">无法进行库存操作</text>
+    <text class="so-error-desc">产品或操作类型不存在</text>
+    <view class="so-error-btn" catchtap="goHome">
+      <text>返回库存首页</text>
+    </view>
+  </view>
+</view>
+
+<!-- ===== 正常页面 ===== -->
+<view wx:else class="so-page">
+
+  <!-- 产品摘要卡片 -->
+  <view class="so-product-card" wx:if="{{product}}">
+    <view class="so-prod-cover {{product.status==='out'?'so-prod-cover--out':''}} {{product.status==='low'?'so-prod-cover--low':''}}">
+      <text class="so-prod-cover-text">{{product.displayText||'—'}}</text>
+    </view>
+    <view class="so-prod-info">
+      <text class="so-prod-name">{{product.name||'—'}}</text>
+      <view class="so-prod-meta">
+        <text class="so-prod-code">{{product.code||'—'}}</text>
+        <view class="so-prod-cat">{{product.category||'—'}}</view>
+      </view>
+      <view class="so-prod-stock-row">
+        <text class="so-prod-stock-label">当前库存</text>
+        <text class="so-prod-stock-value {{product.status==='out'?'text--danger':''}} {{product.status==='low'?'text--warning':''}}">{{product.stock||0}}</text>
+        <text class="so-prod-stock-unit">{{product.unit||''}}</text>
+        <view wx:if="{{product.status==='out'}}" class="so-stock-tag so-stock-tag--out">缺货</view>
+        <view wx:elif="{{product.status==='low'}}" class="so-stock-tag so-stock-tag--low">低库存</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 缺货提示 -->
+  <view wx:if="{{mode==='outbound'&&stockBefore<=0}}" class="so-out-warn">
+    <text class="so-out-warn-text">当前产品已缺货，无法出库</text>
+  </view>
+
+  <!-- ====== 入库 / 出库 表单 ====== -->
+  <block wx:if="{{mode==='inbound'||mode==='outbound'}}">
+    <view class="so-section">
+      <view class="so-field">
+        <text class="so-field-label">{{modeConfig.qtyLabel}} <text class="so-required">*</text></text>
+        <view class="so-number-row">
+          <view class="so-number-btn {{quantity<=1||quantity===''?'so-number-btn--disabled':''}}" catchtap="onQuantityDecrease">−</view>
+          <input class="so-number-input {{validationErrors.quantity?'so-number-input--error':''}}" type="number" value="{{quantity}}" bindinput="onQuantityInput" placeholder="请输入数量"/>
+          <view class="so-number-btn {{quantity>=999999999?'so-number-btn--disabled':''}}" catchtap="onQuantityIncrease">+</view>
+        </view>
+        <text wx:if="{{validationErrors.quantity}}" class="so-field-error">{{validationErrors.quantity}}</text>
+      </view>
+
+      <view class="so-field">
+        <text class="so-field-label">{{modeConfig.srcLabel}}</text>
+        <input class="so-input" placeholder="{{modeConfig.srcPlaceholder}}" value="{{sourceOrDestination}}" bindinput="onSourceInput"/>
+      </view>
+    </view>
+  </block>
+
+  <!-- ====== 调整 表单 ====== -->
+  <block wx:if="{{mode==='adjustment'}}">
+    <view class="so-section">
+      <view class="so-field">
+        <text class="so-field-label">系统当前库存</text>
+        <view class="so-stock-display">
+          <text class="so-stock-display-value">{{stockBefore}}</text>
+          <text class="so-stock-display-unit">{{product.unit||''}}</text>
+        </view>
+      </view>
+
+      <view class="so-field">
+        <text class="so-field-label">盘点后实际库存 <text class="so-required">*</text></text>
+        <view class="so-number-row">
+          <view class="so-number-btn {{targetStock<=0||targetStock===''?'so-number-btn--disabled':''}}" catchtap="onTargetStockDecrease">−</view>
+          <input class="so-number-input {{validationErrors.targetStock?'so-number-input--error':''}}" type="number" value="{{targetStock}}" bindinput="onTargetStockInput" placeholder="请输入实际库存"/>
+          <view class="so-number-btn {{targetStock>=999999999?'so-number-btn--disabled':''}}" catchtap="onTargetStockIncrease">+</view>
+        </view>
+        <text wx:if="{{validationErrors.targetStock}}" class="so-field-error">{{validationErrors.targetStock}}</text>
+      </view>
+
+      <!-- 库存差异 -->
+      <view wx:if="{{targetStock!==''&&targetStock!==null&&targetStock!==undefined}}" class="so-delta-row">
+        <text class="so-delta-label">库存差异</text>
+        <view class="so-delta-value-row">
+          <text wx:if="{{quantityDelta>0}}" class="so-delta-plus">+{{quantityDelta}}</text>
+          <text wx:elif="{{quantityDelta<0}}" class="so-delta-minus">{{quantityDelta}}</text>
+          <text wx:else class="so-delta-zero">0（无变化）</text>
+          <text class="so-delta-unit">{{product.unit||''}}</text>
+        </view>
+      </view>
+
+      <!-- 调整原因 -->
+      <view class="so-field">
+        <text class="so-field-label">调整原因 <text class="so-required">*</text></text>
+        <view class="so-reason-grid">
+          <block wx:for="{{adjustReasons}}" wx:key="*this">
+            <view class="so-reason-chip {{reason===item?'so-reason-chip--active':''}}" data-value="{{item}}" catchtap="onReasonTap">
+              {{item}}
+            </view>
+          </block>
+        </view>
+        <block wx:if="{{reason==='其他'}}">
+          <input class="so-input so-input--mt" placeholder="请输入调整原因" value="{{customReason}}" maxlength="40" bindinput="onCustomReasonInput"/>
+        </block>
+        <text wx:if="{{validationErrors.reason}}" class="so-field-error">{{validationErrors.reason}}</text>
+      </view>
+    </view>
+  </block>
+
+  <!-- ====== 操作后库存预览 ====== -->
+  <view class="so-section">
+    <text class="so-section-title">操作后库存预览</text>
+    <view class="so-preview-card {{stockStatus.color==='danger'?'so-preview-card--danger':''}} {{stockStatus.color==='warning'?'so-preview-card--warning':''}}">
+      <view class="so-preview-row">
+        <text class="so-preview-label">{{mode==='adjustment'?'操作后库存':'操作后库存'}}</text>
+        <view class="so-preview-value-row">
+          <text class="so-preview-value so-preview-value--{{stockStatus.color}}">{{stockAfter}}</text>
+          <text class="so-preview-unit">{{product.unit||''}}</text>
+        </view>
+      </view>
+      <view class="so-preview-divider"></view>
+      <view class="so-preview-row">
+        <text class="so-preview-label">库存状态</text>
+        <text class="so-preview-status so-preview-status--{{stockStatus.color}}">{{stockStatus.label}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ====== 备注 ====== -->
+  <view class="so-section">
+    <view class="so-field so-field--last">
+      <text class="so-field-label">备注</text>
+      <textarea class="so-textarea" placeholder="{{modeConfig.remarkPlaceholder}}" value="{{remark}}" maxlength="200" bindinput="onRemarkInput" auto-height/>
+      <text class="so-char-count">{{remarkLength}}/200</text>
+    </view>
+  </view>
+
+  <!-- 底部安全区 -->
+  <view class="so-bottom-spacer"></view>
+
+  <!-- ====== 底部确认按钮 ====== -->
+  <view class="so-action-bar">
+    <view class="so-action-btn so-action-btn--primary {{confirmDisabled?'so-action-btn--disabled':''}}" catchtap="onConfirm">
+      <text>{{modeConfig.btnText}}</text>
+    </view>
+  </view>
+
+</view>
