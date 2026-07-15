@@ -4,7 +4,6 @@ function buildContext(cloud) {
   return {
     openId: wxContext.OPENID || '',
     appId: wxContext.APPID || '',
-    unionId: wxContext.UNIONID || '',
     env: wxContext.ENV || ''
   };
 }

@@ -1,12 +1,14 @@
-const userService = require('./services/user-service');
-const env = require('./config/env');
-const logger = require('./utils/logger');
+const userService = require('./services/user-service.js');
+const env = require('./config/env.js');
+const logger = require('./utils/logger.js');
 
 App({
   globalData: {
     user: null,
+    currentMembership: null,
     currentTeam: null,
     currentRole: null,
+    currentWarehouse: null,
     bootstrapStatus: 'idle'
   },
 
@@ -23,7 +25,7 @@ App({
     logger.info('CloudBase init started.');
 
     if (!env.WAREHOUSE_CLOUD_ENV) {
-      logger.info('仓库管理器云环境尚未配置，当前运行本地骨架模式。');
+      logger.warn('仓库管理器云环境尚未配置，云端初始化不可用。');
       logger.info('CloudBase init finished.');
       return;
     }
@@ -48,16 +50,30 @@ App({
     }
   },
 
+  applyBootstrapResult(result) {
+    this.globalData.user = result.user;
+    this.globalData.currentMembership = result.membership;
+    this.globalData.currentTeam = result.team;
+    this.globalData.currentRole = result.membership ? result.membership.role : null;
+    this.globalData.currentWarehouse = result.warehouse;
+    this.globalData.bootstrapStatus = 'success';
+    return result;
+  },
+
   bootstrap(options = {}) {
     if (this.globalData.bootstrapStatus === 'loading' && this.bootstrapPromise) {
       return this.bootstrapPromise;
     }
 
-    if (!options.force && this.globalData.bootstrapStatus === 'success') {
+    const forceRefresh = Boolean(options.forceRefresh || options.force);
+
+    if (!forceRefresh && this.globalData.bootstrapStatus === 'success') {
       return Promise.resolve({
         user: this.globalData.user,
-        currentTeam: this.globalData.currentTeam,
-        currentRole: this.globalData.currentRole
+        membership: this.globalData.currentMembership,
+        team: this.globalData.currentTeam,
+        warehouse: this.globalData.currentWarehouse,
+        onboardingRequired: !this.globalData.currentTeam
       });
     }
 
@@ -65,10 +81,7 @@ App({
     this.globalData.bootstrapStatus = 'loading';
     const currentPromise = userService.bootstrap()
       .then((result) => {
-        this.globalData.user = result.user;
-        this.globalData.currentTeam = result.currentTeam;
-        this.globalData.currentRole = result.currentRole;
-        this.globalData.bootstrapStatus = 'success';
+        this.applyBootstrapResult(result);
         logger.info('Bootstrap succeeded.');
         return result;
       })

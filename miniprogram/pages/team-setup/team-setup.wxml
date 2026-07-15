@@ -1,0 +1,46 @@
+<view class="setup-page">
+  <view class="setup-header">
+    <text class="setup-title">创建团队</text>
+    <text class="setup-subtitle">建立团队和默认仓库后即可开始使用轻仓</text>
+  </view>
+
+  <view class="setup-form">
+    <view class="field-group">
+      <text class="field-label">团队名称</text>
+      <input
+        class="field-input"
+        data-field="teamName"
+        value="{{teamName}}"
+        maxlength="30"
+        placeholder="例如：轻仓设计团队"
+        bindinput="handleInput"
+      />
+    </view>
+
+    <view class="field-group">
+      <text class="field-label">默认仓库名称</text>
+      <input
+        class="field-input"
+        data-field="warehouseName"
+        value="{{warehouseName}}"
+        maxlength="30"
+        placeholder="默认仓库"
+        bindinput="handleInput"
+      />
+    </view>
+
+    <text class="form-error" wx:if="{{errorMessage}}">{{errorMessage}}</text>
+
+    <button
+      class="create-button"
+      loading="{{submitting}}"
+      disabled="{{submitting}}"
+      bindtap="handleCreate"
+    >{{submitting ? '正在创建' : '创建并进入轻仓'}}</button>
+  </view>
+
+  <view class="join-entry" bindtap="handleJoinPlaceholder">
+    <text class="join-label">已有团队？</text>
+    <text class="join-action">通过邀请加入</text>
+  </view>
+</view>

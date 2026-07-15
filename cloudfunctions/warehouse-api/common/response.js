@@ -8,7 +8,7 @@ function baseResponse(requestId) {
 function ok(data, requestId) {
   return Object.assign(baseResponse(requestId), {
     success: true,
-    data: data || {}
+    data: data === undefined ? {} : data
   });
 }
 

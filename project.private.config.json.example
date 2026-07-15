@@ -1,4 +1,6 @@
 {
-  "appid": "请填写你自己的微信小程序 AppID",
-  "projectname": "Warehouse-Manager"
+  "projectname": "Warehouse-Manager",
+  "setting": {
+    "compileHotReLoad": true
+  }
 }

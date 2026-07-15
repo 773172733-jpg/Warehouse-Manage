@@ -15,6 +15,14 @@
 - `database/`：集合、索引和权限规划
 - `docs/`：项目架构、数据模型、权限矩阵和验收文档
 
+阶段2A文档：
+
+- [`docs/阶段2A云端架构.md`](docs/阶段2A云端架构.md)
+- [`docs/阶段2A部署与验收.md`](docs/阶段2A部署与验收.md)
+- [`database/collections.md`](database/collections.md)
+- [`database/indexes.md`](database/indexes.md)
+- [`database/permissions.md`](database/permissions.md)
+
 ## 本地配置
 
 1. 项目正式 AppID 为 `wxd5819a772c90b7a2`。

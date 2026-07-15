@@ -1,5 +1,5 @@
 const cloud = require('wx-server-sdk');
-const router = require('./router');
+const router = require('./router.js');
 
 cloud.init({
   env: cloud.DYNAMIC_CURRENT_ENV

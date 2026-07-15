@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/startup/startup",
+    "pages/team-setup/team-setup",
     "pages/inventory/inventory",
     "pages/product-detail/product-detail",
     "pages/product-edit/product-edit",

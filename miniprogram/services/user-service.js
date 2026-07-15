@@ -1,15 +1,9 @@
-const ROLES = require('../constants/roles');
+const cloudService = require('./cloud-service.js');
+const { normalizeRequiredBootstrapResult } = require('./bootstrap-state.js');
 
 function bootstrap() {
-  return Promise.resolve({
-    user: {
-      id: 'local-placeholder-user',
-      displayName: '本地用户',
-      isPlaceholder: true
-    },
-    currentTeam: null,
-    currentRole: ROLES.VIEWER
-  });
+  return cloudService.callApi('user.bootstrap')
+    .then(normalizeRequiredBootstrapResult);
 }
 
 module.exports = {

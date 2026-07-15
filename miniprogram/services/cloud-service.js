@@ -1,6 +1,10 @@
-const env = require('../config/env');
-const { ERROR_CODES } = require('../constants/errors');
-const { normalizeError } = require('../utils/error-handler');
+const env = require('../config/env.js');
+const { ERROR_CODES } = require('../constants/errors.js');
+const { normalizeError } = require('../utils/error-handler.js');
+
+function createRequestId() {
+  return `client_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function showLoading(title) {
   if (title) {
@@ -30,10 +34,14 @@ function callApi(action, data = {}, options = {}) {
   showLoading(loadingTitle);
 
   return wx.cloud.callFunction({
-    name: options.name || env.CLOUD_FUNCTION_NAME,
+    name: env.CLOUD_FUNCTION_NAME,
+    config: {
+      env: env.WAREHOUSE_CLOUD_ENV
+    },
     data: {
       action,
-      data
+      data,
+      requestId: options.requestId || createRequestId()
     }
   })
     .then((res) => {
@@ -58,5 +66,6 @@ function callApi(action, data = {}, options = {}) {
 }
 
 module.exports = {
-  callApi
+  callApi,
+  createRequestId
 };

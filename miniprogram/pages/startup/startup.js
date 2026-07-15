@@ -1,6 +1,6 @@
-const ROUTES = require('../../constants/routes');
-const { ERROR_MESSAGES, ERROR_CODES } = require('../../constants/errors');
-const logger = require('../../utils/logger');
+const ROUTES = require('../../constants/routes.js');
+const { ERROR_MESSAGES, ERROR_CODES } = require('../../constants/errors.js');
+const logger = require('../../utils/logger.js');
 
 Page({
   data: {
@@ -29,32 +29,58 @@ Page({
       errorMessage: ''
     });
 
-    app.bootstrap({ force })
-      .then(() => {
+    app.bootstrap({ forceRefresh: force })
+      .then((result) => {
         if (!this.isActive || sequence !== this.startSequence) {
           return;
         }
 
-        logger.info('Startup is ready to switch tab.');
-        wx.switchTab({
-          url: ROUTES.INVENTORY,
-          success: () => {
-            logger.info('Startup tab switch succeeded.');
-          },
-          fail: (error) => {
-            logger.error('Startup tab switch failed.', error);
+        if (result.onboardingRequired) {
+          this.openTeamSetup(sequence);
+          return;
+        }
 
-            if (this.isActive && sequence === this.startSequence) {
-              this.showFailure(error);
-            }
-          }
-        });
+        this.openInventory(sequence);
       })
       .catch((error) => {
         if (this.isActive && sequence === this.startSequence) {
           this.showFailure(error);
         }
       });
+  },
+
+  openInventory(sequence) {
+    logger.info('Startup is ready to switch to inventory.');
+    wx.switchTab({
+      url: ROUTES.INVENTORY,
+      success: () => {
+        logger.info('Startup inventory switch succeeded.');
+      },
+      fail: (error) => {
+        logger.error('Startup inventory switch failed.', error);
+
+        if (this.isActive && sequence === this.startSequence) {
+          this.showFailure(error);
+        }
+      }
+    });
+  },
+
+  openTeamSetup(sequence) {
+    logger.info('Startup is ready to open team setup.');
+    wx.redirectTo({
+      url: ROUTES.TEAM_SETUP,
+      success: () => {
+        logger.info('Startup team setup navigation succeeded.');
+      },
+      fail: (error) => {
+        logger.error('Startup team setup navigation failed.', error);
+
+        if (this.isActive && sequence === this.startSequence) {
+          this.showFailure(error);
+        }
+      }
+    });
   },
 
   showFailure(error) {

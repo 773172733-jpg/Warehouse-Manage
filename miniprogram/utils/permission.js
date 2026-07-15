@@ -1,4 +1,4 @@
-const ROLES = require('../constants/roles');
+const ROLES = require('../constants/roles.js');
 
 // 仅用于页面展示控制。真实权限必须由云函数基于可信身份和 team_members 查询验证。
 function isOwner(role) {
