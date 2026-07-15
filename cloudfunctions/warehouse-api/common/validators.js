@@ -90,6 +90,84 @@ function validateMemberId(value) {
   return memberId;
 }
 
+function rejectUnknownFields(source, allowedFields) {
+  const unknown = Object.keys(source).find((field) => !allowedFields.includes(field));
+  if (unknown) {
+    throw new ApiError(ERROR_CODES.FORBIDDEN, '请求包含不允许的字段。');
+  }
+}
+
+function normalizeLimitedText(value, maxLength, errorMessage) {
+  const text = normalizeText(value);
+  if (text.length > maxLength) {
+    throw new ApiError(ERROR_CODES.INVALID_INPUT, errorMessage);
+  }
+  return text;
+}
+
+function validateMemberListInput(data) {
+  const source = data && typeof data === 'object' ? data : {};
+  rejectUnknownFields(source, ['status', 'role', 'keyword']);
+  const status = normalizeText(source.status);
+  const role = normalizeText(source.role);
+  if (status && !['active', 'pending'].includes(status)) {
+    throw new ApiError(ERROR_CODES.INVALID_INPUT, '成员状态筛选值无效。');
+  }
+  if (role && !['owner', 'admin', 'viewer'].includes(role)) {
+    throw new ApiError(ERROR_CODES.INVALID_ROLE, '成员角色筛选值无效。');
+  }
+  return {
+    status,
+    role,
+    keyword: normalizeLimitedText(source.keyword, 30, '搜索关键词不能超过30个字符。')
+  };
+}
+
+function validateMemberReviewInput(data) {
+  const source = data && typeof data === 'object' ? data : {};
+  rejectUnknownFields(source, ['memberId', 'decision', 'remark', 'requestKey']);
+  const decision = normalizeText(source.decision);
+  if (!['approve', 'reject'].includes(decision)) {
+    throw new ApiError(ERROR_CODES.INVALID_REVIEW_DECISION, '审核决定必须为通过或拒绝。');
+  }
+  return {
+    memberId: validateMemberId(source.memberId),
+    decision,
+    remark: normalizeLimitedText(source.remark, 200, '审核备注不能超过200个字符。'),
+    requestKey: validateRequestKey(source.requestKey)
+  };
+}
+
+function validateMemberRoleInput(data) {
+  const source = data && typeof data === 'object' ? data : {};
+  rejectUnknownFields(source, ['memberId', 'role', 'requestKey']);
+  const role = normalizeText(source.role);
+  if (!['admin', 'viewer'].includes(role)) {
+    throw new ApiError(ERROR_CODES.INVALID_ROLE, '目标角色只能是管理员或普通成员。');
+  }
+  return {
+    memberId: validateMemberId(source.memberId),
+    role,
+    requestKey: validateRequestKey(source.requestKey)
+  };
+}
+
+function validateMemberRemoveInput(data) {
+  const source = data && typeof data === 'object' ? data : {};
+  rejectUnknownFields(source, ['memberId', 'reason', 'requestKey']);
+  return {
+    memberId: validateMemberId(source.memberId),
+    reason: normalizeLimitedText(source.reason, 200, '移除原因不能超过200个字符。'),
+    requestKey: validateRequestKey(source.requestKey)
+  };
+}
+
+function validateLeaveInput(data) {
+  const source = data && typeof data === 'object' ? data : {};
+  rejectUnknownFields(source, ['requestKey']);
+  return { requestKey: validateRequestKey(source.requestKey) };
+}
+
 function sanitizeTeamCreateInput(data) {
   const source = data && typeof data === 'object' ? data : {};
   return {
@@ -127,6 +205,12 @@ module.exports = {
   validateInviteRefreshInput,
   validateJoinApplyInput,
   validateMemberId,
+  rejectUnknownFields,
+  validateMemberListInput,
+  validateMemberReviewInput,
+  validateMemberRoleInput,
+  validateMemberRemoveInput,
+  validateLeaveInput,
   FORBIDDEN_IDENTITY_FIELDS,
   sanitizeTeamCreateInput,
   validateTeamCreateInput

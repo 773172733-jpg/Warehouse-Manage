@@ -39,11 +39,53 @@ function getJoinStatus() {
   return cloudService.callApi('team.join.status');
 }
 
+function listMembers(filters = {}) {
+  return cloudService.callApi('team.member.list', {
+    status: filters.status,
+    role: filters.role,
+    keyword: filters.keyword
+  });
+}
+
+function reviewMember(input) {
+  return cloudService.callApi('team.member.review', {
+    memberId: input.memberId,
+    decision: input.decision,
+    remark: input.remark,
+    requestKey: input.requestKey
+  });
+}
+
+function updateMemberRole(input) {
+  return cloudService.callApi('team.member.role.update', {
+    memberId: input.memberId,
+    role: input.role,
+    requestKey: input.requestKey
+  });
+}
+
+function removeMember(input) {
+  return cloudService.callApi('team.member.remove', {
+    memberId: input.memberId,
+    reason: input.reason,
+    requestKey: input.requestKey
+  });
+}
+
+function leaveTeam(requestKey) {
+  return cloudService.callApi('team.leave', { requestKey });
+}
+
 module.exports = {
   createTeam,
   getCurrentTeam,
   getCurrentInvite,
   refreshInvite,
   applyToJoin,
-  getJoinStatus
+  getJoinStatus,
+  listMembers,
+  reviewMember,
+  updateMemberRole,
+  removeMember,
+  leaveTeam
 };

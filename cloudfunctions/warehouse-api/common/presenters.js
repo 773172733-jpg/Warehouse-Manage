@@ -57,7 +57,6 @@ function presentInvite(invite) {
   }
   return {
     code: invite.code,
-    status: invite.status,
     expiresAt: invite.expiresAt,
     maxUses: invite.maxUses,
     usedCount: invite.usedCount,
@@ -79,6 +78,37 @@ function presentJoinApplication(membership, team) {
   };
 }
 
+function presentMember(membership, user, currentUserId) {
+  if (!membership || !user) {
+    return null;
+  }
+  const result = {
+    id: membership._id,
+    displayName: user.displayName || '微信用户',
+    avatarUrl: user.avatarUrl || '',
+    role: membership.role,
+    status: membership.status,
+    joinedAt: membership.joinedAt || null,
+    memberRemark: membership.memberRemark || '',
+    isCurrentUser: membership.userId === currentUserId
+  };
+  if (membership.status === 'pending') {
+    result.appliedAt = membership.appliedAt || null;
+  }
+  return result;
+}
+
+function presentMemberOperation(membership) {
+  return membership ? {
+    id: membership._id,
+    role: membership.role,
+    status: membership.status,
+    reviewResult: membership.reviewResult || null,
+    reviewedAt: membership.reviewedAt || null,
+    removedAt: membership.removedAt || null
+  } : null;
+}
+
 module.exports = {
   presentUser,
   presentMembership,
@@ -86,5 +116,7 @@ module.exports = {
   presentWarehouse,
   buildBootstrapResponse,
   presentInvite,
-  presentJoinApplication
+  presentJoinApplication,
+  presentMember,
+  presentMemberOperation
 };

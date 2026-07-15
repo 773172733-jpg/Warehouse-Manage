@@ -65,7 +65,7 @@ async function getCurrentInvite(db, user) {
 async function refreshInvite(db, user, rawInput) {
   const input = validateInviteRefreshInput(rawInput);
   const access = await getOwnerContext(db, user);
-  const inviteId = createInviteId(access.team._id, input.requestKey);
+  const inviteId = createInviteId(access.team._id, user._id, input.requestKey);
   const expiresAt = new Date(Date.now() + input.expiresInHours * 60 * 60 * 1000);
 
   for (let attempt = 0; attempt < INVITE_CODE_ATTEMPTS; attempt += 1) {

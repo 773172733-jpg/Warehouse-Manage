@@ -4,7 +4,12 @@ const {
   normalizeInviteCode,
   isValidInviteCode,
   validateInviteRefreshInput,
-  validateJoinApplyInput
+  validateJoinApplyInput,
+  validateMemberListInput,
+  validateMemberReviewInput,
+  validateMemberRoleInput,
+  validateMemberRemoveInput,
+  validateLeaveInput
 } = require('../cloudfunctions/warehouse-api/common/validators.js');
 const {
   INVITE_ALPHABET,
@@ -13,8 +18,19 @@ const {
   isInviteExpired,
   isInviteUsable
 } = require('../cloudfunctions/warehouse-api/common/invite-utils.js');
-const { presentInvite } = require('../cloudfunctions/warehouse-api/common/presenters.js');
+const {
+  presentInvite,
+  presentMember
+} = require('../cloudfunctions/warehouse-api/common/presenters.js');
+const {
+  canViewMemberStatus,
+  isRoleTransitionAllowed,
+  canLeaveTeam,
+  canChangeMemberRole,
+  canRemoveMember
+} = require('../cloudfunctions/warehouse-api/common/member-utils.js');
 const { ACTION_HANDLERS } = require('../cloudfunctions/warehouse-api/router.js');
+const { createInviteId } = require('../cloudfunctions/warehouse-api/common/idempotency.js');
 
 function expectCode(fn, code) {
   assert.throws(fn, (error) => error && error.code === code);
@@ -27,6 +43,14 @@ function testInviteCode() {
   assert.strictEqual(isValidInviteCode(code), true);
   assert.strictEqual(normalizeInviteCode(' abcd 2345 '), 'ABCD2345');
   assert.strictEqual(isValidInviteCode('O0I1'), false);
+  assert.strictEqual(
+    createInviteId('team_1', 'usr_1', 'invite_abc12345'),
+    createInviteId('team_1', 'usr_1', 'invite_abc12345')
+  );
+  assert.notStrictEqual(
+    createInviteId('team_1', 'usr_1', 'invite_abc12345'),
+    createInviteId('team_1', 'usr_2', 'invite_abc12345')
+  );
 }
 
 function testInviteAvailability() {
@@ -99,12 +123,121 @@ function testInviteRoutes() {
   ].forEach((action) => assert.strictEqual(typeof ACTION_HANDLERS[action], 'function'));
 }
 
+function testMemberPermissionMatrix() {
+  assert.strictEqual(canViewMemberStatus('owner', 'active'), true);
+  assert.strictEqual(canViewMemberStatus('owner', 'pending'), true);
+  assert.strictEqual(canViewMemberStatus('admin', 'active'), true);
+  assert.strictEqual(canViewMemberStatus('admin', 'pending'), false);
+  assert.strictEqual(canViewMemberStatus('viewer', 'pending'), false);
+  assert.strictEqual(canViewMemberStatus('pending', 'active'), false);
+  assert.strictEqual(isRoleTransitionAllowed('viewer', 'admin'), true);
+  assert.strictEqual(isRoleTransitionAllowed('admin', 'viewer'), true);
+  assert.strictEqual(isRoleTransitionAllowed('owner', 'viewer'), false);
+  assert.strictEqual(canLeaveTeam('owner'), false);
+  assert.strictEqual(canLeaveTeam('admin'), true);
+  assert.strictEqual(canLeaveTeam('viewer'), true);
+
+  const owner = { userId: 'usr_owner', role: 'owner', status: 'active' };
+  const viewer = { userId: 'usr_viewer', role: 'viewer', status: 'active' };
+  assert.strictEqual(canChangeMemberRole('usr_owner', viewer, 'admin'), true);
+  assert.strictEqual(canChangeMemberRole('usr_owner', owner, 'viewer'), false);
+  assert.strictEqual(canRemoveMember('usr_owner', viewer), true);
+  assert.strictEqual(canRemoveMember('usr_owner', owner), false);
+  assert.strictEqual(canRemoveMember('usr_viewer', viewer), false);
+}
+
+function testMemberValidationAndIdentityBoundary() {
+  assert.deepStrictEqual(validateMemberListInput({ status: 'pending', role: 'viewer', keyword: ' 张 ' }), {
+    status: 'pending',
+    role: 'viewer',
+    keyword: '张'
+  });
+  assert.deepStrictEqual(validateMemberReviewInput({
+    memberId: 'member_12345678',
+    decision: 'approve',
+    requestKey: 'review_abc12345'
+  }), {
+    memberId: 'member_12345678',
+    decision: 'approve',
+    remark: '',
+    requestKey: 'review_abc12345'
+  });
+  expectCode(
+    () => validateMemberReviewInput({
+      memberId: 'member_12345678',
+      decision: 'approve',
+      requestKey: 'review_abc12345',
+      teamId: 'forged-team',
+      role: 'admin'
+    }),
+    ERROR_CODES.FORBIDDEN
+  );
+  expectCode(
+    () => validateMemberReviewInput({
+      memberId: 'member_12345678',
+      decision: 'promote',
+      requestKey: 'review_abc12345'
+    }),
+    ERROR_CODES.INVALID_REVIEW_DECISION
+  );
+  expectCode(
+    () => validateMemberRoleInput({
+      memberId: 'member_12345678',
+      role: 'owner',
+      requestKey: 'role_abc12345'
+    }),
+    ERROR_CODES.INVALID_ROLE
+  );
+  assert.strictEqual(validateMemberRemoveInput({
+    memberId: 'member_12345678',
+    requestKey: 'remove_abc12345'
+  }).reason, '');
+  assert.deepStrictEqual(validateLeaveInput({ requestKey: 'leave_abc12345' }), {
+    requestKey: 'leave_abc12345'
+  });
+}
+
+function testMemberPresentation() {
+  const member = presentMember({
+    _id: 'member_12345678',
+    userId: 'usr_1',
+    role: 'viewer',
+    status: 'pending',
+    appliedAt: 'time',
+    applyRequestKey: 'secret-request'
+  }, {
+    _id: 'usr_1',
+    displayName: '成员甲',
+    avatarUrl: '',
+    openId: 'secret-openid'
+  }, 'usr_owner');
+  assert.strictEqual(member.id, 'member_12345678');
+  assert.strictEqual(member.appliedAt, 'time');
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(member, 'userId'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(member, 'openId'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(member, 'applyRequestKey'), false);
+}
+
+function testMemberRoutes() {
+  [
+    'team.member.list',
+    'team.member.review',
+    'team.member.role.update',
+    'team.member.remove',
+    'team.leave'
+  ].forEach((action) => assert.strictEqual(typeof ACTION_HANDLERS[action], 'function'));
+}
+
 function run() {
   testInviteCode();
   testInviteAvailability();
   testInviteValidationAndIdentityBoundary();
   testInvitePresentation();
   testInviteRoutes();
+  testMemberPermissionMatrix();
+  testMemberValidationAndIdentityBoundary();
+  testMemberPresentation();
+  testMemberRoutes();
   console.log('stage2b1 tests passed');
 }
 

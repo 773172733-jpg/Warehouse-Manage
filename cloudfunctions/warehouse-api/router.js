@@ -7,6 +7,11 @@ const teamInviteCurrent = require('./modules/team/invite-current.js');
 const teamInviteRefresh = require('./modules/team/invite-refresh.js');
 const teamJoinApply = require('./modules/team/join-apply.js');
 const teamJoinStatus = require('./modules/team/join-status.js');
+const teamMemberList = require('./modules/team/member-list.js');
+const teamMemberReview = require('./modules/team/member-review.js');
+const teamMemberRoleUpdate = require('./modules/team/member-role-update.js');
+const teamMemberRemove = require('./modules/team/member-remove.js');
+const teamLeave = require('./modules/team/leave.js');
 const { ok, fail } = require('./common/response.js');
 const { ApiError, ERROR_CODES, isApiError } = require('./common/errors.js');
 const { buildContext } = require('./common/context.js');
@@ -19,7 +24,12 @@ const ACTION_HANDLERS = {
   'team.invite.current': teamInviteCurrent,
   'team.invite.refresh': teamInviteRefresh,
   'team.join.apply': teamJoinApply,
-  'team.join.status': teamJoinStatus
+  'team.join.status': teamJoinStatus,
+  'team.member.list': teamMemberList,
+  'team.member.review': teamMemberReview,
+  'team.member.role.update': teamMemberRoleUpdate,
+  'team.member.remove': teamMemberRemove,
+  'team.leave': teamLeave
 };
 
 function createRequestId(candidate) {

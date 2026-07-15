@@ -16,8 +16,8 @@ function createMembershipId(teamId, userId) {
   return createDocumentId('member', [teamId, userId]);
 }
 
-function createInviteId(teamId, requestKey) {
-  return createDocumentId('invite', [teamId, requestKey]);
+function createInviteId(teamId, userId, requestKey) {
+  return createDocumentId('invite', [teamId, userId, requestKey]);
 }
 
 module.exports = {
