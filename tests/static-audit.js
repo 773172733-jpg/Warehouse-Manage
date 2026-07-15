@@ -18,6 +18,7 @@ function isStage2AStrictRequireFile(file) {
     file.startsWith('miniprogram/pages/startup/') ||
     file.startsWith('miniprogram/pages/team-setup/') ||
     file.startsWith('miniprogram/pages/team-join/') ||
+    file.startsWith('miniprogram/pages/team/') ||
     file.startsWith('miniprogram/services/') ||
     file.startsWith('miniprogram/utils/') ||
     file.startsWith('tests/');

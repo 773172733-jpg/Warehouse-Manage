@@ -20,12 +20,16 @@ function getCurrentInvite() {
   return cloudService.callApi('team.invite.current');
 }
 
-function refreshInvite(input) {
-  return cloudService.callApi('team.invite.refresh', {
+function buildInviteRefreshPayload(input = {}) {
+  return {
     requestKey: input.requestKey,
     expiresInHours: input.expiresInHours,
     maxUses: input.maxUses
-  });
+  };
+}
+
+function refreshInvite(input) {
+  return cloudService.callApi('team.invite.refresh', buildInviteRefreshPayload(input));
 }
 
 function buildJoinApplyPayload(input = {}) {
@@ -51,13 +55,17 @@ function listMembers(filters = {}) {
   });
 }
 
-function reviewMember(input) {
-  return cloudService.callApi('team.member.review', {
+function buildMemberReviewPayload(input = {}) {
+  return {
     memberId: input.memberId,
     decision: input.decision,
     remark: input.remark,
     requestKey: input.requestKey
-  });
+  };
+}
+
+function reviewMember(input) {
+  return cloudService.callApi('team.member.review', buildMemberReviewPayload(input));
 }
 
 function updateMemberRole(input) {
@@ -84,11 +92,13 @@ module.exports = {
   createTeam,
   getCurrentTeam,
   getCurrentInvite,
+  buildInviteRefreshPayload,
   refreshInvite,
   buildJoinApplyPayload,
   applyToJoin,
   getJoinStatus,
   listMembers,
+  buildMemberReviewPayload,
   reviewMember,
   updateMemberRole,
   removeMember,

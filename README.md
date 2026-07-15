@@ -1,6 +1,6 @@
 # 轻仓｜微信小程序仓库管理器
 
-当前进入阶段2B2A：在阶段2B1团队云端核心之上，接入申请人侧真实加入团队页面、待审核状态和启动路由。owner审核、真实成员列表和邀请码生成UI仍属于后续阶段。
+当前进入阶段2B2B1：在阶段2B2A申请人流程之上，接入owner真实邀请码、pending审核和全角色真实active成员列表，形成可由两个微信账号验收的最小团队闭环。
 
 ## 技术栈
 
@@ -23,6 +23,8 @@
 - [`docs/阶段2B1部署与验收.md`](docs/阶段2B1部署与验收.md)
 - [`docs/阶段2B2A加入团队页面.md`](docs/阶段2B2A加入团队页面.md)
 - [`docs/阶段2B2A部署与验收.md`](docs/阶段2B2A部署与验收.md)
+- [`docs/阶段2B2B1真实邀请码与审核界面.md`](docs/阶段2B2B1真实邀请码与审核界面.md)
+- [`docs/阶段2B2B1部署与验收.md`](docs/阶段2B2B1部署与验收.md)
 - [`database/collections.md`](database/collections.md)
 - [`database/indexes.md`](database/indexes.md)
 - [`database/permissions.md`](database/permissions.md)
@@ -48,12 +50,13 @@
 - 无团队用户的首次团队创建流程
 - owner邀请与成员管理、admin/viewer成员查看及主动退出的云端service
 - 无团队用户的邀请码申请、待审核/拒绝状态和审核通过后身份刷新流程
+- owner真实邀请码生成、pending批准/拒绝及全角色真实active成员页面
 
 暂不包含：
 
 - 产品列表、搜索、新增、编辑
 - 入库、出库、库存调整
-- 团队页真实成员管理、owner审核和邀请码生成UI
+- 成员角色升降级、移除成员、admin/viewer退出团队UI
 - 邀请二维码、微信分享卡片和owner转让
 - 微信头像昵称授权
 - 图片上传、统计图表、Excel 导入导出、订阅消息
