@@ -1,5 +1,5 @@
 var mock = require('./mock-members');
-var utils = require('./team-utils');
+var utils = require('./team-utils.js');
 
 var CURRENT_ROLE = 'owner';
 
