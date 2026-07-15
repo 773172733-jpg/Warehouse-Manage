@@ -291,3 +291,23 @@
 </view>
 
 </view><!-- /pe-page -->
+
+<!-- ===== 本地选择器弹层 ===== -->
+<view wx:if="{{pickerVisible}}" class="pe-picker-mask" catchtap="onPickerClose">
+  <view class="pe-picker-sheet" catchtap="noop">
+    <view class="pe-picker-head">
+      <text class="pe-picker-title">{{pickerTitle}}</text>
+      <view class="pe-picker-close" catchtap="onPickerClose">
+        <text>✕</text>
+      </view>
+    </view>
+    <scroll-view class="pe-picker-body" scroll-y>
+      <block wx:for="{{pickerItems}}" wx:key="*this">
+        <view class="pe-picker-item {{(pickerTarget==='category'&&form.category===item)||(pickerTarget==='unit'&&form.unit===item)?'pe-picker-item--active':''}}" data-value="{{item}}" catchtap="onPickerSelect">
+          <text class="pe-picker-item-text">{{item}}</text>
+          <text wx:if="{{(pickerTarget==='category'&&form.category===item)||(pickerTarget==='unit'&&form.unit===item)}}" class="pe-picker-check">✓</text>
+        </view>
+      </block>
+    </scroll-view>
+  </view>
+</view>

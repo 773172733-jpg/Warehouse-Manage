@@ -91,7 +91,11 @@ Page({
     coverColors: COVER_COLORS,
     systemAssets: SYSTEM_ASSETS,
     navStyle: '',
-    navSideStyle: ''
+    navSideStyle: '',
+    pickerVisible: false,
+    pickerTitle: '',
+    pickerItems: [],
+    pickerTarget: ''
   },
 
   onLoad: function (query) {
@@ -225,36 +229,48 @@ Page({
     this.setData({ 'form.code': e.detail.value });
   },
 
-  /* ====== 分类（ActionSheet）====== */
+  /* ====== 分类（本地选择器）====== */
 
   onCategoryTap: function () {
-    var self = this;
-    wx.showActionSheet({
-      itemList: CATEGORIES,
-      success: function (res) {
-        self.setData({
-          'form.category': CATEGORIES[res.tapIndex],
-          'fieldErrors.category': ''
-        });
-      }
+    this.setData({
+      pickerVisible: true,
+      pickerTitle: '选择分类',
+      pickerItems: CATEGORIES,
+      pickerTarget: 'category'
     });
   },
 
-  /* ====== 单位（ActionSheet + 自定义）====== */
+  /* ====== 单位（本地选择器 + 自定义）====== */
 
   onUnitTap: function () {
-    var self = this;
-    wx.showActionSheet({
-      itemList: UNITS,
-      success: function (res) {
-        var unit = UNITS[res.tapIndex];
-        var updates = { 'form.unit': unit, 'fieldErrors.unit': '' };
-        if (unit !== '其他') {
-          updates['form.customUnit'] = '';
-        }
-        self.setData(updates);
-      }
+    this.setData({
+      pickerVisible: true,
+      pickerTitle: '选择单位',
+      pickerItems: UNITS,
+      pickerTarget: 'unit'
     });
+  },
+
+  onPickerSelect: function (e) {
+    var value = e.currentTarget.dataset.value;
+    var target = this.data.pickerTarget;
+    if (target === 'category') {
+      this.setData({
+        'form.category': value,
+        'fieldErrors.category': '',
+        pickerVisible: false
+      });
+    } else if (target === 'unit') {
+      var updates = { 'form.unit': value, 'fieldErrors.unit': '', pickerVisible: false };
+      if (value !== '其他') {
+        updates['form.customUnit'] = '';
+      }
+      this.setData(updates);
+    }
+  },
+
+  onPickerClose: function () {
+    this.setData({ pickerVisible: false });
   },
 
   onCustomUnitInput: function (e) {

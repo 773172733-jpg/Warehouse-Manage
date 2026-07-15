@@ -666,3 +666,77 @@
 .pe-btn-pe--ghost:active {
   background: #E7EBE8;
 }
+
+/* ===== 本地选择器弹层 ===== */
+.pe-picker-mask {
+  position: fixed;
+  z-index: 200;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-end;
+}
+.pe-picker-sheet {
+  width: 100%;
+  max-height: 60vh;
+  background: #FFFFFF;
+  border-radius: 28rpx 28rpx 0 0;
+  overflow: hidden;
+  animation: peSlideUp 0.2s ease-out;
+}
+@keyframes peSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.pe-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx 20rpx;
+  border-bottom: 1rpx solid #F2F4F2;
+}
+.pe-picker-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #171917;
+}
+.pe-picker-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  background: #F7F8F7;
+  font-size: 24rpx;
+  color: #747A76;
+}
+.pe-picker-body {
+  max-height: 48vh;
+  padding: 8rpx 0;
+}
+.pe-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 96rpx;
+  padding: 0 32rpx;
+}
+.pe-picker-item:active {
+  background: #F7F8F7;
+}
+.pe-picker-item--active {
+  background: #EAF6EF;
+}
+.pe-picker-item-text {
+  font-size: 28rpx;
+  color: #171917;
+}
+.pe-picker-check {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #078B4B;
+}
