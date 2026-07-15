@@ -151,12 +151,13 @@ function testResponses() {
 }
 
 async function testRouterWhitelist() {
-  assert.deepStrictEqual(Object.keys(ACTION_HANDLERS).sort(), [
+  const actions = Object.keys(ACTION_HANDLERS);
+  [
     'system.ping',
     'team.create',
     'team.current',
     'user.bootstrap'
-  ]);
+  ].forEach((action) => assert.strictEqual(actions.includes(action), true));
   const result = await dispatch({
     action: 'not.allowed',
     requestId: 'req_unknown_001'

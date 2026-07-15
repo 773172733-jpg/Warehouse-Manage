@@ -16,7 +16,34 @@ function getCurrentTeam() {
     .then(normalizeRequiredBootstrapResult);
 }
 
+function getCurrentInvite() {
+  return cloudService.callApi('team.invite.current');
+}
+
+function refreshInvite(input) {
+  return cloudService.callApi('team.invite.refresh', {
+    requestKey: input.requestKey,
+    expiresInHours: input.expiresInHours,
+    maxUses: input.maxUses
+  });
+}
+
+function applyToJoin(input) {
+  return cloudService.callApi('team.join.apply', {
+    code: input.code,
+    requestKey: input.requestKey
+  });
+}
+
+function getJoinStatus() {
+  return cloudService.callApi('team.join.status');
+}
+
 module.exports = {
   createTeam,
-  getCurrentTeam
+  getCurrentTeam,
+  getCurrentInvite,
+  refreshInvite,
+  applyToJoin,
+  getJoinStatus
 };

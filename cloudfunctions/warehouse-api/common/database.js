@@ -4,7 +4,8 @@ const COLLECTIONS = {
   USERS: 'users',
   TEAMS: 'teams',
   TEAM_MEMBERS: 'team_members',
-  WAREHOUSES: 'warehouses'
+  WAREHOUSES: 'warehouses',
+  INVITES: 'invites'
 };
 
 function getDatabase(cloud) {

@@ -1,3 +1,5 @@
+const { getRemainingUses } = require('./invite-utils.js');
+
 function presentUser(user) {
   return user ? {
     id: user._id,
@@ -49,10 +51,40 @@ function buildBootstrapResponse(state) {
   };
 }
 
+function presentInvite(invite) {
+  if (!invite) {
+    return null;
+  }
+  return {
+    code: invite.code,
+    status: invite.status,
+    expiresAt: invite.expiresAt,
+    maxUses: invite.maxUses,
+    usedCount: invite.usedCount,
+    remainingUses: getRemainingUses(invite),
+    requiresApproval: invite.requiresApproval !== false
+  };
+}
+
+function presentJoinApplication(membership, team) {
+  if (!membership) {
+    return null;
+  }
+  return {
+    status: membership.status,
+    team: team ? { id: team._id, name: team.name, status: team.status } : null,
+    appliedAt: membership.appliedAt || null,
+    reviewedAt: membership.reviewedAt || null,
+    reviewResult: membership.reviewResult || null
+  };
+}
+
 module.exports = {
   presentUser,
   presentMembership,
   presentTeam,
   presentWarehouse,
-  buildBootstrapResponse
+  buildBootstrapResponse,
+  presentInvite,
+  presentJoinApplication
 };

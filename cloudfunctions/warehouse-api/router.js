@@ -3,6 +3,10 @@ const systemPing = require('./modules/system/ping.js');
 const userBootstrap = require('./modules/user/bootstrap.js');
 const teamCreate = require('./modules/team/create.js');
 const teamCurrent = require('./modules/team/current.js');
+const teamInviteCurrent = require('./modules/team/invite-current.js');
+const teamInviteRefresh = require('./modules/team/invite-refresh.js');
+const teamJoinApply = require('./modules/team/join-apply.js');
+const teamJoinStatus = require('./modules/team/join-status.js');
 const { ok, fail } = require('./common/response.js');
 const { ApiError, ERROR_CODES, isApiError } = require('./common/errors.js');
 const { buildContext } = require('./common/context.js');
@@ -11,7 +15,11 @@ const ACTION_HANDLERS = {
   'system.ping': systemPing,
   'user.bootstrap': userBootstrap,
   'team.create': teamCreate,
-  'team.current': teamCurrent
+  'team.current': teamCurrent,
+  'team.invite.current': teamInviteCurrent,
+  'team.invite.refresh': teamInviteRefresh,
+  'team.join.apply': teamJoinApply,
+  'team.join.status': teamJoinStatus
 };
 
 function createRequestId(candidate) {
