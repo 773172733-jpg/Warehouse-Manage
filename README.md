@@ -1,6 +1,6 @@
 # 轻仓｜微信小程序仓库管理器
 
-阶段0目标是建立微信原生小程序、CloudBase 统一云函数入口、基础页面、基础组件、服务层和数据设计文档。当前版本不实现正式库存、产品、团队或成员业务。
+当前进入阶段2A：建立真实微信身份初始化、团队创建、默认仓库和可信云端权限基础层。阶段1的库存、记录、团队和个人页仍是本地 UI 原型，业务数据将在后续阶段逐模块接入云端。
 
 ## 技术栈
 
@@ -17,12 +17,13 @@
 
 ## 本地配置
 
-1. 复制 `project.private.config.json.example` 为 `project.private.config.json`，填写真实 AppID。
-2. 创建仓库管理器专用的 AppID 和 CloudBase 环境后，在 `miniprogram/config/env.js` 中填写 `WAREHOUSE_CLOUD_ENV`。
-3. `WAREHOUSE_CLOUD_ENV` 为空时，小程序不会初始化或调用云服务，只运行本地 UI 骨架。
-4. 部署前阅读 [`docs/云环境隔离与部署说明.md`](docs/云环境隔离与部署说明.md)。
+1. 项目正式 AppID 为 `wxd5819a772c90b7a2`。
+2. 独立 CloudBase 环境 ID 为 `cloud1-d8gm59cz2be4e7c23`。
+3. 统一云函数名称为 `warehouse-api`。
+4. `project.private.config.json` 仅保存本机编译偏好并被 Git 忽略。
+5. 部署前阅读 [`docs/云环境隔离与部署说明.md`](docs/云环境隔离与部署说明.md)。
 
-## 阶段0范围
+## 当前范围
 
 已包含：
 
@@ -30,17 +31,18 @@
 - 库存、记录、团队、我的四个 tab 页
 - loading、empty、error 基础组件
 - 前端 `services`、`constants`、`utils` 基础层
-- 云函数 `warehouse-api` 和 `system.ping`
-- 数据库与权限规划文档
+- 云函数 `warehouse-api` 的 `system.ping`、`user.bootstrap`、`team.create`、`team.current`
+- `users`、`teams`、`team_members`、`warehouses` 数据模型和权限规划
+- 无团队用户的首次团队创建流程
 
 暂不包含：
 
 - 产品列表、搜索、新增、编辑
 - 入库、出库、库存调整
-- 真实团队创建、邀请成员
+- 邀请码、申请加入团队、成员审核和角色修改
 - 微信头像昵称授权
 - 图片上传、统计图表、Excel 导入导出、订阅消息
 
 ## 导入微信开发者工具
 
-选择“导入项目”，项目目录选择本目录，AppID 可先使用测试号或填写真实 AppID。导入后从 `pages/startup/startup` 编译，启动页会初始化本地占位用户状态并跳转到库存 tab。
+选择“导入项目”，项目目录选择本目录。确认开发者工具显示轻仓正式 AppID 和独立 CloudBase 环境后，从 `pages/startup/startup` 编译。首次用户会进入团队创建页；创建成功后进入库存 tab。
