@@ -1,3 +1,652 @@
-.page {
-  padding-top: 32rpx;
+.team-page {
+  min-height: 100vh;
+  padding: 28rpx 28rpx calc(48rpx + env(safe-area-inset-bottom));
+  background: #F7F8F7;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.team-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx;
+  border: 1rpx solid #E7EBE8;
+  border-radius: 16rpx;
+  background: #FFFFFF;
+}
+
+.team-card-main {
+  min-width: 0;
+}
+
+.eyebrow,
+.team-name,
+.team-warehouse,
+.section-title,
+.section-desc {
+  display: block;
+}
+
+.eyebrow {
+  color: #078B4B;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.team-name {
+  margin-top: 8rpx;
+  color: #171917;
+  font-size: 40rpx;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.team-warehouse {
+  margin-top: 8rpx;
+  color: #59615C;
+  font-size: 26rpx;
+}
+
+.team-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  margin-top: 18rpx;
+  color: #747A76;
+  font-size: 22rpx;
+}
+
+.team-avatar,
+.member-avatar,
+.detail-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.team-avatar {
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 20rpx;
+  background: #078B4B;
+  font-size: 42rpx;
+}
+
+.readonly-note {
+  margin-top: 16rpx;
+  padding: 18rpx 22rpx;
+  border: 1rpx solid #E7EBE8;
+  border-radius: 12rpx;
+  background: #FFFFFF;
+  color: #747A76;
+  font-size: 23rpx;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.stat-card {
+  min-width: 0;
+  padding: 18rpx 8rpx;
+  border: 1rpx solid #E7EBE8;
+  border-radius: 14rpx;
+  background: #FFFFFF;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.stat-card--active {
+  border-color: #078B4B;
+  background: #EAF6EF;
+}
+
+.stat-value,
+.stat-label {
+  display: block;
+}
+
+.stat-value {
+  color: #078B4B;
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stat-label {
+  margin-top: 8rpx;
+  color: #747A76;
+  font-size: 20rpx;
+}
+
+.invite-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20rpx;
+  padding: 24rpx;
+  border: 1rpx solid #E7EBE8;
+  border-radius: 16rpx;
+  background: #FFFFFF;
+}
+
+.section-title {
+  color: #171917;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.section-desc {
+  margin-top: 6rpx;
+  color: #747A76;
+  font-size: 23rpx;
+}
+
+.invite-arrow {
+  color: #078B4B;
+  font-size: 46rpx;
+  line-height: 1;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  height: 80rpx;
+  margin-top: 22rpx;
+  padding: 0 22rpx;
+  border: 2rpx solid #E7EBE8;
+  border-radius: 16rpx;
+  background: #FFFFFF;
+  box-sizing: border-box;
+}
+
+.search-icon {
+  position: relative;
+  flex-shrink: 0;
+  width: 24rpx;
+  height: 24rpx;
+  border: 3rpx solid #747A76;
+  border-radius: 50%;
+}
+
+.search-icon::after {
+  content: '';
+  position: absolute;
+  right: -9rpx;
+  bottom: -6rpx;
+  width: 12rpx;
+  height: 3rpx;
+  border-radius: 2rpx;
+  background: #747A76;
+  transform: rotate(45deg);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  height: 76rpx;
+  margin-left: 20rpx;
+  color: #171917;
+  font-size: 26rpx;
+}
+
+.search-clear,
+.sheet-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #747A76;
+}
+
+.search-clear {
+  width: 44rpx;
+  height: 44rpx;
+  font-size: 36rpx;
+}
+
+.role-scroll {
+  margin-top: 18rpx;
+  white-space: nowrap;
+}
+
+.role-row {
+  display: inline-flex;
+  gap: 12rpx;
+}
+
+.role-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 58rpx;
+  min-width: 88rpx;
+  padding: 0 18rpx;
+  border: 1rpx solid #E7EBE8;
+  border-radius: 12rpx;
+  background: #FFFFFF;
+  color: #747A76;
+  font-size: 24rpx;
+  box-sizing: border-box;
+}
+
+.role-chip--active {
+  border-color: #078B4B;
+  background: #EAF6EF;
+  color: #06713E;
+  font-weight: 600;
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 24rpx 2rpx 12rpx;
+  color: #747A76;
+  font-size: 22rpx;
+}
+
+.clear-filter {
+  color: #078B4B;
+}
+
+.member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.member-card {
+  position: relative;
+  display: flex;
+  gap: 20rpx;
+  padding: 24rpx;
+  border: 1rpx solid #E7EBE8;
+  border-radius: 16rpx;
+  background: #FFFFFF;
+  box-sizing: border-box;
+}
+
+.member-card:active {
+  background: #F4F8F5;
+}
+
+.member-avatar {
+  width: 78rpx;
+  height: 78rpx;
+  border-radius: 18rpx;
+  font-size: 30rpx;
+}
+
+.member-main {
+  flex: 1;
+  min-width: 0;
+  padding-right: 42rpx;
+}
+
+.member-line,
+.member-tags,
+.member-time {
+  display: flex;
+  align-items: center;
+}
+
+.member-line {
+  gap: 10rpx;
+}
+
+.member-name {
+  max-width: 360rpx;
+  overflow: hidden;
+  color: #171917;
+  font-size: 30rpx;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.self-badge {
+  flex-shrink: 0;
+  padding: 3rpx 9rpx;
+  border-radius: 8rpx;
+  background: #EAF6EF;
+  color: #078B4B;
+  font-size: 19rpx;
+  font-weight: 600;
+}
+
+.member-remark {
+  display: block;
+  margin-top: 6rpx;
+  overflow: hidden;
+  color: #747A76;
+  font-size: 23rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-tags {
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 12rpx;
+}
+
+.role-badge,
+.status-badge {
+  padding: 5rpx 11rpx;
+  border-radius: 8rpx;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.role-badge--owner {
+  background: #078B4B;
+  color: #FFFFFF;
+}
+
+.role-badge--admin {
+  border: 1rpx solid #078B4B;
+  background: #EAF6EF;
+  color: #06713E;
+}
+
+.role-badge--viewer {
+  background: #F1F2F1;
+  color: #59615C;
+}
+
+.role-badge--unknown,
+.status-badge--unknown {
+  background: #FDF2F2;
+  color: #D94A45;
+}
+
+.status-badge--active {
+  background: #F1F2F1;
+  color: #59615C;
+}
+
+.status-badge--pending {
+  background: #FFF6E8;
+  color: #C8780F;
+}
+
+.status-badge--removed {
+  background: #FDF2F2;
+  color: #D94A45;
+}
+
+.member-time {
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 13rpx;
+  color: #8B918D;
+  font-size: 20rpx;
+}
+
+.member-menu {
+  position: absolute;
+  top: 18rpx;
+  right: 18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  color: #747A76;
+  font-size: 24rpx;
+  letter-spacing: 0;
+}
+
+.team-empty {
+  padding-top: 40rpx;
+  text-align: center;
+}
+
+.empty-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 72rpx;
+  margin-top: -32rpx;
+  padding: 0 32rpx;
+  border: 2rpx solid #078B4B;
+  border-radius: 14rpx;
+  color: #078B4B;
+  font-size: 25rpx;
+}
+
+.sheet-mask {
+  position: fixed;
+  z-index: 200;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(23, 25, 23, 0.46);
+}
+
+.bottom-sheet {
+  width: 100%;
+  max-height: 86vh;
+  padding-bottom: env(safe-area-inset-bottom);
+  border-radius: 24rpx 24rpx 0 0;
+  background: #FFFFFF;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.sheet-handle {
+  width: 72rpx;
+  height: 7rpx;
+  margin: 14rpx auto 4rpx;
+  border-radius: 4rpx;
+  background: #D8DCD8;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 82rpx;
+  padding: 0 28rpx;
+  border-bottom: 1rpx solid #E7EBE8;
+}
+
+.sheet-title {
+  color: #171917;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.sheet-close {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: #F2F4F2;
+  font-size: 38rpx;
+}
+
+.sheet-content {
+  max-height: 62vh;
+  padding: 0 28rpx;
+  box-sizing: border-box;
+}
+
+.detail-head {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 24rpx 0;
+}
+
+.detail-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 20rpx;
+  font-size: 34rpx;
+}
+
+.detail-name,
+.detail-sub {
+  display: block;
+}
+
+.detail-name {
+  color: #171917;
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.detail-sub {
+  margin-top: 6rpx;
+  color: #747A76;
+  font-size: 23rpx;
+}
+
+.detail-rows {
+  border-top: 1rpx solid #E7EBE8;
+}
+
+.detail-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28rpx;
+  padding: 19rpx 2rpx;
+  border-bottom: 1rpx solid #F0F2F0;
+  color: #171917;
+  font-size: 23rpx;
+}
+
+.detail-row text:first-child {
+  flex-shrink: 0;
+  color: #747A76;
+}
+
+.detail-row text:last-child {
+  min-width: 0;
+  text-align: right;
+  word-break: break-all;
+}
+
+.owner-lock {
+  margin: 22rpx 0;
+  padding: 18rpx 20rpx;
+  border-radius: 12rpx;
+  background: #F1F2F1;
+  color: #747A76;
+  font-size: 23rpx;
+}
+
+.sheet-actions {
+  display: flex;
+  gap: 16rpx;
+  padding: 18rpx 28rpx;
+  border-top: 1rpx solid #E7EBE8;
+  background: #FFFFFF;
+}
+
+.sheet-actions--stack {
+  flex-direction: column;
+  border-top: 0;
+}
+
+.sheet-action {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 82rpx;
+  padding: 0 18rpx;
+  border-radius: 14rpx;
+  font-size: 27rpx;
+  font-weight: 600;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.sheet-action--primary {
+  background: #078B4B;
+  color: #FFFFFF;
+}
+
+.sheet-action--secondary {
+  border: 2rpx solid #DDE2DE;
+  color: #59615C;
+}
+
+.sheet-action--danger {
+  background: #D94A45;
+  color: #FFFFFF;
+}
+
+.manage-sheet,
+.remark-sheet,
+.invite-sheet {
+  max-height: 72vh;
+}
+
+.remark-body {
+  padding: 26rpx 28rpx;
+}
+
+.remark-input {
+  height: 82rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid #E7EBE8;
+  border-radius: 14rpx;
+  color: #171917;
+  font-size: 26rpx;
+  box-sizing: border-box;
+}
+
+.remark-count {
+  display: block;
+  margin-top: 10rpx;
+  color: #747A76;
+  font-size: 21rpx;
+  text-align: right;
+}
+
+.invite-panel {
+  margin: 28rpx;
+  padding: 28rpx;
+  border-radius: 16rpx;
+  background: #EAF6EF;
+  text-align: center;
+}
+
+.invite-label,
+.invite-code,
+.invite-expire {
+  display: block;
+}
+
+.invite-label {
+  color: #06713E;
+  font-size: 23rpx;
+}
+
+.invite-code {
+  margin-top: 8rpx;
+  color: #171917;
+  font-size: 54rpx;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.invite-expire {
+  margin-top: 8rpx;
+  color: #747A76;
+  font-size: 22rpx;
 }

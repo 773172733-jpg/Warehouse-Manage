@@ -1,7 +1,180 @@
-<view class="page">
-  <view class="placeholder-panel">
-    <view class="placeholder-title">团队</view>
-    <view class="placeholder-text">阶段0不创建真实团队和成员关系，仅保留团队模块边界。</view>
+<view class="team-page">
+  <view class="team-card">
+    <view class="team-card-main">
+      <text class="eyebrow">团队空间</text>
+      <text class="team-name">{{team.name}}</text>
+      <text class="team-warehouse">{{team.warehouseName}}</text>
+      <view class="team-meta">
+        <text>创建者：{{team.ownerName}}</text>
+        <text>创建时间：{{team.createdAt}}</text>
+        <text>成员数量：{{team.memberCount}}</text>
+        <text>团队编号：{{team.displayCode}}</text>
+      </view>
+    </view>
+    <view class="team-avatar">轻</view>
   </view>
-  <empty-state title="暂无团队" description="团队创建、成员邀请和角色管理将在后续阶段实现。"></empty-state>
+
+  <view wx:if="{{permission.canSeeReadonlyNotice}}" class="readonly-note">普通成员视角仅保留查看能力</view>
+
+  <view class="stats-grid">
+    <view class="stat-card {{activeRole==='all'?'stat-card--active':''}}" data-role="all" catchtap="onStatTap">
+      <text class="stat-value">{{stats.all}}</text>
+      <text class="stat-label">全部成员</text>
+    </view>
+    <view class="stat-card {{activeRole==='admin'?'stat-card--active':''}}" data-role="admin" catchtap="onStatTap">
+      <text class="stat-value">{{stats.admin}}</text>
+      <text class="stat-label">管理员</text>
+    </view>
+    <view class="stat-card {{activeRole==='viewer'?'stat-card--active':''}}" data-role="viewer" catchtap="onStatTap">
+      <text class="stat-value">{{stats.viewer}}</text>
+      <text class="stat-label">普通成员</text>
+    </view>
+    <view class="stat-card {{activeRole==='pending'?'stat-card--active':''}}" data-role="pending" catchtap="onStatTap">
+      <text class="stat-value">{{stats.pending}}</text>
+      <text class="stat-label">待审核</text>
+    </view>
+  </view>
+
+  <view wx:if="{{permission.canInviteMembers}}" class="invite-entry" catchtap="openInvite">
+    <view>
+      <text class="section-title">邀请团队成员</text>
+      <text class="section-desc">通过邀请码或微信分享加入团队</text>
+    </view>
+    <view class="invite-arrow">›</view>
+  </view>
+
+  <view class="search-box">
+    <view class="search-icon"></view>
+    <input class="search-input" value="{{keyword}}" placeholder="搜索成员姓名或备注" confirm-type="search" bindinput="onSearchInput" />
+    <view wx:if="{{keyword}}" class="search-clear" catchtap="clearSearch">×</view>
+  </view>
+
+  <scroll-view class="role-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="role-row">
+      <view wx:for="{{roleOptions}}" wx:key="value" class="role-chip {{activeRole===item.value?'role-chip--active':''}}" data-role="{{item.value}}" catchtap="onRoleTap">{{item.label}}</view>
+    </view>
+  </scroll-view>
+
+  <view class="result-row">
+    <text>{{resultCount}} 位成员</text>
+    <text wx:if="{{keyword || activeRole !== 'all'}}" class="clear-filter" catchtap="clearFilters">清除筛选</text>
+  </view>
+
+  <view wx:if="{{resultCount}}" class="member-list">
+    <view wx:for="{{filteredMembers}}" wx:key="id" class="member-card" data-id="{{item.id}}" bindtap="openDetail">
+      <view class="member-avatar" style="background-color: {{item.avatarColor}};">{{item.avatarText}}</view>
+      <view class="member-main">
+        <view class="member-line">
+          <text class="member-name">{{item.name}}</text>
+          <text wx:if="{{item.isCurrentUser}}" class="self-badge">我</text>
+        </view>
+        <text class="member-remark">{{item.remark}}</text>
+        <view class="member-tags">
+          <text class="role-badge role-badge--{{item.roleClass}}">{{item.roleLabel}}</text>
+          <text class="status-badge status-badge--{{item.statusClass}}">{{item.statusLabel}}</text>
+        </view>
+        <view class="member-time">
+          <text>加入 {{item.joinedAt}}</text>
+          <text>最近活跃 {{item.lastActiveAt}}</text>
+        </view>
+      </view>
+      <view wx:if="{{item.canManage}}" class="member-menu" data-id="{{item.id}}" catchtap="openManageMenu">•••</view>
+    </view>
+  </view>
+
+  <view wx:else class="team-empty">
+    <empty-state title="{{emptyTitle}}" description="{{emptyDescription}}"></empty-state>
+    <view wx:if="{{hasMembers}}" class="empty-action" catchtap="clearFilters">清除筛选</view>
+  </view>
+</view>
+
+<view wx:if="{{detailOpen}}" class="sheet-mask" catchtap="closeDetail" catchtouchmove="stopPropagation">
+  <view class="bottom-sheet" catchtap="stopPropagation">
+    <view class="sheet-handle"></view>
+    <view class="sheet-header">
+      <text class="sheet-title">成员详情</text>
+      <view class="sheet-close" catchtap="closeDetail">×</view>
+    </view>
+    <scroll-view class="sheet-content" scroll-y>
+      <view class="detail-head">
+        <view class="detail-avatar" style="background-color: {{selectedMember.avatarColor}};">{{selectedMember.avatarText}}</view>
+        <view>
+          <text class="detail-name">{{selectedMember.name}}</text>
+          <text class="detail-sub">{{selectedMember.roleLabel}} · {{selectedMember.statusLabel}}</text>
+        </view>
+      </view>
+      <view class="detail-rows">
+        <view class="detail-row"><text>团队备注</text><text>{{selectedMember.remark}}</text></view>
+        <view class="detail-row"><text>加入时间</text><text>{{selectedMember.joinedAt}}</text></view>
+        <view class="detail-row"><text>最近活跃</text><text>{{selectedMember.lastActiveAt}}</text></view>
+        <view class="detail-row"><text>成员编号</text><text>{{selectedMember.id}}</text></view>
+        <view class="detail-row"><text>当前用户</text><text>{{selectedMember.isCurrentUser?'是':'否'}}</text></view>
+      </view>
+      <view wx:if="{{selectedMember.isCurrentUser && selectedMember.role === 'owner'}}" class="owner-lock">团队创建者不可移除</view>
+      <view wx:if="{{selectedMember.canChangeRole || selectedMember.canRemove || selectedMember.canApprove || selectedMember.canEditRemark}}" class="sheet-actions sheet-actions--stack">
+        <view wx:if="{{selectedMember.canChangeRole && selectedMember.role === 'viewer'}}" class="sheet-action sheet-action--primary" data-action="promote" catchtap="confirmAction">设置为管理员</view>
+        <view wx:if="{{selectedMember.canChangeRole && selectedMember.role === 'admin'}}" class="sheet-action sheet-action--secondary" data-action="demote" catchtap="confirmAction">取消管理员</view>
+        <view wx:if="{{selectedMember.canEditRemark}}" class="sheet-action sheet-action--secondary" catchtap="openRemarkEditor">修改团队备注</view>
+        <view wx:if="{{selectedMember.canApprove}}" class="sheet-action sheet-action--primary" data-action="approve" catchtap="confirmAction">通过申请</view>
+        <view wx:if="{{selectedMember.canApprove}}" class="sheet-action sheet-action--danger" data-action="reject" catchtap="confirmAction">拒绝申请</view>
+        <view wx:if="{{selectedMember.canRemove}}" class="sheet-action sheet-action--danger" data-action="remove" catchtap="confirmAction">移除成员</view>
+      </view>
+    </scroll-view>
+  </view>
+</view>
+
+<view wx:if="{{manageOpen}}" class="sheet-mask" catchtap="closeManageMenu" catchtouchmove="stopPropagation">
+  <view class="bottom-sheet manage-sheet" catchtap="stopPropagation">
+    <view class="sheet-handle"></view>
+    <view class="sheet-header">
+      <text class="sheet-title">管理 {{selectedMember.name}}</text>
+      <view class="sheet-close" catchtap="closeManageMenu">×</view>
+    </view>
+    <view class="sheet-actions sheet-actions--stack">
+      <view wx:if="{{selectedMember.canChangeRole && selectedMember.role === 'viewer'}}" class="sheet-action sheet-action--primary" data-action="promote" catchtap="confirmAction">设置为管理员</view>
+      <view wx:if="{{selectedMember.canChangeRole && selectedMember.role === 'admin'}}" class="sheet-action sheet-action--secondary" data-action="demote" catchtap="confirmAction">取消管理员</view>
+      <view wx:if="{{selectedMember.canEditRemark}}" class="sheet-action sheet-action--secondary" catchtap="openRemarkEditor">修改团队备注</view>
+      <view wx:if="{{selectedMember.canApprove}}" class="sheet-action sheet-action--primary" data-action="approve" catchtap="confirmAction">通过申请</view>
+      <view wx:if="{{selectedMember.canApprove}}" class="sheet-action sheet-action--danger" data-action="reject" catchtap="confirmAction">拒绝申请</view>
+      <view wx:if="{{selectedMember.canRemove}}" class="sheet-action sheet-action--danger" data-action="remove" catchtap="confirmAction">移除成员</view>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{remarkOpen}}" class="sheet-mask" catchtap="closeRemarkEditor" catchtouchmove="stopPropagation">
+  <view class="bottom-sheet remark-sheet" catchtap="stopPropagation">
+    <view class="sheet-handle"></view>
+    <view class="sheet-header">
+      <text class="sheet-title">修改团队备注</text>
+      <view class="sheet-close" catchtap="closeRemarkEditor">×</view>
+    </view>
+    <view class="remark-body">
+      <input class="remark-input" value="{{remarkValue}}" maxlength="20" placeholder="最多20个字，留空表示清空" bindinput="onRemarkInput" />
+      <text class="remark-count">{{remarkCount}}/20</text>
+    </view>
+    <view class="sheet-actions">
+      <view class="sheet-action sheet-action--secondary" catchtap="closeRemarkEditor">取消</view>
+      <view class="sheet-action sheet-action--primary" catchtap="submitRemark">确认</view>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{inviteOpen}}" class="sheet-mask" catchtap="closeInvite" catchtouchmove="stopPropagation">
+  <view class="bottom-sheet invite-sheet" catchtap="stopPropagation">
+    <view class="sheet-handle"></view>
+    <view class="sheet-header">
+      <text class="sheet-title">邀请成员</text>
+      <view class="sheet-close" catchtap="closeInvite">×</view>
+    </view>
+    <view class="invite-panel">
+      <text class="invite-label">模拟邀请码</text>
+      <text class="invite-code">{{team.inviteCode}}</text>
+      <text class="invite-expire">有效期：{{team.inviteExpireAt}}</text>
+    </view>
+    <view class="sheet-actions sheet-actions--stack">
+      <view class="sheet-action sheet-action--primary" catchtap="copyInviteCode">复制邀请码</view>
+      <view class="sheet-action sheet-action--secondary" catchtap="shareInvite">分享邀请卡</view>
+      <view class="sheet-action sheet-action--secondary" catchtap="refreshInviteCode">刷新邀请码</view>
+    </view>
+  </view>
 </view>
