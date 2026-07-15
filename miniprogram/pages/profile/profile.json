@@ -1,6 +1,3 @@
 {
-  "navigationBarTitleText": "我的",
-  "usingComponents": {
-    "empty-state": "/components/empty-state/empty-state"
-  }
+  "navigationBarTitleText": "我的"
 }

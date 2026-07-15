@@ -1,3 +1,554 @@
-.page {
-  padding-top: 32rpx;
+.profile-page {
+  min-height: 100vh;
+  padding: 28rpx 28rpx calc(48rpx + env(safe-area-inset-bottom));
+  background: #F7F8F7;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.user-card,
+.section-card,
+.settings-card,
+.entry-list,
+.danger-list {
+  border: 1rpx solid #E7EBE8;
+  border-radius: 16rpx;
+  background: #FFFFFF;
+  box-sizing: border-box;
+}
+
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 28rpx;
+}
+
+.user-card:active,
+.entry-row:active,
+.summary-card:active,
+.section-action:active,
+.empty-team-entry:active {
+  background: #F4F8F5;
+}
+
+.avatar,
+.detail-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 22rpx;
+  font-size: 36rpx;
+}
+
+.user-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-line,
+.user-meta,
+.section-head,
+.block-head,
+.entry-row,
+.setting-row,
+.version-row,
+.detail-head,
+.detail-row {
+  display: flex;
+  align-items: center;
+}
+
+.user-line {
+  gap: 10rpx;
+}
+
+.user-name,
+.section-title,
+.block-title,
+.entry-title,
+.setting-title,
+.detail-name,
+.about-name {
+  color: #171917;
+  font-weight: 700;
+}
+
+.user-name {
+  max-width: 300rpx;
+  overflow: hidden;
+  font-size: 34rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.self-badge {
+  flex-shrink: 0;
+  padding: 4rpx 10rpx;
+  border-radius: 8rpx;
+  background: #EAF6EF;
+  color: #078B4B;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.user-remark,
+.active-text,
+.team-label,
+.entry-desc,
+.setting-desc,
+.setting-note,
+.detail-sub,
+.modal-paragraph,
+.bullet-row,
+.about-desc,
+.version-row {
+  color: #747A76;
+}
+
+.user-remark {
+  display: block;
+  margin-top: 8rpx;
+  overflow: hidden;
+  font-size: 24rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-meta {
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 14rpx;
+}
+
+.role-badge {
+  padding: 5rpx 12rpx;
+  border-radius: 8rpx;
+  font-size: 21rpx;
+  font-weight: 600;
+}
+
+.role-badge--owner {
+  background: #078B4B;
+  color: #FFFFFF;
+}
+
+.role-badge--admin {
+  border: 1rpx solid #078B4B;
+  background: #EAF6EF;
+  color: #06713E;
+}
+
+.role-badge--viewer {
+  background: #F1F2F1;
+  color: #59615C;
+}
+
+.role-badge--unknown {
+  background: #FDF2F2;
+  color: #D94A45;
+}
+
+.active-text {
+  font-size: 22rpx;
+}
+
+.arrow,
+.entry-arrow {
+  flex-shrink: 0;
+  color: #9AA19C;
+  font-size: 42rpx;
+  line-height: 1;
+}
+
+.readonly-note {
+  margin-top: 16rpx;
+  padding: 18rpx 22rpx;
+  border: 1rpx solid #E7EBE8;
+  border-radius: 12rpx;
+  background: #FFFFFF;
+  color: #747A76;
+  font-size: 23rpx;
+}
+
+.section-card,
+.section-block {
+  margin-top: 20rpx;
+}
+
+.section-card {
+  padding: 24rpx;
+}
+
+.section-head,
+.block-head {
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.section-title,
+.block-title {
+  display: block;
+  font-size: 30rpx;
+}
+
+.section-action,
+.link-text {
+  flex-shrink: 0;
+  color: #078B4B;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.section-action--disabled {
+  color: #B5BBB7;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18rpx;
+  margin-top: 22rpx;
+}
+
+.team-item {
+  min-width: 0;
+  padding: 18rpx;
+  border-radius: 12rpx;
+  background: #F7F8F7;
+}
+
+.team-label,
+.team-value,
+.entry-title,
+.entry-desc,
+.setting-title,
+.setting-desc,
+.about-name,
+.about-desc {
+  display: block;
+}
+
+.team-label {
+  font-size: 21rpx;
+}
+
+.team-value {
+  margin-top: 8rpx;
+  overflow: hidden;
+  color: #171917;
+  font-size: 26rpx;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty-team-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 78rpx;
+  margin-top: 20rpx;
+  border: 2rpx dashed #BFD8C9;
+  border-radius: 14rpx;
+  color: #078B4B;
+  font-size: 25rpx;
+  font-weight: 600;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
+.summary-card {
+  min-width: 0;
+  padding: 20rpx 8rpx;
+  border: 1rpx solid #E7EBE8;
+  border-radius: 14rpx;
+  background: #FFFFFF;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.summary-value,
+.summary-label {
+  display: block;
+}
+
+.summary-value {
+  font-size: 34rpx;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.summary-value--primary {
+  color: #078B4B;
+}
+
+.summary-value--warning {
+  color: #E59A23;
+}
+
+.summary-value--danger {
+  color: #D94A45;
+}
+
+.summary-label {
+  margin-top: 9rpx;
+  color: #747A76;
+  font-size: 20rpx;
+}
+
+.entry-list,
+.settings-card,
+.danger-list {
+  margin-top: 14rpx;
+  overflow: hidden;
+}
+
+.entry-row,
+.setting-row,
+.version-row {
+  justify-content: space-between;
+  gap: 18rpx;
+  min-height: 96rpx;
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #F0F2F0;
+  box-sizing: border-box;
+}
+
+.entry-row:last-child,
+.setting-row:last-child,
+.version-row:last-child {
+  border-bottom: 0;
+}
+
+.entry-row--disabled {
+  opacity: 0.55;
+}
+
+.entry-title,
+.setting-title {
+  font-size: 27rpx;
+}
+
+.entry-desc,
+.setting-desc {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  line-height: 1.35;
+}
+
+.setting-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-switch {
+  flex-shrink: 0;
+  transform: scale(0.86);
+  transform-origin: right center;
+}
+
+.setting-note {
+  display: block;
+  margin: 12rpx 4rpx 0;
+  font-size: 21rpx;
+  line-height: 1.45;
+}
+
+.block-title--danger {
+  color: #D94A45;
+}
+
+.danger-row {
+  min-height: 90rpx;
+  padding: 0 24rpx;
+  border-bottom: 1rpx solid #F0F2F0;
+  color: #D94A45;
+  font-size: 27rpx;
+  font-weight: 600;
+  line-height: 90rpx;
+}
+
+.danger-row:last-child {
+  border-bottom: 0;
+}
+
+.sheet-mask {
+  position: fixed;
+  z-index: 200;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(23, 25, 23, 0.46);
+}
+
+.bottom-sheet {
+  width: 100%;
+  max-height: 86vh;
+  padding-bottom: env(safe-area-inset-bottom);
+  border-radius: 24rpx 24rpx 0 0;
+  background: #FFFFFF;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.sheet-handle {
+  width: 72rpx;
+  height: 7rpx;
+  margin: 14rpx auto 4rpx;
+  border-radius: 4rpx;
+  background: #D8DCD8;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 82rpx;
+  padding: 0 28rpx;
+  border-bottom: 1rpx solid #E7EBE8;
+}
+
+.sheet-title {
+  color: #171917;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.sheet-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: #F2F4F2;
+  color: #747A76;
+  font-size: 38rpx;
+}
+
+.sheet-content {
+  max-height: 62vh;
+  padding: 0 28rpx 28rpx;
+  box-sizing: border-box;
+}
+
+.detail-head {
+  gap: 18rpx;
+  padding: 24rpx 0;
+}
+
+.detail-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 20rpx;
+  font-size: 34rpx;
+}
+
+.detail-name {
+  display: block;
+  font-size: 32rpx;
+}
+
+.detail-sub {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 23rpx;
+}
+
+.detail-rows {
+  border-top: 1rpx solid #E7EBE8;
+}
+
+.detail-row {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28rpx;
+  padding: 19rpx 2rpx;
+  border-bottom: 1rpx solid #F0F2F0;
+  color: #171917;
+  font-size: 23rpx;
+}
+
+.detail-row text:first-child {
+  flex-shrink: 0;
+  color: #747A76;
+}
+
+.detail-row text:last-child {
+  min-width: 0;
+  text-align: right;
+  word-break: break-all;
+}
+
+.sheet-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 82rpx;
+  margin-top: 24rpx;
+  border-radius: 14rpx;
+  background: #078B4B;
+  color: #FFFFFF;
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.about-panel,
+.plain-content {
+  padding-top: 24rpx;
+}
+
+.about-name {
+  font-size: 38rpx;
+}
+
+.about-desc {
+  margin: 8rpx 0 22rpx;
+  font-size: 25rpx;
+}
+
+.modal-paragraph {
+  margin-bottom: 18rpx;
+  font-size: 26rpx;
+  line-height: 1.55;
+}
+
+.bullet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.bullet-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14rpx;
+  font-size: 26rpx;
+  line-height: 1.45;
+}
+
+.bullet-dot {
+  flex-shrink: 0;
+  width: 10rpx;
+  height: 10rpx;
+  margin-top: 15rpx;
+  border-radius: 50%;
+  background: #078B4B;
 }
