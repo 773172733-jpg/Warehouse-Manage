@@ -20,7 +20,7 @@
 
   <view wx:else class="pr-list">
     <view wx:for="{{items}}" wx:key="warehouseProductId" class="pr-item">
-      <view class="pr-cover" style="background:{{item.cover.background}}"><image wx:if="{{item.cover.type==='image'}}" class="pr-cover-image" src="{{item.cover.fileId}}" mode="aspectFill"></image><text wx:else class="{{item.cover.type==='emoji'?'pr-cover-emoji':'pr-cover-text'}}">{{item.cover.content}}</text></view>
+      <view class="pr-cover" style="background:{{item.cover.background}}"><image wx:if="{{item.cover.type==='image'}}" class="pr-cover-image" src="{{item.cover.fileId}}" mode="aspectFill" data-index="{{index}}" binderror="onCoverImageError"></image><text wx:else class="{{item.cover.type==='emoji'?'pr-cover-emoji':'pr-cover-text'}}">{{item.cover.content}}</text></view>
       <view class="pr-info">
         <text class="pr-name">{{item.name}}</text>
         <text class="pr-meta">{{item.productCode||'无编号'}} · {{item.category}}</text>

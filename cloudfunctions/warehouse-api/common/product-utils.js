@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { ApiError, ERROR_CODES } = require('./errors.js');
 const { validateRequestKey } = require('./validators.js');
 const { COVER_EMOJIS } = require('./product-cover-constants.js');
+const { validateAssetKey } = require('./product-image-utils.js');
 
 const PRODUCT_LIMIT = 99999;
 const STOCK_MAX = 999999999;
@@ -9,7 +10,7 @@ const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
 const PRODUCT_ID_PATTERN = /^[A-Za-z0-9_-]{8,80}$/;
 const STOCK_STATUSES = ['normal', 'low', 'out'];
-const COVER_TYPES = ['none', 'text', 'emoji'];
+const COVER_TYPES = ['none', 'text', 'emoji', 'image'];
 const COVER_BACKGROUNDS = [
   '#EAF6EF',
   '#F7F2E8',
@@ -49,6 +50,7 @@ const CREATE_FIELDS = [
   'coverType',
   'coverText',
   'coverEmoji',
+  'coverAssetKey',
   'coverBackground',
   'minStock',
   'initialStock',
@@ -65,6 +67,7 @@ const PRODUCT_MAIN_FIELDS = [
   'coverType',
   'coverText',
   'coverEmoji',
+  'coverAssetKey',
   'coverBackground'
 ];
 const UPDATE_FIELDS = PRODUCT_MAIN_FIELDS.concat(['productId', 'expectedVersion', 'requestKey']);
@@ -143,10 +146,13 @@ function buildSearchKeywords(source) {
 function sanitizeCover(source, name) {
   const coverType = normalizeWhitespace(source.coverType || 'none').toLowerCase();
   if (!COVER_TYPES.includes(coverType)) {
-    throw new ApiError(ERROR_CODES.INVALID_COVER, '自定义图片上传尚未接入，请选择文字、emoji或默认封面。');
+    throw new ApiError(ERROR_CODES.INVALID_COVER, '请选择系统支持的封面类型。');
   }
   if (hasOwn(source, 'coverFileId') || hasOwn(source, 'localImagePath')) {
     throw new ApiError(ERROR_CODES.INVALID_COVER, '当前阶段不接受图片路径或fileID。');
+  }
+  if (coverType !== 'image' && hasOwn(source, 'coverAssetKey') && source.coverAssetKey) {
+    throw new ApiError(ERROR_CODES.FORBIDDEN, '非图片封面不能指定图片资产。');
   }
 
   if (coverType === 'none') {
@@ -155,6 +161,17 @@ function sanitizeCover(source, name) {
       coverText: '',
       coverEmoji: '',
       coverAssetKey: '',
+      coverFileId: '',
+      coverBackground: ''
+    };
+  }
+
+  if (coverType === 'image') {
+    return {
+      coverType,
+      coverText: '',
+      coverEmoji: '',
+      coverAssetKey: validateAssetKey(source.coverAssetKey),
       coverFileId: '',
       coverBackground: ''
     };

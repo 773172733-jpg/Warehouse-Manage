@@ -1,4 +1,5 @@
 var productService = require('../../services/product-service.js');
+var productImageService = require('../../services/product-image-service.js');
 var ROUTES = require('../../constants/routes.js');
 var createUtils = require('./product-create-utils.js');
 var productView = require('../../utils/product-view.js');
@@ -64,6 +65,7 @@ Page({
       systemAssetEmoji: '',
       legacyFallback: false,
       localImagePath: '',
+      coverAssetKey: '',
       name: '',
       code: '',
       category: '',
@@ -100,7 +102,14 @@ Page({
     detailLoading: false,
     detailError: '',
     saving: false,
+    uploading: false,
     saveError: '',
+    imageSizeBytes: 0,
+    imageExtension: '',
+    stageRequestKey: '',
+    confirmRequestKey: '',
+    stagedAssetKey: '',
+    stagedLocalPath: '',
     createRequestKey: '',
     updateRequestKey: '',
     submittedPayloadHash: '',
@@ -108,7 +117,8 @@ Page({
     productId: '',
     warehouseProductId: '',
     productVersion: null,
-    originalCover: null
+    originalCover: null,
+    existingImageFailed: false
   },
 
   onLoad: function (query) {
@@ -203,6 +213,7 @@ Page({
           productId: detail.product.id,
           productVersion: detail.product.version,
           originalCover: cover,
+          existingImageFailed: false,
           currentStep: 1,
           updateRequestKey: '',
           submittedPayloadHash: '',
@@ -216,6 +227,7 @@ Page({
             systemAssetEmoji: cover.emoji || '',
             legacyFallback: legacyFallback,
             localImagePath: cover.type === 'image' ? (cover.fileId || '') : '',
+            coverAssetKey: cover.type === 'image' ? (cover.assetKey || '') : '',
             name: detail.product.name,
             code: detail.product.productCode,
             category: detail.product.category,
@@ -286,6 +298,16 @@ Page({
       updates['fieldErrors.systemAssetKey'] = '';
     } else if (mode === 'custom') {
       updates['fieldErrors.image'] = '';
+      if (this.data.form.coverMode === 'existing-image') {
+        updates['form.localImagePath'] = '';
+        updates['form.coverAssetKey'] = '';
+        updates.imageSizeBytes = 0;
+        updates.imageExtension = '';
+        updates.stageRequestKey = '';
+        updates.confirmRequestKey = '';
+        updates.stagedAssetKey = '';
+        updates.stagedLocalPath = '';
+      }
     }
     this.setData(updates);
   },
@@ -327,10 +349,27 @@ Page({
       sourceType: ['album', 'camera'],
       success: function (res) {
         if (res.tempFiles && res.tempFiles.length > 0) {
-          self.setData({
-            'form.localImagePath': res.tempFiles[0].tempFilePath,
-            'fieldErrors.image': ''
-          });
+          try {
+            var selected = productImageService.validateLocalImage({
+              filePath: res.tempFiles[0].tempFilePath,
+              sizeBytes: res.tempFiles[0].size
+            });
+            self.safeSetData({
+              'form.localImagePath': selected.filePath,
+              'form.coverAssetKey': '',
+              'fieldErrors.image': '',
+              imageSizeBytes: selected.sizeBytes,
+              imageExtension: selected.extension,
+              stageRequestKey: '',
+              confirmRequestKey: '',
+              stagedAssetKey: '',
+              stagedLocalPath: ''
+            });
+          } catch (error) {
+            var message = error && error.message ? error.message : '请选择有效图片';
+            self.safeSetData({ 'fieldErrors.image': message });
+            wx.showToast({ title: message, icon: 'none', duration: 2200 });
+          }
         }
       },
       fail: function (err) {
@@ -343,7 +382,62 @@ Page({
   },
 
   onClearImage: function () {
-    this.setData({ 'form.localImagePath': '' });
+    this.setData({
+      'form.localImagePath': '',
+      'form.coverAssetKey': '',
+      imageSizeBytes: 0,
+      imageExtension: '',
+      stageRequestKey: '',
+      confirmRequestKey: '',
+      stagedAssetKey: '',
+      stagedLocalPath: ''
+    });
+  },
+
+  onSelectedImageError: function () {
+    this.onClearImage();
+    this.safeSetData({ 'fieldErrors.image': '图片预览失败，请重新选择' });
+    wx.showToast({ title: '图片预览失败，请重新选择', icon: 'none', duration: 2200 });
+  },
+
+  onExistingImageError: function () {
+    this.safeSetData({ existingImageFailed: true });
+  },
+
+  ensureImageStaged: function () {
+    var self = this;
+    var form = this.data.form;
+    if (form.coverMode !== 'custom') return Promise.resolve('');
+    if (this.data.stagedAssetKey && this.data.stagedLocalPath === form.localImagePath) {
+      return Promise.resolve(this.data.stagedAssetKey);
+    }
+    var keys = productImageService.createStageRequestKeys({
+      stageRequestKey: this.data.stageRequestKey,
+      confirmRequestKey: this.data.confirmRequestKey
+    });
+    this.safeSetData({
+      uploading: true,
+      stageRequestKey: keys.stageRequestKey,
+      confirmRequestKey: keys.confirmRequestKey
+    });
+    return productImageService.stageProductImage({
+      filePath: form.localImagePath,
+      sizeBytes: this.data.imageSizeBytes,
+      stageRequestKey: keys.stageRequestKey,
+      confirmRequestKey: keys.confirmRequestKey
+    }).then(function (result) {
+      if (!self.pageActive) return '';
+      self.safeSetData({
+        uploading: false,
+        stagedAssetKey: result.assetKey,
+        stagedLocalPath: form.localImagePath,
+        'form.coverAssetKey': result.assetKey
+      });
+      return result.assetKey;
+    }).catch(function (error) {
+      if (self.pageActive) self.safeSetData({ uploading: false });
+      throw error;
+    });
   },
 
   /* ====== 产品名称（自动填充封面文字）====== */
@@ -609,23 +703,32 @@ Page({
       this.setData({ currentStep: 2 });
       return;
     }
+    this.safeSetData({ saving: true, saveError: '' });
+    this.ensureImageStaged()
+      .then(function (assetKey) {
+        if (!self.pageActive) return;
+        self.submitCreateProduct(app, assetKey);
+      })
+      .catch(function (error) {
+        if (!self.pageActive) return;
+        var message = createUtils.getCreateErrorMessage(error);
+        self.safeSetData({ saving: false, uploading: false, saveError: message });
+        wx.showToast({ title: message, icon: 'none', duration: 2500 });
+      });
+  },
 
+  submitCreateProduct: function (app, assetKey) {
+    var self = this;
     var basePayload;
     try {
-      basePayload = createUtils.buildCreateProductPayload(this.data.form);
+      var saveForm = assetKey
+        ? Object.assign({}, this.data.form, { coverAssetKey: assetKey })
+        : this.data.form;
+      basePayload = createUtils.buildCreateProductPayload(saveForm);
     } catch (error) {
       var localMessage = createUtils.getCreateErrorMessage(error);
-      this.safeSetData({ saveError: localMessage });
-      if (error && error.code === 'CUSTOM_IMAGE_NOT_SUPPORTED') {
-        wx.showModal({
-          title: '暂不支持图片上传',
-          content: localMessage,
-          showCancel: false,
-          confirmText: '返回修改'
-        });
-      } else {
-        wx.showToast({ title: localMessage, icon: 'none', duration: 2500 });
-      }
+      this.safeSetData({ saving: false, saveError: localMessage });
+      wx.showToast({ title: localMessage, icon: 'none', duration: 2500 });
       return;
     }
 
@@ -635,7 +738,6 @@ Page({
     });
     var payload = Object.assign({}, basePayload, { requestKey: intent.requestKey });
     this.safeSetData({
-      saving: true,
       saveError: '',
       createRequestKey: intent.requestKey,
       submittedPayloadHash: intent.signature
@@ -685,16 +787,35 @@ Page({
       this.safeSetData({ currentStep: 1 });
       return;
     }
+    this.safeSetData({ saving: true, saveError: '' });
+    this.ensureImageStaged()
+      .then(function (assetKey) {
+        if (!self.pageActive) return;
+        self.submitProductUpdate(app, assetKey);
+      })
+      .catch(function (error) {
+        if (!self.pageActive) return;
+        var message = createUtils.getUpdateErrorMessage(error);
+        self.safeSetData({ saving: false, uploading: false, saveError: message });
+        wx.showToast({ title: message, icon: 'none', duration: 2500 });
+      });
+  },
+
+  submitProductUpdate: function (app, assetKey) {
+    var self = this;
     var basePayload;
     try {
-      basePayload = createUtils.buildUpdateProductPayload(this.data.form, {
+      var saveForm = assetKey
+        ? Object.assign({}, this.data.form, { coverAssetKey: assetKey })
+        : this.data.form;
+      basePayload = createUtils.buildUpdateProductPayload(saveForm, {
         productId: this.data.productId,
         expectedVersion: this.data.productVersion,
         originalCover: this.data.originalCover
       });
     } catch (error) {
       var localMessage = createUtils.getUpdateErrorMessage(error);
-      this.safeSetData({ saveError: localMessage });
+      this.safeSetData({ saving: false, saveError: localMessage });
       wx.showToast({ title: localMessage, icon: 'none', duration: 2500 });
       return;
     }
@@ -704,7 +825,6 @@ Page({
     });
     var payload = Object.assign({}, basePayload, { requestKey: intent.requestKey });
     this.safeSetData({
-      saving: true,
       saveError: '',
       updateRequestKey: intent.requestKey,
       submittedPayloadHash: intent.signature

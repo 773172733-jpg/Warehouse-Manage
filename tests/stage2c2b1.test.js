@@ -109,7 +109,7 @@ function testPayloadMappingAndValidation() {
   assertCode(() => createUtils.buildCreateProductPayload(createForm({
     coverMode: 'custom',
     localImagePath: 'wxfile://temporary.jpg'
-  })), 'CUSTOM_IMAGE_NOT_SUPPORTED');
+  })), 'IMAGE_ASSET_NOT_READY');
   assertCode(() => createUtils.buildCreateProductPayload(createForm({ stock: '1.5' })), 'INVALID_STOCK_QUANTITY');
   assertCode(() => createUtils.buildCreateProductPayload(createForm({ stock: '-1' })), 'INVALID_STOCK_QUANTITY');
   assertCode(() => createUtils.buildCreateProductPayload(createForm({ stock: '9007199254740992' })), 'INVALID_STOCK_QUANTITY');
@@ -193,6 +193,7 @@ async function testPageSaveFlow() {
     const page = createPageHarness(pageConfig);
     page.onComplete();
     page.onComplete();
+    await flushPromises();
     assert.strictEqual(calls.length, 1);
     assert.strictEqual(page.data.saving, true);
     assert.ok(calls[0].requestKey);

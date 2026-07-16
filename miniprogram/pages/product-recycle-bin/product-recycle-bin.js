@@ -332,5 +332,14 @@ Page({
       wx.showToast({ title: messages[error && error.code] || '删除失败，请稍后重试', icon: 'none' });
       if (error && error.code === 'PRODUCT_VERSION_CONFLICT') this.reload();
     });
+  },
+
+  onCoverImageError(event) {
+    const index = Number(event.currentTarget.dataset.index);
+    if (!Number.isInteger(index) || !this.data.items[index]) return;
+    const item = this.data.items[index];
+    this.safeSetData({
+      [`items[${index}].cover`]: productView.getCoverView(null, item.name)
+    });
   }
 });

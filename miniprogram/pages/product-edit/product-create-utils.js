@@ -3,7 +3,7 @@ const { SYSTEM_ASSETS } = require('../../constants/product-cover-assets.js');
 
 const STOCK_MAX = 999999999;
 const ALLOWED_ROLES = ['owner', 'admin'];
-const CUSTOM_IMAGE_MESSAGE = '自定义图片上传将在后续阶段开放，请先使用文字或表情封面。';
+const CUSTOM_IMAGE_MESSAGE = '图片尚未完成安全上传，请重新选择或重试。';
 const DEFAULT_COVER_BACKGROUND = '#EAF6EF';
 const SYSTEM_ASSET_EMOJIS = SYSTEM_ASSETS.map((item) => item.emoji);
 
@@ -17,6 +17,16 @@ const ERROR_MESSAGES = {
   INVALID_SPECIFICATION: '规格内容过长或格式不正确',
   INVALID_DESCRIPTION: '产品介绍内容过长',
   INVALID_COVER: '当前封面不可用，请重新选择',
+  IMAGE_ASSET_NOT_FOUND: '图片上传状态已失效，请重新选择图片',
+  IMAGE_ASSET_NOT_READY: '图片尚未完成安全确认，请重试',
+  IMAGE_ASSET_EXPIRED: '图片上传已过期，请重新选择图片',
+  IMAGE_ASSET_ALREADY_BOUND: '该图片已经用于其他产品，请重新选择',
+  IMAGE_ASSET_STATE_CONFLICT: '图片上传状态异常，请重新选择图片',
+  IMAGE_FILE_TOO_LARGE: '图片不能超过2 MiB',
+  IMAGE_FILE_TYPE_INVALID: '请选择JPG、PNG或WebP图片',
+  IMAGE_FILE_PATH_INVALID: '图片上传路径无效，请重新选择图片',
+  IMAGE_FILE_DOWNLOAD_FAILED: '图片校验下载失败，请重新上传',
+  IMAGE_FILE_CONFIRM_FAILED: '图片安全确认失败，请稍后重试',
   INVALID_STOCK_QUANTITY: '初始库存必须是非负整数',
   INVALID_MIN_STOCK: '最低库存必须是非负整数',
   PRODUCT_LIMIT_REACHED: '团队产品数量已达到上限',
@@ -66,7 +76,17 @@ function parseQuantity(value, code, message) {
 
 function buildCoverPayload(form) {
   if (form.coverMode === 'custom') {
-    throw createLocalError('CUSTOM_IMAGE_NOT_SUPPORTED', CUSTOM_IMAGE_MESSAGE);
+    const assetKey = normalizeText(form.coverAssetKey);
+    if (!/^product_image_[a-f0-9]{32}$/.test(assetKey)) {
+      throw createLocalError('IMAGE_ASSET_NOT_READY', CUSTOM_IMAGE_MESSAGE);
+    }
+    return {
+      coverType: 'image',
+      coverText: '',
+      coverEmoji: '',
+      coverAssetKey: assetKey,
+      coverBackground: ''
+    };
   }
   if (form.coverMode === 'system') {
     const emoji = normalizeText(form.systemAssetEmoji);
@@ -143,6 +163,7 @@ function getFormCoverSnapshot(form) {
 
 function isCoverUnchanged(form, originalCover) {
   if (!originalCover || typeof originalCover !== 'object') return false;
+  if (form && form.coverMode === 'custom') return false;
   const current = getFormCoverSnapshot(form);
   const original = normalizeOriginalCover(originalCover);
   if (current.type === 'image' || original.type === 'image') {
@@ -281,9 +302,7 @@ function isCreateAllowed(role) {
 }
 
 function getCreateErrorMessage(error) {
-  if (error && error.code === 'CUSTOM_IMAGE_NOT_SUPPORTED') {
-    return CUSTOM_IMAGE_MESSAGE;
-  }
+  if (error && error.code === 'IMAGE_ASSET_NOT_READY') return CUSTOM_IMAGE_MESSAGE;
   if (error && ERROR_MESSAGES[error.code]) {
     return ERROR_MESSAGES[error.code];
   }
@@ -294,7 +313,7 @@ function getCreateErrorMessage(error) {
 }
 
 function getUpdateErrorMessage(error) {
-  if (error && error.code === 'CUSTOM_IMAGE_NOT_SUPPORTED') return CUSTOM_IMAGE_MESSAGE;
+  if (error && error.code === 'IMAGE_ASSET_NOT_READY') return CUSTOM_IMAGE_MESSAGE;
   if (error && UPDATE_ERROR_MESSAGES[error.code]) return UPDATE_ERROR_MESSAGES[error.code];
   return '更新失败，请稍后重试';
 }

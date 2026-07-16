@@ -30,6 +30,11 @@ const {
   presentDeletedCatalogProduct,
   presentStockRecord
 } = require('../../common/product-utils.js');
+const {
+  resolveImageCoverInTransaction,
+  bindImageAssetInTransaction,
+  orphanImageAssetInTransaction
+} = require('./image-service.js');
 
 const PRODUCT_CREATE_ACTION = 'product.create';
 const PRODUCT_UPDATE_ACTION = 'product.update';
@@ -301,6 +306,7 @@ async function createProduct(db, user, rawInput) {
       const activeProductCount = assertProductCountWithinLimit(locked.team.activeProductCount);
 
       const now = db.serverDate();
+      const lifecycleNow = new Date();
       const documentContext = {
         teamId: locked.team._id,
         warehouseId: locked.warehouse._id,
@@ -310,14 +316,22 @@ async function createProduct(db, user, rawInput) {
         requestHash,
         now
       };
-      const product = buildProductDocument(input, documentContext);
-      const warehouseProduct = buildWarehouseProductDocument(
+      const resolvedCover = await resolveImageCoverInTransaction(
+        transaction,
         input,
+        documentContext,
+        ids.productId,
+        lifecycleNow
+      );
+      const resolvedInput = resolvedCover.input;
+      const product = buildProductDocument(resolvedInput, documentContext);
+      const warehouseProduct = buildWarehouseProductDocument(
+        resolvedInput,
         ids.productId,
         documentContext
       );
       const initialRecord = buildInitialRecordDocument(
-        input,
+        resolvedInput,
         ids.productId,
         ids.warehouseProductId,
         documentContext
@@ -338,6 +352,13 @@ async function createProduct(db, user, rawInput) {
           updatedAt: now
         }
       });
+      await bindImageAssetInTransaction(
+        transaction,
+        resolvedCover.asset,
+        documentContext,
+        ids.productId,
+        lifecycleNow
+      );
       idempotent = false;
     }, 5);
 
@@ -544,8 +565,23 @@ async function updateProduct(db, user, rawInput) {
       }
 
       const now = db.serverDate();
+      const lifecycleNow = new Date();
       const nextVersion = product.version + 1;
-      const mainUpdate = buildProductMainUpdate(input, product);
+      const imageContext = {
+        teamId: locked.team._id,
+        userId: locked.user._id
+      };
+      const resolvedCover = await resolveImageCoverInTransaction(
+        transaction,
+        input,
+        imageContext,
+        product._id,
+        lifecycleNow
+      );
+      const mainUpdate = buildProductMainUpdate(resolvedCover.input, product);
+      const replacesOldImage = product.coverType === 'image' && product.coverAssetKey &&
+        !resolvedCover.input.preserveCover &&
+        (mainUpdate.coverType !== 'image' || mainUpdate.coverAssetKey !== product.coverAssetKey);
       await transaction.collection(COLLECTIONS.PRODUCTS).doc(product._id).update({
         data: Object.assign({}, mainUpdate, {
           version: nextVersion,
@@ -570,6 +606,22 @@ async function updateProduct(db, user, rawInput) {
           lastMutationInputHash: requestHash
         })
       });
+      await bindImageAssetInTransaction(
+        transaction,
+        resolvedCover.asset,
+        imageContext,
+        product._id,
+        lifecycleNow
+      );
+      if (replacesOldImage) {
+        await orphanImageAssetInTransaction(
+          transaction,
+          product.coverAssetKey,
+          imageContext,
+          product._id,
+          lifecycleNow
+        );
+      }
       idempotent = false;
     }, 5);
 

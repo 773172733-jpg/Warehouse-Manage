@@ -22,6 +22,7 @@ function buildCreateProductPayload(input = {}) {
     'coverType',
     'coverText',
     'coverEmoji',
+    'coverAssetKey',
     'coverBackground',
     'minStock',
     'initialStock',
@@ -58,6 +59,7 @@ function buildUpdateProductPayload(input = {}) {
     'coverType',
     'coverText',
     'coverEmoji',
+    'coverAssetKey',
     'coverBackground',
     'requestKey'
   ]);

@@ -297,6 +297,15 @@ Page({
     this.openProduct(event.currentTarget.dataset.warehouseProductId);
   },
 
+  onCoverImageError(event) {
+    const index = Number(event.currentTarget.dataset.index);
+    if (!Number.isInteger(index) || !this.data.items[index]) return;
+    const item = this.data.items[index];
+    this.safeSetData({
+      [`items[${index}].cover`]: productView.getCoverView(null, item.name)
+    });
+  },
+
   onCardMenu(event) {
     const warehouseProductId = event.currentTarget.dataset.warehouseProductId;
     if (!warehouseProductId) return;

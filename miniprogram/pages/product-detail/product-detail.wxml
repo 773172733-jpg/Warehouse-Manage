@@ -23,7 +23,7 @@
         class="pd-cover {{warehouseProduct.stockStatus==='out'?'pd-cover--out':''}} {{warehouseProduct.stockStatus==='low'?'pd-cover--low':''}}"
         style="background:{{product.cover.background}}"
       >
-        <image wx:if="{{product.cover.type==='image'}}" class="pd-cover-image" src="{{product.cover.fileId}}" mode="aspectFill"></image>
+        <image wx:if="{{product.cover.type==='image'}}" class="pd-cover-image" src="{{product.cover.fileId}}" mode="aspectFill" binderror="onCoverImageError"></image>
         <text wx:else class="{{product.cover.type==='emoji'?'pd-cover-emoji':'pd-cover-text'}}">{{product.cover.content}}</text>
       </view>
       <view class="pd-hero-info">

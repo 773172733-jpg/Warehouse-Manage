@@ -279,6 +279,13 @@ Page({
     wx.switchTab({ url: ROUTES.INVENTORY });
   },
 
+  onCoverImageError() {
+    if (!this.data.product) return;
+    this.safeSetData({
+      'product.cover': productView.getCoverView(null, this.data.product.name)
+    });
+  },
+
   onBack() {
     wx.navigateBack({
       delta: 1,
