@@ -1,4 +1,7 @@
 {
   "navigationStyle": "custom",
-  "usingComponents": {}
+  "usingComponents": {
+    "app-loading": "/components/app-loading/app-loading",
+    "error-state": "/components/error-state/error-state"
+  }
 }

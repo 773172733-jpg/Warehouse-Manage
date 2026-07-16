@@ -1,6 +1,6 @@
 # 轻仓｜微信小程序仓库管理器
 
-当前进入阶段2C2B1：现有三步产品创建页面已接入真实 `product.create`，支持owner/admin创建、严格字段映射、文字/emoji封面、初始库存事务写入和幂等重试。库存首页仍使用mock列表，真实列表与详情将在阶段2C2B2接入。
+当前进入阶段2C2B2：产品创建、库存首页和产品详情已接入真实 `product.create/list/detail`。首页支持cursor分页、云端搜索、分类/库存状态筛选和创建返回刷新；详情组合权威产品主资料、当前仓库库存及真实权限。产品编辑、库存操作和真实流水仍按后续阶段实施。
 
 ## 技术栈
 
@@ -34,6 +34,8 @@
 - [`docs/阶段2C2A部署与验收.md`](docs/阶段2C2A部署与验收.md)
 - [`docs/阶段2C2B1产品创建页面接入.md`](docs/阶段2C2B1产品创建页面接入.md)
 - [`docs/阶段2C2B1部署与验收.md`](docs/阶段2C2B1部署与验收.md)
+- [`docs/阶段2C2B2真实库存首页与产品详情.md`](docs/阶段2C2B2真实库存首页与产品详情.md)
+- [`docs/阶段2C2B2部署与验收.md`](docs/阶段2C2B2部署与验收.md)
 - [`database/collections.md`](database/collections.md)
 - [`database/indexes.md`](database/indexes.md)
 - [`database/permissions.md`](database/permissions.md)
@@ -76,10 +78,15 @@
 - 三步产品创建页真实接入 `product.create`，网络失败可按同一requestKey安全重试
 - owner/admin新增入口和路由权限检查，viewer保持只读
 - 本地图片只保留预览并在保存前明确阻断，未向数据库提交临时路径
+- 库存首页真实接入 `product.list`，支持20条cursor分页、搜索防抖和过时响应隔离
+- 分类与库存状态使用云端筛选，摘要数字明确限定为当前已加载真实数据
+- 产品卡片通过真实warehouseProductId进入 `product.detail`，组合主资料、库存和权限
+- viewer可读但不显示写入口，未实现操作只提示后续阶段且不修改本地数据
+- mock产品和mock流水已从库存首页与详情页运行路径移除
 
 暂不包含：
 
-- 真实产品列表和详情页面接入、产品编辑及当前仓库移除/恢复接口
+- 产品编辑及当前仓库移除/恢复接口
 - 真实入库、出库、库存调整和库存流水接口
 - 邀请二维码、微信分享卡片和owner转让
 - 团队解散、多团队切换和实时成员状态推送

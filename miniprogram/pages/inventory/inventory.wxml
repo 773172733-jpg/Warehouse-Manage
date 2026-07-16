@@ -1,11 +1,10 @@
 <view class="inv-page">
-  <!-- 顶部团队信息栏 -->
   <view class="inv-header">
     <view class="inv-header-left">
       <text class="inv-header-title">轻仓</text>
       <view class="inv-warehouse-badge">
         <view class="inv-warehouse-dot"></view>
-        <text class="inv-warehouse-name">默认仓库</text>
+        <text class="inv-warehouse-name">{{warehouseName}}</text>
       </view>
     </view>
     <view class="inv-header-right">
@@ -14,99 +13,131 @@
           <view class="inv-avatar-head"></view>
           <view class="inv-avatar-body"></view>
         </view>
-        <view class="inv-avatar inv-avatar--offset">
-          <view class="inv-avatar-head"></view>
-          <view class="inv-avatar-body"></view>
-        </view>
       </view>
-      <view class="inv-team-arrow"></view>
     </view>
   </view>
 
-  <!-- 大型搜索栏 -->
   <view class="inv-search-box {{searchFocused?'inv-search-box--focused':''}}">
     <view class="inv-search-icon"></view>
-    <input class="inv-search-input"
-           value="{{searchText}}"
-           placeholder="{{placeholder}}"
-           confirm-type="search"
-           bindinput="onSearchInput"
-           bindfocus="onSearchFocus"
-           bindblur="onSearchBlur"/>
-    <view wx:if="{{searchText}}" class="inv-search-clear" catchtap="onSearchClear">
+    <input
+      class="inv-search-input"
+      value="{{keyword}}"
+      placeholder="{{placeholder}}"
+      maxlength="40"
+      confirm-type="search"
+      bindinput="onSearchInput"
+      bindfocus="onSearchFocus"
+      bindblur="onSearchBlur"
+    />
+    <view wx:if="{{keyword}}" class="inv-search-clear" catchtap="onSearchClear">
       <view class="inv-search-clear-x"></view>
     </view>
   </view>
 
-  <!-- 库存摘要 -->
   <view class="inv-summary">
-    <view class="inv-summary-item {{activeStockFilter===''?'inv-summary-item--active':''}}"
-          data-key="" catchtap="onSummaryTap">
+    <view class="inv-summary-item">
       <text class="inv-summary-value inv-summary-value--primary">{{summary.total}}种</text>
-      <text class="inv-summary-label">产品</text>
+      <text class="inv-summary-label">已加载产品</text>
     </view>
     <view class="inv-summary-divider"></view>
-    <view class="inv-summary-item {{activeStockFilter==='low'?'inv-summary-item--active':''}}"
-          data-key="low" catchtap="onSummaryTap">
+    <view class="inv-summary-item">
       <text class="inv-summary-value inv-summary-value--warning">{{summary.lowCount}}种</text>
-      <text class="inv-summary-label">低库存</text>
+      <text class="inv-summary-label">已加载低库存</text>
     </view>
     <view class="inv-summary-divider"></view>
-    <view class="inv-summary-item {{activeStockFilter==='out'?'inv-summary-item--active':''}}"
-          data-key="out" catchtap="onSummaryTap">
+    <view class="inv-summary-item">
       <text class="inv-summary-value inv-summary-value--danger">{{summary.outCount}}种</text>
-      <text class="inv-summary-label">已缺货</text>
+      <text class="inv-summary-label">已加载缺货</text>
     </view>
   </view>
 
-  <!-- 分类横向筛选 -->
+  <view class="inv-stock-filters">
+    <view
+      wx:for="{{stockFilters}}"
+      wx:key="value"
+      class="inv-stock-filter {{selectedStockStatus===item.value?'inv-stock-filter--active':''}}"
+      data-status="{{item.value}}"
+      catchtap="onStockStatusTap"
+    >{{item.label}}</view>
+  </view>
+
   <scroll-view class="inv-categories" scroll-x enhanced show-scrollbar="{{false}}">
-    <view wx:for="{{categories}}" wx:key="*this"
-          class="inv-cat-chip {{activeCategory===item&&!activeStockFilter?'inv-cat-chip--active':''}}"
-          data-category="{{item}}" catchtap="onCategoryTap">
-      {{item}}
-    </view>
+    <view
+      wx:for="{{categories}}"
+      wx:key="*this"
+      class="inv-cat-chip {{selectedCategory===item?'inv-cat-chip--active':''}}"
+      data-category="{{item}}"
+      catchtap="onCategoryTap"
+    >{{item}}</view>
   </scroll-view>
 
-  <!-- 产品列表 / 空状态 -->
-  <empty-state wx:if="{{!filteredList.length}}"
-    title="{{searchText||activeStockFilter?'没有找到产品':'产品列表为空'}}"
-    description="{{searchText||activeStockFilter?'试试调整筛选条件或更换关键词':'当前仓库还没有产品'}}">
-  </empty-state>
+  <app-loading wx:if="{{loading || refreshing}}" text="正在加载真实库存"></app-loading>
+
+  <error-state
+    wx:elif="{{error && !items.length}}"
+    title="库存加载失败"
+    message="{{error}}"
+    bind:retry="handleRetry"
+  ></error-state>
+
+  <empty-state
+    wx:elif="{{initialized && !loading && !items.length}}"
+    title="{{keyword||selectedCategory!=='全部'||selectedStockStatus?'没有找到产品':'产品列表为空'}}"
+    description="{{keyword||selectedCategory!=='全部'||selectedStockStatus?'请调整真实搜索或筛选条件':'当前仓库还没有产品'}}"
+  ></empty-state>
+
   <view wx:else class="inv-list">
-    <view wx:for="{{filteredList}}" wx:key="id" class="inv-card" data-id="{{item.id}}" bindtap="onCardTap">
+    <view
+      wx:for="{{items}}"
+      wx:key="warehouseProductId"
+      class="inv-card"
+      data-warehouse-product-id="{{item.warehouseProductId}}"
+      bindtap="onCardTap"
+    >
       <view class="inv-card-left">
-        <view class="inv-card-cover {{item.status==='out'?'inv-card-cover--out':''}} {{item.status==='low'?'inv-card-cover--low':''}}">
-          <text class="inv-card-cover-text">{{item.displayText}}</text>
+        <view
+          class="inv-card-cover {{item.stockStatus==='out'?'inv-card-cover--out':''}} {{item.stockStatus==='low'?'inv-card-cover--low':''}}"
+          style="background:{{item.cover.background}}"
+        >
+          <text class="{{item.cover.type==='emoji'?'inv-card-cover-emoji':'inv-card-cover-text'}}">{{item.cover.content}}</text>
         </view>
         <view class="inv-card-info">
           <text class="inv-card-name">{{item.name}}</text>
           <view class="inv-card-meta">
-            <text class="inv-card-code">{{item.code}}</text>
+            <text class="inv-card-code">{{item.productCode||'无编号'}}</text>
             <view class="inv-card-category-tag">{{item.category}}</view>
           </view>
+          <text wx:if="{{item.brand||item.specification}}" class="inv-card-extra">{{item.brand||item.specification}}</text>
         </view>
       </view>
       <view class="inv-card-right">
         <view class="inv-card-stock">
-          <text class="inv-card-stock-value {{item.status==='out'?'text--danger':''}} {{item.status==='low'?'text--warning':''}}">{{item.stock}}</text>
+          <text class="inv-card-stock-value {{item.stockStatus==='out'?'text--danger':''}} {{item.stockStatus==='low'?'text--warning':''}}">{{item.stockText}}</text>
           <text class="inv-card-stock-unit">{{item.unit}}</text>
         </view>
         <view class="inv-card-status">
-          <view wx:if="{{item.status==='out'}}" class="inv-status-tag inv-status-tag--out">缺货</view>
-          <view wx:elif="{{item.status==='low'}}" class="inv-status-tag inv-status-tag--low">低库存</view>
-          <view wx:else class="inv-status-tag inv-status-tag--normal">正常</view>
+          <view wx:if="{{item.stockStatus==='out'}}" class="inv-status-tag inv-status-tag--out">缺货</view>
+          <view wx:elif="{{item.stockStatus==='low'}}" class="inv-status-tag inv-status-tag--low">低库存</view>
+          <view wx:elif="{{item.stockStatus==='normal'}}" class="inv-status-tag inv-status-tag--normal">正常</view>
+          <view wx:else class="inv-status-tag inv-status-tag--unknown">状态未知</view>
         </view>
-        <view class="inv-card-more" catchtap="onCardMenu">
+        <view
+          class="inv-card-more"
+          data-warehouse-product-id="{{item.warehouseProductId}}"
+          catchtap="onCardMenu"
+        >
           <view class="inv-card-more-dot"></view>
           <view class="inv-card-more-dot"></view>
           <view class="inv-card-more-dot"></view>
         </view>
       </view>
     </view>
+
+    <view wx:if="{{loadingMore}}" class="inv-list-footer">正在加载更多…</view>
+    <view wx:elif="{{error}}" class="inv-list-footer inv-list-footer--error" catchtap="handleRetry">{{error}}，点击重试</view>
+    <view wx:elif="{{items.length && !hasMore}}" class="inv-list-footer">已加载当前条件下的全部产品</view>
   </view>
 
-  <!-- 悬浮新增按钮 -->
   <view wx:if="{{canCreateProduct}}" class="inv-fab" catchtap="onAddTap">
     <text class="inv-fab-icon">＋</text>
   </view>

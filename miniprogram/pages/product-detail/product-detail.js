@@ -1,122 +1,221 @@
-var mock = require('../inventory/mock-data');
+const ROUTES = require('../../constants/routes.js');
+const productService = require('../../services/product-service.js');
+const productView = require('../../utils/product-view.js');
 
 Page({
   data: {
+    loading: true,
+    error: '',
+    errorTitle: '产品加载失败',
+    canRetry: true,
+    loaded: false,
     product: null,
+    warehouseProduct: null,
+    permissions: { canEdit: false, canOperateStock: false, canRemove: false },
     descExpanded: false,
     descNeedsExpand: false,
-    loading: true,
     navStyle: '',
     navSideStyle: '',
-    showFullStock: false,
     stockLabel: '当前库存',
     stockSub: ''
   },
 
-  onLoad: function (query) {
+  onLoad(query) {
+    this.pageActive = true;
+    this.requestVersion = 0;
+    this.detailPromise = null;
+    this.navigatingToStartup = false;
     this.calcNavStyle();
-    var id = query && query.id;
-    if (id === undefined || id === null || id === '') {
-      this.setData({ loading: false });
+    this.warehouseProductId = productView.getWarehouseProductId(query);
+    if (!this.warehouseProductId) {
+      this.safeSetData({
+        loading: false,
+        loaded: true,
+        errorTitle: '无法打开产品',
+        error: '产品标识无效，请返回库存页重新选择',
+        canRetry: false
+      });
       return;
     }
-    var product = mock.getProductById(id);
-    if (product) {
-      var needsExpand = product.description && product.description.length > 80;
-      var stockMeta = computeStockMeta(product);
-      this.setData({
-        product: product,
-        descNeedsExpand: needsExpand,
-        descExpanded: false,
-        loading: false,
-        stockLabel: stockMeta.label,
-        stockSub: stockMeta.sub
-      });
-    } else {
-      this.setData({ loading: false });
-    }
+    this.loadDetail();
   },
 
-  calcNavStyle: function () {
-    var system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
-    var menu = wx.getMenuButtonBoundingClientRect ? wx.getMenuButtonBoundingClientRect() : null;
-    var statusBar = system.statusBarHeight || 20;
-    var hasMenuRect = menu && menu.width > 0 && menu.height > 0 && menu.left > 0;
-    var navHeight = hasMenuRect ? Math.max(44, (menu.top - statusBar) * 2 + menu.height) : 44;
-    var sideWidth = hasMenuRect ? Math.max(48, system.windowWidth - menu.left + 8) : 48;
-    this.setData({
+  onUnload() {
+    this.pageActive = false;
+    this.requestVersion += 1;
+  },
+
+  safeSetData(updates, callback) {
+    if (this.pageActive) this.setData(updates, callback);
+  },
+
+  loadDetail() {
+    if (!this.warehouseProductId || this.detailPromise) {
+      return this.detailPromise || Promise.resolve();
+    }
+    const version = this.requestVersion + 1;
+    this.requestVersion = version;
+    this.safeSetData({ loading: true, error: '', canRetry: true });
+    const currentPromise = productService.getProductDetail({
+      warehouseProductId: this.warehouseProductId
+    })
+      .then((response) => {
+        if (!this.pageActive || version !== this.requestVersion) return;
+        const detail = productView.mapProductDetail(response);
+        const stockMeta = computeStockMeta(detail.warehouseProduct, detail.product.unit);
+        this.safeSetData({
+          loading: false,
+          loaded: true,
+          error: '',
+          errorTitle: '产品加载失败',
+          canRetry: true,
+          product: detail.product,
+          warehouseProduct: detail.warehouseProduct,
+          permissions: detail.permissions,
+          descExpanded: false,
+          descNeedsExpand: detail.product.description.length > 80,
+          stockLabel: stockMeta.label,
+          stockSub: stockMeta.sub
+        });
+      })
+      .catch((error) => {
+        if (!this.pageActive || version !== this.requestVersion) return;
+        if (productView.isContextInvalid(error)) {
+          return this.recoverContext();
+        }
+        const missing = error && [
+          'PRODUCT_NOT_FOUND',
+          'PRODUCT_NOT_ACTIVE',
+          'PRODUCT_NOT_IN_WAREHOUSE'
+        ].includes(error.code);
+        this.safeSetData({
+          loading: false,
+          loaded: true,
+          product: null,
+          warehouseProduct: null,
+          permissions: { canEdit: false, canOperateStock: false, canRemove: false },
+          errorTitle: missing ? '产品不可用' : '产品加载失败',
+          error: productView.getLoadErrorMessage(error),
+          canRetry: !missing
+        });
+      })
+      .finally(() => {
+        if (this.detailPromise === currentPromise) {
+          this.detailPromise = null;
+        }
+      });
+    this.detailPromise = currentPromise;
+    return currentPromise;
+  },
+
+  handleRetry() {
+    return this.loadDetail();
+  },
+
+  calcNavStyle() {
+    const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    const menu = wx.getMenuButtonBoundingClientRect ? wx.getMenuButtonBoundingClientRect() : null;
+    const statusBar = system.statusBarHeight || 20;
+    const hasMenuRect = menu && menu.width > 0 && menu.height > 0 && menu.left > 0;
+    const navHeight = hasMenuRect ? Math.max(44, (menu.top - statusBar) * 2 + menu.height) : 44;
+    const sideWidth = hasMenuRect ? Math.max(48, system.windowWidth - menu.left + 8) : 48;
+    this.safeSetData({
       navStyle: 'padding-top:' + statusBar + 'px;height:' + navHeight + 'px',
       navSideStyle: 'width:' + sideWidth + 'px'
     });
   },
 
-  toggleDesc: function () {
-    this.setData({ descExpanded: !this.data.descExpanded });
+  toggleDesc() {
+    this.safeSetData({ descExpanded: !this.data.descExpanded });
   },
 
-  toggleStockDetail: function () {
-    this.setData({ showFullStock: !this.data.showFullStock });
+  onInbound() {
+    if (!this.data.permissions.canOperateStock) return;
+    wx.showToast({ title: '真实库存操作将在阶段2C4接入', icon: 'none', duration: 2200 });
   },
 
-  onInbound: function () {
-    var id = this.data.product && this.data.product.id;
-    if (!id) return;
-    wx.navigateTo({
-      url: '/pages/stock-operation/stock-operation?id=' + encodeURIComponent(String(id)) + '&mode=inbound'
-    });
+  onOutbound() {
+    if (!this.data.permissions.canOperateStock) return;
+    wx.showToast({ title: '真实库存操作将在阶段2C4接入', icon: 'none', duration: 2200 });
   },
 
-  onOutbound: function () {
-    var id = this.data.product && this.data.product.id;
-    if (!id) return;
-    wx.navigateTo({
-      url: '/pages/stock-operation/stock-operation?id=' + encodeURIComponent(String(id)) + '&mode=outbound'
-    });
-  },
-
-  onMore: function () {
-    var self = this;
-    var id = self.data.product && self.data.product.id;
+  onMore() {
+    const actions = [];
+    if (this.data.permissions.canEdit) actions.push({ label: '编辑产品', type: 'edit' });
+    if (this.data.permissions.canOperateStock) actions.push({ label: '调整库存', type: 'stock' });
+    if (this.data.permissions.canRemove) actions.push({ label: '移出当前仓库', type: 'remove' });
+    if (!actions.length) return;
     wx.showActionSheet({
-      itemList: ['编辑产品', '调整库存', '移入回收站'],
-      success: function (res) {
-        if (res.tapIndex === 0) {
-          wx.showToast({ title: '该功能将在后续阶段开放', icon: 'none', duration: 2000 });
-        } else if (res.tapIndex === 1) {
-          if (!id) return;
-          wx.navigateTo({
-            url: '/pages/stock-operation/stock-operation?id=' + encodeURIComponent(String(id)) + '&mode=adjustment'
-          });
-        } else if (res.tapIndex === 2) {
-          wx.showToast({ title: '该功能将在后续阶段开放', icon: 'none', duration: 2000 });
-        }
+      itemList: actions.map((item) => item.label),
+      success: (result) => {
+        const action = actions[result.tapIndex];
+        if (!action) return;
+        const title = action.type === 'edit'
+          ? '产品编辑将在阶段2C3A接入'
+          : (action.type === 'remove'
+            ? '仓库产品移除将在阶段2C3B接入'
+            : '真实库存操作将在阶段2C4接入');
+        wx.showToast({ title, icon: 'none', duration: 2200 });
       }
     });
   },
 
-  goToInventory: function () {
-    wx.switchTab({ url: '/pages/inventory/inventory' });
+  recoverContext() {
+    const app = getApp();
+    this.requestVersion += 1;
+    this.safeSetData({
+      loading: false,
+      loaded: false,
+      error: '',
+      product: null,
+      warehouseProduct: null,
+      permissions: { canEdit: false, canOperateStock: false, canRemove: false }
+    });
+    if (app.clearTeamContext) app.clearTeamContext();
+    const refresh = app.bootstrap ? app.bootstrap({ forceRefresh: true }) : Promise.resolve();
+    return refresh.catch(() => null).then(() => {
+      if (this.pageActive) this.openStartup();
+    });
   },
 
-  onBack: function () {
+  openStartup() {
+    if (this.navigatingToStartup) return;
+    this.navigatingToStartup = true;
+    wx.reLaunch({
+      url: ROUTES.STARTUP,
+      fail: () => {
+        this.navigatingToStartup = false;
+      }
+    });
+  },
+
+  goToInventory() {
+    wx.switchTab({ url: ROUTES.INVENTORY });
+  },
+
+  onBack() {
     wx.navigateBack({
       delta: 1,
-      fail: function () {
-        wx.switchTab({ url: '/pages/inventory/inventory' });
+      fail: () => {
+        wx.switchTab({ url: ROUTES.INVENTORY });
       }
     });
   }
 });
 
-function computeStockMeta(product) {
-  if (!product) return { label: '当前库存', sub: '' };
-  var status = product.status;
-  var minStock = product.minStock || 0;
+function computeStockMeta(warehouseProduct, unit) {
+  if (!warehouseProduct) return { label: '当前库存', sub: '' };
+  const status = warehouseProduct.stockStatus;
+  const stock = warehouseProduct.stock;
+  const minStock = warehouseProduct.minStock;
   if (status === 'out') return { label: '当前库存', sub: '无可用库存，需尽快补货' };
-  if (status === 'low') {
-    var gap = minStock - product.stock;
-    if (gap <= 0) return { label: '当前库存', sub: '已达到安全库存下限，建议补货' };
-    return { label: '当前库存', sub: '低于安全库存' + gap + (product.unit || '') + '，建议补货' };
+  if (status === 'low' && stock !== null && minStock !== null) {
+    const gap = Math.max(0, minStock - stock);
+    return {
+      label: '当前库存',
+      sub: gap > 0 ? '低于安全库存' + gap + (unit || '') + '，建议补货' : '已达到安全库存下限，建议补货'
+    };
   }
-  return { label: '当前库存', sub: '库存充足，无需补货' };
+  if (status === 'normal') return { label: '当前库存', sub: '库存充足，无需补货' };
+  return { label: '当前库存', sub: '库存状态暂不可用，请刷新确认' };
 }
