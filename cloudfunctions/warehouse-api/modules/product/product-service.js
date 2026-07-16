@@ -825,14 +825,7 @@ function assertStrictCount(value, code, message) {
   return value;
 }
 
-async function hasWarehouseProductMatch(source, where) {
-  const result = await source.collection(COLLECTIONS.WAREHOUSE_PRODUCTS)
-    .where(where)
-    .limit(1)
-    .field({ _id: true })
-    .get();
-  return Boolean(result.data && result.data.length);
-}
+const CATALOG_WAREHOUSE_CHECK_PAGE_SIZE = 100;
 
 function assertCatalogWarehouseCount(product) {
   const activeWarehouseCount = assertStrictCount(
@@ -850,18 +843,35 @@ function assertCatalogWarehouseCount(product) {
 }
 
 async function assertCatalogWarehouseInstances(source, command, teamId, productId) {
-  const scope = { teamId, productId };
-  const hasNonRemovedInstance = await hasWarehouseProductMatch(source, Object.assign({}, scope, {
-    status: command.neq('removed')
-  }));
-  const hasNonZeroStock = await hasWarehouseProductMatch(source, Object.assign({}, scope, {
-    stock: command.neq(0)
-  }));
-  if (hasNonRemovedInstance || hasNonZeroStock) {
-    throw new ApiError(
-      ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT,
-      '产品仓库状态异常，请刷新后重试。'
-    );
+  let cursorId = '';
+  while (true) {
+    const where = { teamId, productId };
+    if (cursorId) where._id = command.gt(cursorId);
+    const result = await source.collection(COLLECTIONS.WAREHOUSE_PRODUCTS)
+      .where(where)
+      .orderBy('_id', 'asc')
+      .limit(CATALOG_WAREHOUSE_CHECK_PAGE_SIZE)
+      .field({ _id: true, status: true, stock: true })
+      .get();
+    const instances = result.data || [];
+    const hasInvalidInstance = instances.some((item) => (
+      item.status !== 'removed' || item.stock !== 0
+    ));
+    if (hasInvalidInstance) {
+      throw new ApiError(
+        ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT,
+        '产品仓库状态异常，请刷新后重试。'
+      );
+    }
+    if (instances.length < CATALOG_WAREHOUSE_CHECK_PAGE_SIZE) return;
+    const nextCursorId = instances[instances.length - 1]._id;
+    if (!nextCursorId || nextCursorId === cursorId) {
+      throw new ApiError(
+        ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT,
+        '产品仓库状态异常，请刷新后重试。'
+      );
+    }
+    cursorId = nextCursorId;
   }
 }
 

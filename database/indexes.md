@@ -80,14 +80,13 @@ products没有仓库和库存字段。名称使用前缀范围查询；任意包
 
 ## warehouse_products（2C3B部署前新增）
 
-共享目录全局删除必须按可信teamId和productId确认所有仓库实例都已removed且stock为0。以下两个索引是定向存在性查询所需，不与按单仓列表查询的既有索引重复：
+共享目录全局删除必须按可信teamId和productId确认所有仓库实例都已removed且stock为0。以下单一索引支持按产品范围的游标分页，每页同时检查status和stock，不与按单仓列表查询的既有索引重复：
 
 | 索引名 | 字段 | 唯一 | 用途 | 2C3B部署前必须 |
 | --- | --- | --- | --- | --- |
-| `idx_wh_products_team_product_status` | `teamId`升序、`productId`升序、`status`升序 | 否 | 检查是否仍有非removed仓库实例 | 是 |
-| `idx_wh_products_team_product_stock` | `teamId`升序、`productId`升序、`stock`升序 | 否 | 检查是否仍有非零库存仓库实例 | 是 |
+| `idx_wh_products_team_product` | `teamId`升序、`productId`升序、`_id`升序 | 否 | 分页检查该产品的全部仓库实例状态与库存 | 是 |
 
-两个索引均关闭唯一开关。`uidx_wh_products_relation`包含warehouseId，不能高效覆盖“跨当前团队全部仓库、按productId检查”的查询形状，因此不能替代上述索引。
+该索引关闭唯一开关。`uidx_wh_products_relation`包含warehouseId，不能高效覆盖“跨当前团队全部仓库、按productId检查”的查询形状，因此不能替代上述索引。
 
 阶段2C3B的deleted products列表继续按 `updatedAt desc, _id desc`，复用既有 `idx_products_team_status_updated`、`idx_products_team_category_status` 以及名称、编号、关键词索引；不新增deletedAt排序索引。
 

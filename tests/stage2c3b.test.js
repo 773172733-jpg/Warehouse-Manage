@@ -41,6 +41,7 @@ function compare(left, right) {
 
 function matchesOperation(value, operation) {
   if (operation.__operation === 'lt') return compare(value, operation.value) < 0;
+  if (operation.__operation === 'gt') return compare(value, operation.value) > 0;
   if (operation.__operation === 'gte') return compare(value, operation.value) >= 0;
   if (operation.__operation === 'eq') return compare(value, operation.value) === 0;
   if (operation.__operation === 'neq') return compare(value, operation.value) !== 0;
@@ -157,6 +158,7 @@ function createFixture(role = 'owner') {
 
   const command = {
     lt: (value) => operation('lt', value),
+    gt: (value) => operation('gt', value),
     gte: (value) => operation('gte', value),
     eq: (value) => operation('eq', value),
     neq: (value) => operation('neq', value),
@@ -338,6 +340,29 @@ async function testPermissionsVersionsAndWarehouseGuards() {
   const stockFixture = createFixture();
   stockFixture.documents.warehouse_products.get(WAREHOUSE_PRODUCT_ID).stock = 1;
   await expectAsyncCode(() => deleteCatalogProduct(stockFixture.db, stockFixture.user, deleteInput()),
+    ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT);
+
+  const pagedFixture = createFixture();
+  for (let index = 0; index < 100; index += 1) {
+    const id = `a_warehouse_product_${String(index).padStart(3, '0')}`;
+    pagedFixture.documents.warehouse_products.set(id, {
+      _id: id,
+      teamId: TEAM_ID,
+      warehouseId: `warehouse_${index}`,
+      productId: PRODUCT_ID,
+      status: 'removed',
+      stock: 0
+    });
+  }
+  pagedFixture.documents.warehouse_products.set('zz_invalid_warehouse_product', {
+    _id: 'zz_invalid_warehouse_product',
+    teamId: TEAM_ID,
+    warehouseId: 'warehouse_invalid',
+    productId: PRODUCT_ID,
+    status: 'removed',
+    stock: 1
+  });
+  await expectAsyncCode(() => deleteCatalogProduct(pagedFixture.db, pagedFixture.user, deleteInput()),
     ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT);
 
   const versionFixture = createFixture();
