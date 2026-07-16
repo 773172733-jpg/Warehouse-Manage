@@ -22,6 +22,8 @@ const productRestoreToWarehouse = require('./modules/product/restore-to-warehous
 const productCatalogDelete = require('./modules/product/catalog-delete.js');
 const productCatalogDeletedList = require('./modules/product/catalog-deleted-list.js');
 const productCatalogRestore = require('./modules/product/catalog-restore.js');
+const productImageStagePrepare = require('./modules/product/image-stage-prepare.js');
+const productImageStageConfirm = require('./modules/product/image-stage-confirm.js');
 const { ok, fail } = require('./common/response.js');
 const { ApiError, ERROR_CODES, isApiError } = require('./common/errors.js');
 const { buildContext } = require('./common/context.js');
@@ -49,7 +51,9 @@ const ACTION_HANDLERS = {
   'product.restoreToWarehouse': productRestoreToWarehouse,
   'product.catalog.delete': productCatalogDelete,
   'product.catalog.deleted.list': productCatalogDeletedList,
-  'product.catalog.restore': productCatalogRestore
+  'product.catalog.restore': productCatalogRestore,
+  'product.image.stage.prepare': productImageStagePrepare,
+  'product.image.stage.confirm': productImageStageConfirm
 };
 
 function createRequestId(candidate) {

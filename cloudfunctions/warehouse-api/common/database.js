@@ -7,6 +7,7 @@ const COLLECTIONS = {
   WAREHOUSES: 'warehouses',
   INVITES: 'invites',
   PRODUCTS: 'products',
+  PRODUCT_IMAGE_ASSETS: 'product_image_assets',
   WAREHOUSE_PRODUCTS: 'warehouse_products',
   STOCK_RECORDS: 'stock_records'
 };

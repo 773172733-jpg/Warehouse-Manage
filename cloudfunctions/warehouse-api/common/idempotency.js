@@ -24,6 +24,10 @@ function createProductId(teamId, requestKey) {
   return createDocumentId('product', [teamId, 'product.create', requestKey]);
 }
 
+function createProductImageAssetId(teamId, requestKey) {
+  return createDocumentId('product_image', [teamId, 'product.image.stage.prepare', requestKey]);
+}
+
 function createWarehouseProductId(teamId, warehouseId, productId) {
   return createDocumentId('warehouse_product', [teamId, warehouseId, productId]);
 }
@@ -39,6 +43,7 @@ module.exports = {
   createMembershipId,
   createInviteId,
   createProductId,
+  createProductImageAssetId,
   createWarehouseProductId,
   createStockRecordId
 };
