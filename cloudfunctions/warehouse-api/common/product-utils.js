@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { ApiError, ERROR_CODES } = require('./errors.js');
 const { validateRequestKey } = require('./validators.js');
+const { COVER_EMOJIS } = require('./product-cover-constants.js');
 
 const PRODUCT_LIMIT = 99999;
 const STOCK_MAX = 999999999;
@@ -19,7 +20,6 @@ const COVER_BACKGROUNDS = [
   '#E6F0ED',
   '#F3EFE6'
 ];
-const COVER_EMOJIS = ['📦', '🔧', '🧱', '🔩', '🪣', '📎'];
 const SERVER_GENERATED_FIELDS = ['normalizedName', 'normalizedCode', 'searchKeywords'];
 const FORBIDDEN_PRODUCT_FIELDS = [
   'teamId',

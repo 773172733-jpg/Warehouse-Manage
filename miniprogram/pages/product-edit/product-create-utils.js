@@ -1,8 +1,11 @@
 const { createRequestKey } = require('../../utils/request-key.js');
+const { SYSTEM_ASSETS } = require('../../constants/product-cover-assets.js');
 
 const STOCK_MAX = 999999999;
 const ALLOWED_ROLES = ['owner', 'admin'];
 const CUSTOM_IMAGE_MESSAGE = '自定义图片上传将在后续阶段开放，请先使用文字或表情封面。';
+const DEFAULT_COVER_BACKGROUND = '#EAF6EF';
+const SYSTEM_ASSET_EMOJIS = SYSTEM_ASSETS.map((item) => item.emoji);
 
 const ERROR_MESSAGES = {
   FORBIDDEN: '你没有创建产品的权限',
@@ -70,6 +73,9 @@ function buildCoverPayload(form) {
     if (!emoji) {
       throw createLocalError('INVALID_COVER', ERROR_MESSAGES.INVALID_COVER);
     }
+    if (SYSTEM_ASSET_EMOJIS.indexOf(emoji) === -1) {
+      throw createLocalError('INVALID_COVER', ERROR_MESSAGES.INVALID_COVER);
+    }
     return {
       coverType: 'emoji',
       coverText: '',
@@ -95,6 +101,57 @@ function buildCoverPayload(form) {
     coverEmoji: '',
     coverBackground: normalizeText(form.coverColor)
   };
+}
+
+function normalizeOriginalCover(cover) {
+  const source = cover && typeof cover === 'object' ? cover : {};
+  const type = normalizeText(source.type || source.coverType || 'none').toLowerCase();
+  const hasBackground = type === 'text' || type === 'emoji';
+  return {
+    type,
+    text: type === 'text' ? normalizeText(source.text || source.coverText) : '',
+    emoji: type === 'emoji' ? normalizeText(source.emoji || source.coverEmoji) : '',
+    background: hasBackground
+      ? (normalizeText(source.background || source.coverBackground).toUpperCase() || DEFAULT_COVER_BACKGROUND)
+      : ''
+  };
+}
+
+function getFormCoverSnapshot(form) {
+  const source = form && typeof form === 'object' ? form : {};
+  if (source.coverMode === 'existing-image' || source.coverMode === 'custom') {
+    return { type: 'image', text: '', emoji: '', background: '' };
+  }
+  if (source.coverMode === 'system') {
+    return {
+      type: 'emoji',
+      text: '',
+      emoji: normalizeText(source.systemAssetEmoji),
+      background: normalizeText(source.coverColor).toUpperCase() || DEFAULT_COVER_BACKGROUND
+    };
+  }
+  if (source.coverMode === 'none') {
+    return { type: 'none', text: '', emoji: '', background: '' };
+  }
+  return {
+    type: 'text',
+    text: normalizeText(source.displayText),
+    emoji: '',
+    background: normalizeText(source.coverColor).toUpperCase() || DEFAULT_COVER_BACKGROUND
+  };
+}
+
+function isCoverUnchanged(form, originalCover) {
+  if (!originalCover || typeof originalCover !== 'object') return false;
+  const current = getFormCoverSnapshot(form);
+  const original = normalizeOriginalCover(originalCover);
+  if (current.type === 'image' || original.type === 'image') {
+    return current.type === original.type;
+  }
+  return current.type === original.type &&
+    current.text === original.text &&
+    current.emoji === original.emoji &&
+    current.background === original.background;
 }
 
 function buildCreateProductPayload(form) {
@@ -138,8 +195,9 @@ function buildCreateProductPayload(form) {
   }, buildCoverPayload(source));
 }
 
-function buildProductMainPayload(form) {
+function buildProductMainPayload(form, options) {
   const source = form && typeof form === 'object' ? form : {};
+  const settings = options && typeof options === 'object' ? options : {};
   const name = normalizeText(source.name);
   if (!name) throw createLocalError('INVALID_PRODUCT_NAME', ERROR_MESSAGES.INVALID_PRODUCT_NAME);
   const category = normalizeText(source.category);
@@ -155,7 +213,7 @@ function buildProductMainPayload(form) {
     specification: normalizeText(source.specification),
     description: normalizeText(source.description)
   };
-  if (source.coverMode !== 'existing-image') {
+  if (source.coverMode !== 'existing-image' && !isCoverUnchanged(source, settings.originalCover)) {
     Object.assign(payload, buildCoverPayload(source));
   }
   return payload;
@@ -169,7 +227,9 @@ function buildUpdateProductPayload(form, context) {
   if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) {
     throw createLocalError('INVALID_PRODUCT_VERSION', UPDATE_ERROR_MESSAGES.INVALID_PRODUCT_VERSION);
   }
-  return Object.assign({ productId, expectedVersion }, buildProductMainPayload(form));
+  return Object.assign({ productId, expectedVersion }, buildProductMainPayload(form, {
+    originalCover: state.originalCover
+  }));
 }
 
 function createPayloadSignature(payload) {
@@ -249,6 +309,7 @@ module.exports = {
   buildCreateProductPayload,
   buildProductMainPayload,
   buildUpdateProductPayload,
+  isCoverUnchanged,
   createPayloadSignature,
   resolveCreateIntent,
   resolveUpdateIntent,
