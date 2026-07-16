@@ -4,7 +4,7 @@
 
 1. 前端隐藏按钮不是权限控制。
 2. 前端传入的 `role`、`teamId`、`warehouseId`、`openId`、`userId` 均不可信。
-3. `users`、`teams`、`team_members`、`warehouses`、`invites` 以及后续 `products`、`stock_records` 的客户端读取和写入全部关闭。
+3. `users`、`teams`、`team_members`、`warehouses`、`invites` 以及后续 `products`、`warehouse_products`、`stock_records` 的客户端读取和写入全部关闭。
 4. 云函数使用 `cloud.getWXContext()` 获取可信身份，并由服务端 SDK 访问数据库。
 5. 页面不得调用 `wx.cloud.database()` 直接访问核心集合。
 
@@ -34,21 +34,24 @@
 
 | 能力 | owner | admin | viewer | pending/removed |
 | --- | --- | --- | --- | --- |
-| active产品列表与详情 | 允许 | 允许 | 允许 | 拒绝 |
-| 新增、编辑、软删除产品 | 允许 | 允许 | 拒绝 | 拒绝 |
+| 共享产品及当前仓库实例读取 | 允许 | 允许 | 允许 | 拒绝 |
+| 新增、编辑共享产品 | 允许 | 允许 | 拒绝 | 拒绝 |
+| 当前仓库移除与恢复 | 允许 | 允许 | 拒绝 | 拒绝 |
 | 入库、出库、库存调整 | 允许 | 允许 | 拒绝 | 拒绝 |
 | 库存流水列表与详情 | 允许 | 允许 | 允许 | 拒绝 |
 | 自定义封面上传或替换 | 允许 | 允许 | 拒绝 | 拒绝 |
+| 全局目录删除与恢复 | 允许 | 拒绝 | 拒绝 | 拒绝 |
 
 同时满足以下条件才允许访问：用户为active、成员关系为active、团队为active、仓库为active。disabled/deleted团队、disabled/deleted仓库和pending/removed成员不能继续读取业务数据。
 
-deleted产品默认不返回详情，也不能执行库存操作；历史流水继续通过产品和操作人快照读取。产品有库存时禁止软删除。
+当前仓库移除操作只修改 `warehouse_products`，要求stock为0，并必须支持回收站恢复。全局目录删除只修改 `products`，要求所有仓库实例已移除；V1可以不提供该UI。两种删除都不影响永久流水。
 
-库存变更必须在云函数事务中同时更新 `products.stock`、重算 `stockStatus`并写入 `stock_records`。出库不得产生负库存，写操作使用 `requestKey`防重复提交。
+库存变更必须在云函数事务中同时更新 `warehouse_products.stock`、重算 `stockStatus`并写入 `stock_records`。出库不得产生负库存，写操作使用 `requestKey`防重复提交。products不得保存库存字段。
 
 ## 响应白名单
 
-- 产品可返回展示字段、库存、最低库存、库存状态、封面临时URL和时间。
+- 产品响应由warehouse-api组合products权威主资料与当前warehouse_products库存，不允许前端自行拼接集合。
 - 流水可返回产品/单位/操作人快照、变动数量、前后库存、原因、来源去向、备注和时间。
 - 不返回 `openId`、内部 `userId`、`teamId`、`warehouseId`、`operatorId`、`createdBy`、`updatedBy`、requestKey、输入哈希或完整数据库文档。
 - viewer可通过产品读接口获得active产品封面的临时URL，但无存储写权限。
+- 流水永久保留，普通业务接口不提供修改和删除能力；未来只能做保持审计可查的冷归档。
