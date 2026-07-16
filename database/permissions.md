@@ -44,7 +44,7 @@
 
 同时满足以下条件才允许访问：用户为active、成员关系为active、团队为active、仓库为active。disabled/deleted团队、disabled/deleted仓库和pending/removed成员不能继续读取业务数据。
 
-当前仓库移除操作只修改 `warehouse_products`，要求stock为0，并必须支持回收站恢复。全局目录删除只修改 `products`，要求所有仓库实例已移除；V1可以不提供该UI。两种删除都不影响永久流水。
+当前仓库移除操作只修改 `warehouse_products`，要求stock为0，并必须支持回收站恢复。全局目录删除只修改 `products`，要求所有仓库实例已移除；定于2C3B实现对应UI，仅owner可操作，不阻塞2C2。两种删除都不影响永久流水。
 
 库存变更必须在云函数事务中同时更新 `warehouse_products.stock`、重算 `stockStatus`并写入 `stock_records`。出库不得产生负库存，写操作使用 `requestKey`防重复提交。products不得保存库存字段。
 
