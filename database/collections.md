@@ -74,6 +74,8 @@
 
 products不得保存 `warehouseId`、`stock`、`minStock`、`stockStatus`或 `stockVersion`。名称和编号允许重复，`_id`是唯一身份。每团队最多99,999个active产品。
 
+阶段2C3A按需自然写入 `lastUpdateRequestKey`、`lastUpdateRequestHash`、`lastUpdateResultVersion`、`lastUpdateAt`，用于产品更新幂等；这些内部字段不返回客户端。`activeWarehouseCount` 缺失时，移除按当前active关系兼容为1，恢复按当前removed关系兼容为0，无需批量迁移。
+
 ## warehouse_products（2C2A部署时人工创建）
 
 共享产品在具体仓库的实例、库存余额和最低库存阈值。
@@ -85,6 +87,8 @@ products不得保存 `warehouseId`、`stock`、`minStock`、`stockStatus`或 `st
 - 审计：创建、更新、移除、恢复的操作者和时间
 
 `teamId + warehouseId + productId`必须唯一。stockStatus由云端计算并持久化；products始终是主资料权威。仓库移除要求stock为0，恢复复用原文档且stock保持0。
+
+阶段2C3A按需写入 `removalReason`、`removeRequestKey`、`removeRequestHash`、`removedBy`、`removedAt`、`restoreRequestKey`、`restoreRequestHash`、`restoredBy`、`restoredAt`。恢复时清空当前移除展示字段，并从products刷新全部快照；内部身份和幂等字段不返回客户端。
 
 ## stock_records（2C2A部署时人工创建，2C4启用完整库存写入）
 

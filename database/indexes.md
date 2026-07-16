@@ -53,6 +53,8 @@ products没有仓库和库存字段。名称使用前缀范围查询；任意包
 
 ## warehouse_products（2C2A部署前）
 
+阶段2C3A回收站继续按 `status=removed` 与 `updatedAt` 倒序分页，复用下表已有的状态、分类、名称、编号和关键词组合索引，不新增 `removedAt` 索引。移除操作会同步更新 `updatedAt`，因此游标排序稳定且无需重复索引。
+
 | 索引名 | 字段 | 唯一 | 用途 | 2C2A部署前必须 |
 | --- | --- | --- | --- | --- |
 | `uidx_wh_products_relation` | `teamId`升序、`warehouseId`升序、`productId`升序 | 是 | 一仓一产品实例 | 是 |
