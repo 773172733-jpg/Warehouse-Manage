@@ -12,6 +12,9 @@ const teamMemberReview = require('./modules/team/member-review.js');
 const teamMemberRoleUpdate = require('./modules/team/member-role-update.js');
 const teamMemberRemove = require('./modules/team/member-remove.js');
 const teamLeave = require('./modules/team/leave.js');
+const productCreate = require('./modules/product/create.js');
+const productList = require('./modules/product/list.js');
+const productDetail = require('./modules/product/detail.js');
 const { ok, fail } = require('./common/response.js');
 const { ApiError, ERROR_CODES, isApiError } = require('./common/errors.js');
 const { buildContext } = require('./common/context.js');
@@ -29,7 +32,10 @@ const ACTION_HANDLERS = {
   'team.member.review': teamMemberReview,
   'team.member.role.update': teamMemberRoleUpdate,
   'team.member.remove': teamMemberRemove,
-  'team.leave': teamLeave
+  'team.leave': teamLeave,
+  'product.create': productCreate,
+  'product.list': productList,
+  'product.detail': productDetail
 };
 
 function createRequestId(candidate) {

@@ -78,6 +78,7 @@ async function createTeam(db, user, rawInput) {
           name: input.name,
           ownerId: lockedUser._id,
           defaultWarehouseId: '',
+          activeProductCount: 0,
           status: 'active',
           createRequestKey: input.requestKey,
           createdAt: now,

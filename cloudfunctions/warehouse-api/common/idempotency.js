@@ -20,10 +20,25 @@ function createInviteId(teamId, userId, requestKey) {
   return createDocumentId('invite', [teamId, userId, requestKey]);
 }
 
+function createProductId(teamId, requestKey) {
+  return createDocumentId('product', [teamId, 'product.create', requestKey]);
+}
+
+function createWarehouseProductId(teamId, warehouseId, productId) {
+  return createDocumentId('warehouse_product', [teamId, warehouseId, productId]);
+}
+
+function createStockRecordId(teamId, warehouseId, action, requestKey) {
+  return createDocumentId('stock_record', [teamId, warehouseId, action, requestKey]);
+}
+
 module.exports = {
   createUserId,
   createTeamId,
   createWarehouseId,
   createMembershipId,
-  createInviteId
+  createInviteId,
+  createProductId,
+  createWarehouseProductId,
+  createStockRecordId
 };

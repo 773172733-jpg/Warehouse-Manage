@@ -5,7 +5,10 @@ const COLLECTIONS = {
   TEAMS: 'teams',
   TEAM_MEMBERS: 'team_members',
   WAREHOUSES: 'warehouses',
-  INVITES: 'invites'
+  INVITES: 'invites',
+  PRODUCTS: 'products',
+  WAREHOUSE_PRODUCTS: 'warehouse_products',
+  STOCK_RECORDS: 'stock_records'
 };
 
 function getDatabase(cloud) {
