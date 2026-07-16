@@ -214,7 +214,12 @@ function mapRemovedProduct(item) {
     removedAtText: formatDateTime(item.removedAt),
     removalReason: safeText(item.removalReason, '未填写原因'),
     canRestore: Boolean(item.canRestore),
-    catalogStatus: safeText(item.catalogStatus, 'missing')
+    catalogStatus: safeText(item.catalogStatus, 'missing'),
+    productVersion: Number.isSafeInteger(item.productVersion) && item.productVersion > 0
+      ? item.productVersion
+      : null,
+    activeWarehouseCount: safeQuantity(item.activeWarehouseCount),
+    canDeleteCatalog: Boolean(item.canDeleteCatalog)
   };
 }
 
@@ -232,6 +237,51 @@ function normalizeRemovedListResponse(response) {
 function buildRemovedListParams(state, cursor) {
   const source = state && typeof state === 'object' ? state : {};
   const params = { pageSize: PAGE_SIZE, sort: 'updated_desc' };
+  const keyword = safeText(source.keyword);
+  const category = safeText(source.selectedCategory);
+  if (keyword) params.keyword = keyword;
+  if (category && category !== '全部') params.category = category;
+  if (typeof cursor === 'string' && cursor) params.cursor = cursor;
+  return params;
+}
+
+function mapDeletedCatalogProduct(item) {
+  if (!item || !PRODUCT_ID_PATTERN.test(safeText(item.productId))) return null;
+  const name = safeText(item.name, '未命名产品');
+  return {
+    productId: safeText(item.productId),
+    name,
+    productCode: safeText(item.productCode),
+    category: safeText(item.category, '其他'),
+    unit: safeText(item.unit),
+    brand: safeText(item.brand),
+    specification: safeText(item.specification),
+    cover: getCoverView(item.cover, name),
+    deletedAt: item.deletedAt || null,
+    deletedAtText: formatDateTime(item.deletedAt),
+    deletionReason: safeText(item.deletionReason, '未填写原因'),
+    version: Number.isSafeInteger(item.version) && item.version > 0 ? item.version : null,
+    activeWarehouseCount: safeQuantity(item.activeWarehouseCount),
+    canRestore: Boolean(item.canRestore)
+  };
+}
+
+function normalizeDeletedCatalogListResponse(response) {
+  const source = response && typeof response === 'object' ? response : {};
+  const items = Array.isArray(source.items)
+    ? source.items.map(mapDeletedCatalogProduct).filter(Boolean)
+    : [];
+  const hasMore = Boolean(source.hasMore);
+  return {
+    items,
+    hasMore,
+    nextCursor: hasMore && typeof source.nextCursor === 'string' ? source.nextCursor : null
+  };
+}
+
+function buildDeletedCatalogListParams(state, cursor) {
+  const source = state && typeof state === 'object' ? state : {};
+  const params = { pageSize: PAGE_SIZE };
   const keyword = safeText(source.keyword);
   const category = safeText(source.selectedCategory);
   if (keyword) params.keyword = keyword;
@@ -280,6 +330,9 @@ module.exports = {
   mapRemovedProduct,
   normalizeRemovedListResponse,
   buildRemovedListParams,
+  mapDeletedCatalogProduct,
+  normalizeDeletedCatalogListResponse,
+  buildDeletedCatalogListParams,
   getWarehouseProductId,
   getLoadErrorMessage,
   isContextInvalid

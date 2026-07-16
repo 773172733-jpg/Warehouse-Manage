@@ -29,6 +29,7 @@ function getPermissionFlags(role, hasTeam) {
     canManageCategories: inTeam && (normalizedRole === 'owner' || normalizedRole === 'admin'),
     canManageUnits: inTeam && (normalizedRole === 'owner' || normalizedRole === 'admin'),
     canViewRecycleBin: inTeam && (normalizedRole === 'owner' || normalizedRole === 'admin'),
+    canViewCatalogRecycleBin: inTeam && normalizedRole === 'owner',
     canLeaveTeam: inTeam && (normalizedRole === 'admin' || normalizedRole === 'viewer'),
     canDissolveTeam: inTeam && normalizedRole === 'owner',
     canOpenTeam: inTeam,
@@ -117,7 +118,10 @@ function buildQuickEntries(permission, hasTeam) {
   ];
 
   if (permission.canViewRecycleBin) {
-    entries.push({ key: 'recycle', title: '回收站', desc: '查看和恢复已移除产品', action: 'recycle', disabled: false });
+    entries.push({ key: 'recycle', title: '产品回收站', desc: '查看当前仓库已移除产品', action: 'recycle', disabled: false });
+  }
+  if (permission.canViewCatalogRecycleBin) {
+    entries.push({ key: 'catalogRecycle', title: '共享目录回收站', desc: '恢复团队已删除产品目录', action: 'catalogRecycle', disabled: false });
   }
   if (permission.canManageCategories) {
     entries.push({ key: 'categories', title: '分类管理', desc: '后续阶段开放', action: 'todo', disabled: false });

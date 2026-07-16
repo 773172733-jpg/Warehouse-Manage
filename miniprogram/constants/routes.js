@@ -4,6 +4,7 @@ const ROUTES = {
   TEAM_JOIN: '/pages/team-join/team-join',
   INVENTORY: '/pages/inventory/inventory',
   PRODUCT_RECYCLE_BIN: '/pages/product-recycle-bin/product-recycle-bin',
+  CATALOG_RECYCLE_BIN: '/pages/catalog-recycle-bin/catalog-recycle-bin',
   RECORDS: '/pages/records/records',
   TEAM: '/pages/team/team',
   PROFILE: '/pages/profile/profile'

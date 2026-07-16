@@ -11,6 +11,8 @@ const {
   sanitizeProductInput,
   sanitizeProductUpdateInput,
   sanitizeWarehouseMutationInput,
+  sanitizeCatalogDeleteInput,
+  sanitizeCatalogRestoreInput,
   createProductRequestHash,
   createMutationRequestHash,
   computeStockStatus,
@@ -19,11 +21,13 @@ const {
   encodeProductCursor,
   validateProductListInput,
   validateRemovedProductListInput,
+  validateDeletedCatalogListInput,
   validateProductDetailInput,
   getProductPermissionFlags,
   presentProduct,
   presentWarehouseProduct,
   presentRemovedProduct,
+  presentDeletedCatalogProduct,
   presentStockRecord
 } = require('../../common/product-utils.js');
 
@@ -31,6 +35,8 @@ const PRODUCT_CREATE_ACTION = 'product.create';
 const PRODUCT_UPDATE_ACTION = 'product.update';
 const PRODUCT_REMOVE_ACTION = 'product.removeFromWarehouse';
 const PRODUCT_RESTORE_ACTION = 'product.restoreToWarehouse';
+const PRODUCT_CATALOG_DELETE_ACTION = 'product.catalog.delete';
+const PRODUCT_CATALOG_RESTORE_ACTION = 'product.catalog.restore';
 
 async function requireProductAccess(db, user, requiredRole) {
   const access = await requireCurrentTeamAccess(db, user);
@@ -84,6 +90,33 @@ async function requireProductAccessInTransaction(transaction, user, access, requ
     throw new ApiError(ERROR_CODES.WAREHOUSE_NOT_FOUND, '当前仓库上下文已经变化，请刷新后重试。');
   }
   return { user: lockedUser, team, membership, warehouse };
+}
+
+async function requireCatalogAccess(db, user) {
+  const access = await requireCurrentTeamAccess(db, user);
+  requireRole(access.membership, 'owner');
+  return access;
+}
+
+async function requireCatalogAccessInTransaction(transaction, user, access) {
+  const lockedUser = await getDocument(transaction, COLLECTIONS.USERS, user._id);
+  const team = await getDocument(transaction, COLLECTIONS.TEAMS, access.team._id);
+  const membership = await getDocument(
+    transaction,
+    COLLECTIONS.TEAM_MEMBERS,
+    createMembershipId(access.team._id, user._id)
+  );
+  if (!lockedUser || lockedUser.status !== 'active') {
+    throw new ApiError(ERROR_CODES.USER_DISABLED, '当前用户不可用。');
+  }
+  if (!team || team.status !== 'active') {
+    throw new ApiError(ERROR_CODES.TEAM_NOT_ACTIVE, '当前团队不可用。');
+  }
+  if (lockedUser.currentTeamId !== team._id) {
+    throw new ApiError(ERROR_CODES.NO_ACTIVE_TEAM, '当前团队上下文已经变化，请刷新后重试。');
+  }
+  requireRole(membership, 'owner');
+  return { user: lockedUser, team, membership };
 }
 
 function buildProductDocument(input, context) {
@@ -390,6 +423,28 @@ function buildProductListWhere(command, input, access, status) {
   return branches.length === 1 ? branches[0] : command.or(branches);
 }
 
+function buildDeletedCatalogListWhere(command, input, teamId) {
+  const base = { teamId, status: 'deleted' };
+  if (input.category) base.category = input.category;
+  let branches = input.keyword ? [
+    Object.assign({}, base, { normalizedCode: input.keyword }),
+    Object.assign({}, base, { normalizedName: createNamePrefixCommand(command, input.keyword) }),
+    Object.assign({}, base, { searchKeywords: input.keyword })
+  ] : [base];
+
+  if (input.cursor) {
+    branches = branches.reduce((result, branch) => {
+      result.push(Object.assign({}, branch, { updatedAt: command.lt(input.cursor.updatedAt) }));
+      result.push(Object.assign({}, branch, {
+        updatedAt: command.eq(input.cursor.updatedAt),
+        _id: command.lt(input.cursor.id)
+      }));
+      return result;
+    }, []);
+  }
+  return branches.length === 1 ? branches[0] : command.or(branches);
+}
+
 function buildProductMainUpdate(input, currentProduct) {
   const update = {
     name: input.name,
@@ -612,7 +667,10 @@ async function removeProductFromWarehouse(db, user, rawInput) {
     if (!warehouseProduct) {
       throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品移除结果读取失败，请稍后重试。');
     }
-    return { item: presentRemovedProduct(product, warehouseProduct), idempotent };
+    return {
+      item: presentRemovedProduct(product, warehouseProduct, access.membership.role),
+      idempotent
+    };
   } catch (error) {
     if (isApiError(error)) throw error;
     throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品移除失败，请稍后使用原请求标识重试。');
@@ -653,7 +711,9 @@ async function listRemovedProducts(db, user, rawInput) {
       return getDocument(db, COLLECTIONS.PRODUCTS, item.productId);
     }));
     return {
-      items: page.map((item, index) => presentRemovedProduct(products[index], item)),
+      items: page.map((item, index) => {
+        return presentRemovedProduct(products[index], item, access.membership.role);
+      }),
       nextCursor: hasMore && page.length ? encodeProductCursor(page[page.length - 1]) : null,
       hasMore,
       pageSize: input.pageSize
@@ -755,6 +815,292 @@ async function restoreProductToWarehouse(db, user, rawInput) {
   } catch (error) {
     if (isApiError(error)) throw error;
     throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品恢复失败，请稍后使用原请求标识重试。');
+  }
+}
+
+function assertStrictCount(value, code, message) {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new ApiError(code, message);
+  }
+  return value;
+}
+
+async function hasWarehouseProductMatch(source, where) {
+  const result = await source.collection(COLLECTIONS.WAREHOUSE_PRODUCTS)
+    .where(where)
+    .limit(1)
+    .field({ _id: true })
+    .get();
+  return Boolean(result.data && result.data.length);
+}
+
+function assertCatalogWarehouseCount(product) {
+  const activeWarehouseCount = assertStrictCount(
+    product.activeWarehouseCount,
+    ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT,
+    '产品仓库状态异常，请刷新后重试。'
+  );
+  if (activeWarehouseCount > 0) {
+    throw new ApiError(
+      ERROR_CODES.PRODUCT_STILL_IN_WAREHOUSE,
+      '该产品仍存在于仓库中，请先从所有仓库移除。'
+    );
+  }
+  return activeWarehouseCount;
+}
+
+async function assertCatalogWarehouseInstances(source, command, teamId, productId) {
+  const scope = { teamId, productId };
+  const hasNonRemovedInstance = await hasWarehouseProductMatch(source, Object.assign({}, scope, {
+    status: command.neq('removed')
+  }));
+  const hasNonZeroStock = await hasWarehouseProductMatch(source, Object.assign({}, scope, {
+    stock: command.neq(0)
+  }));
+  if (hasNonRemovedInstance || hasNonZeroStock) {
+    throw new ApiError(
+      ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT,
+      '产品仓库状态异常，请刷新后重试。'
+    );
+  }
+}
+
+function assertCatalogProductScope(product, teamId) {
+  if (!product || product.teamId !== teamId) {
+    throw new ApiError(ERROR_CODES.PRODUCT_NOT_FOUND, '产品不存在。');
+  }
+  return product;
+}
+
+async function deleteCatalogProduct(db, user, rawInput) {
+  const input = sanitizeCatalogDeleteInput(rawInput);
+  const access = await requireCatalogAccess(db, user);
+  const requestHash = createMutationRequestHash(PRODUCT_CATALOG_DELETE_ACTION, {
+    teamId: access.team._id,
+    productId: input.productId
+  }, input);
+  let idempotent = false;
+
+  try {
+    const preflightProduct = assertCatalogProductScope(
+      await getDocument(db, COLLECTIONS.PRODUCTS, input.productId),
+      access.team._id
+    );
+    assertCatalogWarehouseCount(preflightProduct);
+    await assertCatalogWarehouseInstances(db, db.command, access.team._id, input.productId);
+    await db.runTransaction(async (transaction) => {
+      const locked = await requireCatalogAccessInTransaction(transaction, user, access);
+      const product = assertCatalogProductScope(
+        await getDocument(transaction, COLLECTIONS.PRODUCTS, input.productId),
+        locked.team._id
+      );
+      if (product.catalogDeleteRequestKey === input.requestKey &&
+          product.catalogDeleteRequestHash !== requestHash) {
+        throw new ApiError(ERROR_CODES.REQUEST_KEY_CONFLICT, '请求标识已用于其他目录删除参数。');
+      }
+      if (product.status === 'deleted') {
+        if (product.catalogDeleteRequestKey === input.requestKey &&
+            product.catalogDeleteRequestHash === requestHash) {
+          idempotent = true;
+          return;
+        }
+        throw new ApiError(ERROR_CODES.PRODUCT_ALREADY_DELETED, '该共享产品目录已经删除。');
+      }
+      if (product.catalogDeleteRequestKey === input.requestKey) {
+        throw new ApiError(ERROR_CODES.DUPLICATE_REQUEST, '该目录删除请求已完成且产品状态已变化。');
+      }
+      if (product.status !== 'active') {
+        throw new ApiError(ERROR_CODES.PRODUCT_NOT_ACTIVE, '产品当前不可删除。');
+      }
+      if (!Number.isSafeInteger(product.version) || product.version !== input.expectedVersion) {
+        throw new ApiError(ERROR_CODES.PRODUCT_VERSION_CONFLICT, '产品状态已被其他成员修改，请刷新后重试。');
+      }
+
+      assertCatalogWarehouseCount(product);
+      const activeProductCount = assertStrictCount(
+        locked.team.activeProductCount,
+        ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT,
+        '团队产品计数异常，请稍后重试。'
+      );
+      if (activeProductCount < 1) {
+        throw new ApiError(ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT, '团队产品计数异常，请稍后重试。');
+      }
+
+      const now = db.serverDate();
+      const nextVersion = product.version + 1;
+      await transaction.collection(COLLECTIONS.PRODUCTS).doc(product._id).update({
+        data: {
+          status: 'deleted',
+          version: nextVersion,
+          activeWarehouseCount: 0,
+          deletedAt: now,
+          deletedBy: locked.user._id,
+          deletionReason: input.reason,
+          updatedAt: now,
+          updatedBy: locked.user._id,
+          catalogDeleteRequestKey: input.requestKey,
+          catalogDeleteRequestHash: requestHash,
+          catalogDeleteResultVersion: nextVersion,
+          lastMutationAction: PRODUCT_CATALOG_DELETE_ACTION,
+          lastMutationRequestKey: input.requestKey,
+          lastMutationInputHash: requestHash
+        }
+      });
+      await transaction.collection(COLLECTIONS.TEAMS).doc(locked.team._id).update({
+        data: { activeProductCount: activeProductCount - 1, updatedAt: now }
+      });
+      idempotent = false;
+    }, 5);
+
+    const product = await getDocument(db, COLLECTIONS.PRODUCTS, input.productId);
+    if (!product || product.teamId !== access.team._id || product.status !== 'deleted') {
+      throw new ApiError(ERROR_CODES.DATABASE_ERROR, '共享目录删除结果读取失败，请稍后重试。');
+    }
+    return {
+      item: presentDeletedCatalogProduct(product, access.membership.role),
+      idempotent
+    };
+  } catch (error) {
+    if (isApiError(error)) throw error;
+    throw new ApiError(ERROR_CODES.DATABASE_ERROR, '共享目录删除失败，请稍后使用原请求标识重试。');
+  }
+}
+
+async function listDeletedCatalogProducts(db, user, rawInput) {
+  const input = validateDeletedCatalogListInput(rawInput);
+  try {
+    const access = await requireCatalogAccess(db, user);
+    const where = buildDeletedCatalogListWhere(db.command, input, access.team._id);
+    const result = await db.collection(COLLECTIONS.PRODUCTS)
+      .where(where)
+      .orderBy('updatedAt', 'desc')
+      .orderBy('_id', 'desc')
+      .limit(input.pageSize + 1)
+      .field({
+        _id: true,
+        name: true,
+        productCode: true,
+        category: true,
+        unit: true,
+        brand: true,
+        specification: true,
+        coverType: true,
+        coverText: true,
+        coverEmoji: true,
+        coverAssetKey: true,
+        coverFileId: true,
+        coverBackground: true,
+        status: true,
+        version: true,
+        activeWarehouseCount: true,
+        deletionReason: true,
+        deletedAt: true,
+        updatedAt: true
+      })
+      .get();
+    const documents = result.data || [];
+    const hasMore = documents.length > input.pageSize;
+    const page = documents.slice(0, input.pageSize);
+    return {
+      items: page.map((product) => presentDeletedCatalogProduct(product, access.membership.role)),
+      nextCursor: hasMore && page.length ? encodeProductCursor(page[page.length - 1]) : null,
+      hasMore,
+      pageSize: input.pageSize
+    };
+  } catch (error) {
+    if (isApiError(error)) throw error;
+    throw new ApiError(ERROR_CODES.DATABASE_ERROR, '共享目录回收站读取失败，请稍后重试。');
+  }
+}
+
+async function restoreCatalogProduct(db, user, rawInput) {
+  const input = sanitizeCatalogRestoreInput(rawInput);
+  const access = await requireCatalogAccess(db, user);
+  const requestHash = createMutationRequestHash(PRODUCT_CATALOG_RESTORE_ACTION, {
+    teamId: access.team._id,
+    productId: input.productId
+  }, input);
+  let idempotent = false;
+
+  try {
+    const preflightProduct = assertCatalogProductScope(
+      await getDocument(db, COLLECTIONS.PRODUCTS, input.productId),
+      access.team._id
+    );
+    assertCatalogWarehouseCount(preflightProduct);
+    await assertCatalogWarehouseInstances(db, db.command, access.team._id, input.productId);
+    await db.runTransaction(async (transaction) => {
+      const locked = await requireCatalogAccessInTransaction(transaction, user, access);
+      const product = assertCatalogProductScope(
+        await getDocument(transaction, COLLECTIONS.PRODUCTS, input.productId),
+        locked.team._id
+      );
+      if (product.catalogRestoreRequestKey === input.requestKey &&
+          product.catalogRestoreRequestHash !== requestHash) {
+        throw new ApiError(ERROR_CODES.REQUEST_KEY_CONFLICT, '请求标识已用于其他目录恢复参数。');
+      }
+      if (product.status === 'active') {
+        if (product.catalogRestoreRequestKey === input.requestKey &&
+            product.catalogRestoreRequestHash === requestHash) {
+          idempotent = true;
+          return;
+        }
+        throw new ApiError(ERROR_CODES.PRODUCT_ALREADY_ACTIVE, '该共享产品目录已经恢复。');
+      }
+      if (product.catalogRestoreRequestKey === input.requestKey) {
+        throw new ApiError(ERROR_CODES.DUPLICATE_REQUEST, '该目录恢复请求已完成且产品状态已变化。');
+      }
+      if (product.status !== 'deleted') {
+        throw new ApiError(ERROR_CODES.PRODUCT_NOT_ACTIVE, '产品当前不可恢复。');
+      }
+      if (!Number.isSafeInteger(product.version) || product.version !== input.expectedVersion) {
+        throw new ApiError(ERROR_CODES.PRODUCT_VERSION_CONFLICT, '产品状态已被其他成员修改，请刷新后重试。');
+      }
+
+      assertCatalogWarehouseCount(product);
+      const activeProductCount = assertStrictCount(
+        locked.team.activeProductCount,
+        ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT,
+        '团队产品计数异常，请稍后重试。'
+      );
+      assertProductCountWithinLimit(activeProductCount);
+
+      const now = db.serverDate();
+      const nextVersion = product.version + 1;
+      await transaction.collection(COLLECTIONS.PRODUCTS).doc(product._id).update({
+        data: {
+          status: 'active',
+          version: nextVersion,
+          activeWarehouseCount: 0,
+          deletedAt: null,
+          deletedBy: null,
+          deletionReason: '',
+          restoredAt: now,
+          restoredBy: locked.user._id,
+          updatedAt: now,
+          updatedBy: locked.user._id,
+          catalogRestoreRequestKey: input.requestKey,
+          catalogRestoreRequestHash: requestHash,
+          catalogRestoreResultVersion: nextVersion,
+          lastMutationAction: PRODUCT_CATALOG_RESTORE_ACTION,
+          lastMutationRequestKey: input.requestKey,
+          lastMutationInputHash: requestHash
+        }
+      });
+      await transaction.collection(COLLECTIONS.TEAMS).doc(locked.team._id).update({
+        data: { activeProductCount: activeProductCount + 1, updatedAt: now }
+      });
+      idempotent = false;
+    }, 5);
+
+    const product = await getDocument(db, COLLECTIONS.PRODUCTS, input.productId);
+    if (!product || product.teamId !== access.team._id || product.status !== 'active') {
+      throw new ApiError(ERROR_CODES.DATABASE_ERROR, '共享目录恢复结果读取失败，请稍后重试。');
+    }
+    return { product: presentProduct(product), idempotent };
+  } catch (error) {
+    if (isApiError(error)) throw error;
+    throw new ApiError(ERROR_CODES.DATABASE_ERROR, '共享目录恢复失败，请稍后使用原请求标识重试。');
   }
 }
 
@@ -862,13 +1208,18 @@ module.exports = {
   PRODUCT_UPDATE_ACTION,
   PRODUCT_REMOVE_ACTION,
   PRODUCT_RESTORE_ACTION,
+  PRODUCT_CATALOG_DELETE_ACTION,
+  PRODUCT_CATALOG_RESTORE_ACTION,
   requireProductAccess,
   requireProductAccessInTransaction,
+  requireCatalogAccess,
+  requireCatalogAccessInTransaction,
   buildProductDocument,
   buildWarehouseProductDocument,
   buildInitialRecordDocument,
   assertExistingCreate,
   buildProductListWhere,
+  buildDeletedCatalogListWhere,
   buildProductMainUpdate,
   buildProductSnapshotUpdate,
   assertWarehouseProductScope,
@@ -879,6 +1230,11 @@ module.exports = {
   removeProductFromWarehouse,
   listRemovedProducts,
   restoreProductToWarehouse,
+  assertCatalogWarehouseCount,
+  assertCatalogWarehouseInstances,
+  deleteCatalogProduct,
+  listDeletedCatalogProducts,
+  restoreCatalogProduct,
   listProducts,
   getProductDetail
 };

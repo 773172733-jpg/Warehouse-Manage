@@ -1,0 +1,36 @@
+<view class="cr-page">
+  <view class="cr-header">
+    <text class="cr-title">共享目录回收站</text>
+    <text class="cr-desc">恢复共享目录后，产品不会自动回到任何仓库。请再前往产品回收站恢复仓库实例。</text>
+  </view>
+
+  <view class="cr-search {{searchFocused?'cr-search--focused':''}}">
+    <text class="cr-search-icon">⌕</text>
+    <input class="cr-search-input" value="{{keyword}}" maxlength="40" placeholder="搜索名称、编号或关键词" bindinput="onSearchInput" bindfocus="onSearchFocus" bindblur="onSearchBlur" />
+    <text wx:if="{{keyword}}" class="cr-search-clear" catchtap="onSearchClear">×</text>
+  </view>
+
+  <scroll-view class="cr-categories" scroll-x enhanced show-scrollbar="{{false}}">
+    <view wx:for="{{categories}}" wx:key="*this" class="cr-category {{selectedCategory===item?'cr-category--active':''}}" data-category="{{item}}" catchtap="onCategoryTap">{{item}}</view>
+  </scroll-view>
+
+  <app-loading wx:if="{{loading||refreshing}}" text="正在加载已删除目录"></app-loading>
+  <error-state wx:elif="{{error&&!items.length}}" title="共享目录回收站加载失败" message="{{error}}" bind:retry="handleRetry"></error-state>
+  <empty-state wx:elif="{{initialized&&!items.length}}" title="暂无已删除的共享产品目录" description="从团队共享目录删除的产品会保留在这里。"></empty-state>
+
+  <view wx:else class="cr-list">
+    <view wx:for="{{items}}" wx:key="productId" class="cr-item">
+      <view class="cr-cover" style="background:{{item.cover.background}}"><image wx:if="{{item.cover.type==='image'}}" class="cr-cover-image" src="{{item.cover.fileId}}" mode="aspectFill"></image><text wx:else class="{{item.cover.type==='emoji'?'cr-cover-emoji':'cr-cover-text'}}">{{item.cover.content}}</text></view>
+      <view class="cr-info">
+        <text class="cr-name">{{item.name}}</text>
+        <text class="cr-meta">{{item.productCode||'无编号'}} · {{item.category}}</text>
+        <text class="cr-time">删除于 {{item.deletedAtText}}</text>
+        <text class="cr-reason">原因：{{item.deletionReason}}</text>
+      </view>
+      <view class="cr-restore {{(!item.canRestore||item.restoring)?'cr-restore--disabled':''}}" data-product-id="{{item.productId}}" catchtap="onRestoreTap">{{item.restoring?'恢复中':'恢复目录'}}</view>
+    </view>
+    <view wx:if="{{loadingMore}}" class="cr-footer">正在加载更多…</view>
+    <view wx:elif="{{error}}" class="cr-footer cr-footer--error" catchtap="handleRetry">{{error}}</view>
+    <view wx:elif="{{items.length&&!hasMore}}" class="cr-footer">已加载全部已删除目录</view>
+  </view>
+</view>

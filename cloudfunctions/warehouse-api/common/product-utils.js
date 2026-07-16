@@ -68,6 +68,8 @@ const PRODUCT_MAIN_FIELDS = [
   'coverBackground'
 ];
 const UPDATE_FIELDS = PRODUCT_MAIN_FIELDS.concat(['productId', 'expectedVersion', 'requestKey']);
+const CATALOG_DELETE_FIELDS = ['productId', 'expectedVersion', 'reason', 'requestKey'];
+const CATALOG_RESTORE_FIELDS = ['productId', 'expectedVersion', 'requestKey'];
 
 function hasOwn(source, field) {
   return Object.prototype.hasOwnProperty.call(source, field);
@@ -349,12 +351,62 @@ function sanitizeWarehouseMutationInput(rawInput, allowReason) {
   return input;
 }
 
+function validateExpectedProductVersion(value) {
+  const expectedVersion = Number(value);
+  if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) {
+    throw new ApiError(ERROR_CODES.INVALID_PRODUCT_VERSION, '产品版本必须为正整数。');
+  }
+  return expectedVersion;
+}
+
+function sanitizeCatalogDeleteInput(rawInput) {
+  const source = rawInput && typeof rawInput === 'object' ? rawInput : {};
+  const unknown = Object.keys(source).find((field) => !CATALOG_DELETE_FIELDS.includes(field));
+  if (unknown) {
+    throw new ApiError(ERROR_CODES.FORBIDDEN, '共享目录删除请求包含不允许的字段。');
+  }
+  return {
+    productId: validateProductId(source.productId, ERROR_CODES.PRODUCT_NOT_FOUND, '产品不存在。'),
+    expectedVersion: validateExpectedProductVersion(source.expectedVersion),
+    reason: validateText(source.reason, {
+      required: false,
+      maxLength: 100,
+      code: ERROR_CODES.INVALID_DELETE_REASON,
+      message: '删除原因不能超过100个字符。'
+    }),
+    requestKey: validateRequestKey(source.requestKey)
+  };
+}
+
+function sanitizeCatalogRestoreInput(rawInput) {
+  const source = rawInput && typeof rawInput === 'object' ? rawInput : {};
+  const unknown = Object.keys(source).find((field) => !CATALOG_RESTORE_FIELDS.includes(field));
+  if (unknown) {
+    throw new ApiError(ERROR_CODES.FORBIDDEN, '共享目录恢复请求包含不允许的字段。');
+  }
+  return {
+    productId: validateProductId(source.productId, ERROR_CODES.PRODUCT_NOT_FOUND, '产品不存在。'),
+    expectedVersion: validateExpectedProductVersion(source.expectedVersion),
+    requestKey: validateRequestKey(source.requestKey)
+  };
+}
+
 function validateRemovedProductListInput(rawInput) {
   const source = rawInput && typeof rawInput === 'object' ? rawInput : {};
   const allowed = ['keyword', 'category', 'cursor', 'pageSize', 'sort'];
   const unknown = Object.keys(source).find((field) => !allowed.includes(field));
   if (unknown) {
     throw new ApiError(ERROR_CODES.FORBIDDEN, '回收站列表请求包含不允许的字段。');
+  }
+  return validateProductListInput(source);
+}
+
+function validateDeletedCatalogListInput(rawInput) {
+  const source = rawInput && typeof rawInput === 'object' ? rawInput : {};
+  const allowed = ['keyword', 'category', 'cursor', 'pageSize'];
+  const unknown = Object.keys(source).find((field) => !allowed.includes(field));
+  if (unknown) {
+    throw new ApiError(ERROR_CODES.FORBIDDEN, '共享目录回收站请求包含不允许的字段。');
   }
   return validateProductListInput(source);
 }
@@ -573,7 +625,7 @@ function presentWarehouseProduct(warehouseProduct) {
   };
 }
 
-function presentRemovedProduct(product, warehouseProduct) {
+function presentRemovedProduct(product, warehouseProduct, role) {
   const authoritative = product && product.status === 'active' ? product : null;
   const source = authoritative || {
     name: warehouseProduct.productNameSnapshot,
@@ -598,7 +650,43 @@ function presentRemovedProduct(product, warehouseProduct) {
     removedAt: warehouseProduct.removedAt || null,
     removalReason: warehouseProduct.removalReason || '',
     canRestore: Boolean(authoritative && warehouseProduct.stock === 0),
-    catalogStatus: product ? product.status : 'missing'
+    catalogStatus: product ? product.status : 'missing',
+    productVersion: product && Number.isSafeInteger(product.version) ? product.version : null,
+    activeWarehouseCount: product && Number.isSafeInteger(product.activeWarehouseCount)
+      ? product.activeWarehouseCount
+      : null,
+    canDeleteCatalog: Boolean(
+      role === 'owner' &&
+      authoritative &&
+      warehouseProduct.status === 'removed' &&
+      warehouseProduct.stock === 0 &&
+      product.activeWarehouseCount === 0
+    )
+  };
+}
+
+function presentDeletedCatalogProduct(product, role) {
+  if (!product) return null;
+  return {
+    productId: product._id,
+    name: product.name || '未命名产品',
+    productCode: product.productCode || '',
+    category: product.category || '',
+    unit: product.unit || '',
+    brand: product.brand || '',
+    specification: product.specification || '',
+    cover: buildCoverSummary(product),
+    deletedAt: product.deletedAt || null,
+    deletionReason: product.deletionReason || '',
+    version: Number.isSafeInteger(product.version) ? product.version : null,
+    activeWarehouseCount: Number.isSafeInteger(product.activeWarehouseCount)
+      ? product.activeWarehouseCount
+      : null,
+    canRestore: Boolean(
+      role === 'owner' &&
+      product.status === 'deleted' &&
+      product.activeWarehouseCount === 0
+    )
   };
 }
 
@@ -635,6 +723,8 @@ module.exports = {
   sanitizeProductInput,
   sanitizeProductUpdateInput,
   sanitizeWarehouseMutationInput,
+  sanitizeCatalogDeleteInput,
+  sanitizeCatalogRestoreInput,
   createProductRequestHash,
   createMutationRequestHash,
   computeStockStatus,
@@ -644,10 +734,12 @@ module.exports = {
   decodeProductCursor,
   validateProductListInput,
   validateRemovedProductListInput,
+  validateDeletedCatalogListInput,
   validateProductDetailInput,
   getProductPermissionFlags,
   presentProduct,
   presentWarehouseProduct,
   presentRemovedProduct,
+  presentDeletedCatalogProduct,
   presentStockRecord
 };

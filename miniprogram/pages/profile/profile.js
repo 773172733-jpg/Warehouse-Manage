@@ -170,6 +170,14 @@ Page({
       wx.navigateTo({ url: ROUTES.PRODUCT_RECYCLE_BIN });
       return;
     }
+    if (action === 'catalogRecycle') {
+      if (!this.data.permission.canViewCatalogRecycleBin) {
+        wx.showToast({ title: '只有团队创建者可以查看共享目录回收站', icon: 'none' });
+        return;
+      }
+      wx.navigateTo({ url: ROUTES.CATALOG_RECYCLE_BIN });
+      return;
+    }
     wx.showToast({ title: '该功能将在后续阶段开放', icon: 'none' });
   },
 

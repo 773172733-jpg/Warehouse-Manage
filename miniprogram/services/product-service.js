@@ -75,6 +75,18 @@ function buildRestoreProductPayload(input = {}) {
   return copyDefined(input, ['warehouseProductId', 'requestKey']);
 }
 
+function buildDeleteCatalogProductPayload(input = {}) {
+  return copyDefined(input, ['productId', 'expectedVersion', 'reason', 'requestKey']);
+}
+
+function buildDeletedCatalogProductsPayload(input = {}) {
+  return copyDefined(input, ['keyword', 'category', 'cursor', 'pageSize']);
+}
+
+function buildRestoreCatalogProductPayload(input = {}) {
+  return copyDefined(input, ['productId', 'expectedVersion', 'requestKey']);
+}
+
 function createProduct(input) {
   return cloudService.callApi('product.create', buildCreateProductPayload(input));
 }
@@ -103,6 +115,18 @@ function restoreProductToWarehouse(input) {
   return cloudService.callApi('product.restoreToWarehouse', buildRestoreProductPayload(input));
 }
 
+function deleteCatalogProduct(input) {
+  return cloudService.callApi('product.catalog.delete', buildDeleteCatalogProductPayload(input));
+}
+
+function listDeletedCatalogProducts(input) {
+  return cloudService.callApi('product.catalog.deleted.list', buildDeletedCatalogProductsPayload(input));
+}
+
+function restoreCatalogProduct(input) {
+  return cloudService.callApi('product.catalog.restore', buildRestoreCatalogProductPayload(input));
+}
+
 module.exports = {
   buildCreateProductPayload,
   buildListProductsPayload,
@@ -111,11 +135,17 @@ module.exports = {
   buildRemoveProductPayload,
   buildRemovedProductsPayload,
   buildRestoreProductPayload,
+  buildDeleteCatalogProductPayload,
+  buildDeletedCatalogProductsPayload,
+  buildRestoreCatalogProductPayload,
   createProduct,
   listProducts,
   getProductDetail,
   updateProduct,
   removeProductFromWarehouse,
   listRemovedProducts,
-  restoreProductToWarehouse
+  restoreProductToWarehouse,
+  deleteCatalogProduct,
+  listDeletedCatalogProducts,
+  restoreCatalogProduct
 };

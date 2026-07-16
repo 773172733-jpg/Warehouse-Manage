@@ -22,5 +22,9 @@
 .pr-catalog-warning { display: block; margin-top: 7rpx; color: #D94A45; font-size: 21rpx; }
 .pr-restore { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 104rpx; height: 64rpx; margin-left: 14rpx; border: 2rpx solid #078B4B; border-radius: 8rpx; color: #078B4B; font-size: 24rpx; font-weight: 600; }
 .pr-restore--disabled { opacity: .45; }
+.pr-actions { display: flex; flex-shrink: 0; flex-direction: column; gap: 10rpx; margin-left: 14rpx; }
+.pr-actions .pr-restore { margin-left: 0; }
+.pr-delete { display: flex; align-items: center; justify-content: center; width: 104rpx; height: 56rpx; border: 2rpx solid #D94A45; border-radius: 8rpx; color: #D94A45; font-size: 21rpx; font-weight: 600; }
+.pr-delete--disabled { opacity: .45; }
 .pr-footer { padding: 26rpx; color: #8A908C; font-size: 22rpx; text-align: center; }
 .pr-footer--error { color: #D94A45; }

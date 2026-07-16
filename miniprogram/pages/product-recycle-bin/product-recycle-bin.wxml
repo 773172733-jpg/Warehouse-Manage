@@ -28,7 +28,10 @@
         <text class="pr-reason">原因：{{item.removalReason}}</text>
         <text wx:if="{{item.catalogStatus!=='active'}}" class="pr-catalog-warning">共享产品目录当前不可恢复</text>
       </view>
-      <view class="pr-restore {{(!item.canRestore||item.restoring)?'pr-restore--disabled':''}}" data-warehouse-product-id="{{item.warehouseProductId}}" catchtap="onRestoreTap">{{item.restoring?'恢复中':'恢复'}}</view>
+      <view class="pr-actions">
+        <view class="pr-restore {{(!item.canRestore||item.restoring||item.deletingCatalog)?'pr-restore--disabled':''}}" data-warehouse-product-id="{{item.warehouseProductId}}" catchtap="onRestoreTap">{{item.restoring?'恢复中':'恢复'}}</view>
+        <view wx:if="{{item.canDeleteCatalog}}" class="pr-delete {{item.deletingCatalog?'pr-delete--disabled':''}}" data-product-id="{{item.productId}}" catchtap="onDeleteCatalogTap">{{item.deletingCatalog?'删除中':'删除目录'}}</view>
+      </view>
     </view>
     <view wx:if="{{loadingMore}}" class="pr-footer">正在加载更多…</view>
     <view wx:elif="{{error}}" class="pr-footer pr-footer--error" catchtap="handleRetry">{{error}}</view>
