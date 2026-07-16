@@ -506,10 +506,6 @@ function assertWarehouseProductScope(warehouseProduct, access) {
   return warehouseProduct;
 }
 
-function getCompatibleCount(value, fallback) {
-  return Number.isSafeInteger(value) && value >= 0 ? value : fallback;
-}
-
 async function updateProduct(db, user, rawInput) {
   const input = sanitizeProductUpdateInput(rawInput);
   const access = await requireProductAccess(db, user, 'admin');
@@ -635,7 +631,17 @@ async function removeProductFromWarehouse(db, user, rawInput) {
       const product = await getDocument(transaction, COLLECTIONS.PRODUCTS, warehouseProduct.productId);
       assertProductAccess(product, locked.team._id);
       const now = db.serverDate();
-      const activeWarehouseCount = getCompatibleCount(product.activeWarehouseCount, 1);
+      const activeWarehouseCount = assertStrictCount(
+        product.activeWarehouseCount,
+        ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT,
+        '产品仓库状态异常，请刷新后重试。'
+      );
+      if (activeWarehouseCount < 1) {
+        throw new ApiError(
+          ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT,
+          '产品仓库状态异常，请刷新后重试。'
+        );
+      }
       await transaction.collection(COLLECTIONS.WAREHOUSE_PRODUCTS).doc(warehouseProduct._id).update({
         data: {
           status: 'removed',
@@ -652,7 +658,7 @@ async function removeProductFromWarehouse(db, user, rawInput) {
         }
       });
       await transaction.collection(COLLECTIONS.PRODUCTS).doc(product._id).update({
-        data: { activeWarehouseCount: Math.max(0, activeWarehouseCount - 1) }
+        data: { activeWarehouseCount: activeWarehouseCount - 1 }
       });
       idempotent = false;
     }, 5);
@@ -770,7 +776,11 @@ async function restoreProductToWarehouse(db, user, rawInput) {
         throw new ApiError(ERROR_CODES.PRODUCT_CATALOG_DELETED, '共享产品目录已删除，暂时无法恢复。');
       }
       const now = db.serverDate();
-      const activeWarehouseCount = getCompatibleCount(product.activeWarehouseCount, 0);
+      const activeWarehouseCount = assertStrictCount(
+        product.activeWarehouseCount,
+        ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT,
+        '产品仓库状态异常，请刷新后重试。'
+      );
       await transaction.collection(COLLECTIONS.WAREHOUSE_PRODUCTS).doc(warehouseProduct._id).update({
         data: Object.assign(buildProductSnapshotUpdate(product, product.version, {
           userId: locked.user._id,
@@ -825,8 +835,6 @@ function assertStrictCount(value, code, message) {
   return value;
 }
 
-const CATALOG_WAREHOUSE_CHECK_PAGE_SIZE = 100;
-
 function assertCatalogWarehouseCount(product) {
   const activeWarehouseCount = assertStrictCount(
     product.activeWarehouseCount,
@@ -840,39 +848,6 @@ function assertCatalogWarehouseCount(product) {
     );
   }
   return activeWarehouseCount;
-}
-
-async function assertCatalogWarehouseInstances(source, command, teamId, productId) {
-  let cursorId = '';
-  while (true) {
-    const where = { teamId, productId };
-    if (cursorId) where._id = command.gt(cursorId);
-    const result = await source.collection(COLLECTIONS.WAREHOUSE_PRODUCTS)
-      .where(where)
-      .orderBy('_id', 'asc')
-      .limit(CATALOG_WAREHOUSE_CHECK_PAGE_SIZE)
-      .field({ _id: true, status: true, stock: true })
-      .get();
-    const instances = result.data || [];
-    const hasInvalidInstance = instances.some((item) => (
-      item.status !== 'removed' || item.stock !== 0
-    ));
-    if (hasInvalidInstance) {
-      throw new ApiError(
-        ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT,
-        '产品仓库状态异常，请刷新后重试。'
-      );
-    }
-    if (instances.length < CATALOG_WAREHOUSE_CHECK_PAGE_SIZE) return;
-    const nextCursorId = instances[instances.length - 1]._id;
-    if (!nextCursorId || nextCursorId === cursorId) {
-      throw new ApiError(
-        ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT,
-        '产品仓库状态异常，请刷新后重试。'
-      );
-    }
-    cursorId = nextCursorId;
-  }
 }
 
 function assertCatalogProductScope(product, teamId) {
@@ -897,7 +872,6 @@ async function deleteCatalogProduct(db, user, rawInput) {
       access.team._id
     );
     assertCatalogWarehouseCount(preflightProduct);
-    await assertCatalogWarehouseInstances(db, db.command, access.team._id, input.productId);
     await db.runTransaction(async (transaction) => {
       const locked = await requireCatalogAccessInTransaction(transaction, user, access);
       const product = assertCatalogProductScope(
@@ -1038,7 +1012,6 @@ async function restoreCatalogProduct(db, user, rawInput) {
       access.team._id
     );
     assertCatalogWarehouseCount(preflightProduct);
-    await assertCatalogWarehouseInstances(db, db.command, access.team._id, input.productId);
     await db.runTransaction(async (transaction) => {
       const locked = await requireCatalogAccessInTransaction(transaction, user, access);
       const product = assertCatalogProductScope(
@@ -1241,7 +1214,6 @@ module.exports = {
   listRemovedProducts,
   restoreProductToWarehouse,
   assertCatalogWarehouseCount,
-  assertCatalogWarehouseInstances,
   deleteCatalogProduct,
   listDeletedCatalogProducts,
   restoreCatalogProduct,

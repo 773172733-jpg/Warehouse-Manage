@@ -74,7 +74,7 @@
 - searchKeywords只能由warehouse-api服务端生成，前端禁止提交searchKeywords/normalizedName/normalizedCode
 - `product.catalog.delete/deleted.list/restore` owner专属共享目录软删除、回收站和原productId恢复
 - 产品回收站与共享目录回收站明确分层；目录恢复后仍需手动恢复原warehouseProductId
-- 全局删除前使用定向索引校验所有仓库实例均removed且stock=0，脏状态稳定阻断
+- 全局删除复用products.activeWarehouseCount事务不变量，不新增warehouse_products索引
 - 99,999压测定于2C5，使用独立测试环境；2C2只完成游标分页、事务限额和必要索引
 - `products`、`warehouse_products`、`stock_records` 云端模型及全部客户端直访关闭方案
 - `product.create/list/detail` 静态白名单路由、可信身份复核和字段脱敏

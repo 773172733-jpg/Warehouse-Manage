@@ -12,6 +12,7 @@ const {
   deleteCatalogProduct,
   listDeletedCatalogProducts,
   restoreCatalogProduct,
+  removeProductFromWarehouse,
   restoreProductToWarehouse
 } = require('../cloudfunctions/warehouse-api/modules/product/product-service.js');
 const clientService = require('../miniprogram/services/product-service.js');
@@ -147,6 +148,7 @@ function createFixture(role = 'owner') {
       changeQuantity: 1
     }]])
   };
+  const queryCalls = [];
 
   function operation(type, value) {
     return {
@@ -192,6 +194,7 @@ function createFixture(role = 'owner') {
           limit(value) { query.limit = value; return api; },
           field() { return api; },
           async get() {
+            queryCalls.push({ collection: name, where: query.where, orders: query.orders.slice() });
             let result = Array.from(collection.values()).filter((item) => matchesWhere(item, query.where));
             result.sort((left, right) => {
               for (const order of query.orders) {
@@ -216,6 +219,7 @@ function createFixture(role = 'owner') {
   return {
     db,
     documents,
+    queryCalls,
     user: documents.users.get(USER_ID),
     membership: documents.team_members.get(membershipId)
   };
@@ -281,6 +285,7 @@ async function testDeleteRestoreTransactionsAndIdempotency() {
   assert.strictEqual(fixture.documents.teams.get(TEAM_ID).activeProductCount, 0);
   assert.strictEqual(JSON.stringify(fixture.documents.warehouse_products.get(WAREHOUSE_PRODUCT_ID)), warehouseBefore);
   assert.strictEqual(JSON.stringify(Array.from(fixture.documents.stock_records.entries())), recordsBefore);
+  assert.strictEqual(fixture.queryCalls.some((item) => item.collection === 'warehouse_products'), false);
 
   const deleteRetry = await deleteCatalogProduct(fixture.db, fixture.user, deleteInput());
   assert.strictEqual(deleteRetry.idempotent, true);
@@ -301,6 +306,7 @@ async function testDeleteRestoreTransactionsAndIdempotency() {
   assert.strictEqual(fixture.documents.teams.get(TEAM_ID).activeProductCount, 1);
   assert.strictEqual(fixture.documents.warehouse_products.get(WAREHOUSE_PRODUCT_ID).status, 'removed');
   assert.strictEqual(JSON.stringify(Array.from(fixture.documents.stock_records.entries())), recordsBefore);
+  assert.strictEqual(fixture.queryCalls.some((item) => item.collection === 'warehouse_products'), false);
 
   const restoreRetry = await restoreCatalogProduct(fixture.db, fixture.user, restoreInput());
   assert.strictEqual(restoreRetry.idempotent, true);
@@ -332,37 +338,52 @@ async function testPermissionsVersionsAndWarehouseGuards() {
   await expectAsyncCode(() => deleteCatalogProduct(countFixture.db, countFixture.user, deleteInput()),
     ERROR_CODES.PRODUCT_STILL_IN_WAREHOUSE);
 
-  const activeFixture = createFixture();
-  activeFixture.documents.warehouse_products.get(WAREHOUSE_PRODUCT_ID).status = 'active';
-  await expectAsyncCode(() => deleteCatalogProduct(activeFixture.db, activeFixture.user, deleteInput()),
-    ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT);
+  const invalidCountFixture = createFixture();
+  invalidCountFixture.documents.products.get(PRODUCT_ID).activeWarehouseCount = -1;
+  await expectAsyncCode(() => deleteCatalogProduct(
+    invalidCountFixture.db,
+    invalidCountFixture.user,
+    deleteInput()
+  ), ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT);
 
-  const stockFixture = createFixture();
-  stockFixture.documents.warehouse_products.get(WAREHOUSE_PRODUCT_ID).stock = 1;
-  await expectAsyncCode(() => deleteCatalogProduct(stockFixture.db, stockFixture.user, deleteInput()),
-    ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT);
+  const activeCountConflict = createFixture();
+  activeCountConflict.documents.warehouse_products.get(WAREHOUSE_PRODUCT_ID).status = 'active';
+  await expectAsyncCode(() => removeProductFromWarehouse(activeCountConflict.db, activeCountConflict.user, {
+    warehouseProductId: WAREHOUSE_PRODUCT_ID,
+    reason: '计数异常',
+    requestKey: 'remove_count_conflict_123'
+  }), ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT);
 
-  const pagedFixture = createFixture();
-  for (let index = 0; index < 100; index += 1) {
-    const id = `a_warehouse_product_${String(index).padStart(3, '0')}`;
-    pagedFixture.documents.warehouse_products.set(id, {
-      _id: id,
-      teamId: TEAM_ID,
-      warehouseId: `warehouse_${index}`,
-      productId: PRODUCT_ID,
-      status: 'removed',
-      stock: 0
-    });
-  }
-  pagedFixture.documents.warehouse_products.set('zz_invalid_warehouse_product', {
-    _id: 'zz_invalid_warehouse_product',
-    teamId: TEAM_ID,
-    warehouseId: 'warehouse_invalid',
-    productId: PRODUCT_ID,
-    status: 'removed',
-    stock: 1
-  });
-  await expectAsyncCode(() => deleteCatalogProduct(pagedFixture.db, pagedFixture.user, deleteInput()),
+  const missingCountFixture = createFixture();
+  delete missingCountFixture.documents.products.get(PRODUCT_ID).activeWarehouseCount;
+  await expectAsyncCode(() => restoreProductToWarehouse(missingCountFixture.db, missingCountFixture.user, {
+    warehouseProductId: WAREHOUSE_PRODUCT_ID,
+    requestKey: 'restore_count_conflict_123'
+  }), ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT);
+
+  const nonIntegerCountFixture = createFixture();
+  nonIntegerCountFixture.documents.products.get(PRODUCT_ID).activeWarehouseCount = 0.5;
+  await expectAsyncCode(() => deleteCatalogProduct(
+    nonIntegerCountFixture.db,
+    nonIntegerCountFixture.user,
+    deleteInput()
+  ), ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT);
+
+  const missingCatalogCountFixture = createFixture();
+  delete missingCatalogCountFixture.documents.products.get(PRODUCT_ID).activeWarehouseCount;
+  await expectAsyncCode(() => deleteCatalogProduct(
+    missingCatalogCountFixture.db,
+    missingCatalogCountFixture.user,
+    deleteInput()
+  ), ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT);
+
+  const negativeTeamCountFixture = createFixture();
+  negativeTeamCountFixture.documents.teams.get(TEAM_ID).activeProductCount = -1;
+  await expectAsyncCode(() => deleteCatalogProduct(
+    negativeTeamCountFixture.db,
+    negativeTeamCountFixture.user,
+    deleteInput()
+  ),
     ERROR_CODES.PRODUCT_WAREHOUSE_STATE_CONFLICT);
 
   const versionFixture = createFixture();
@@ -463,6 +484,44 @@ function testFrontendAndRoutingBoundaries() {
   assert.ok(warehouseRecycle.includes('item.canDeleteCatalog'));
 }
 
+function testNoNewWarehouseProductIndexDependency() {
+  const root = path.resolve(__dirname, '..');
+  const service = fs.readFileSync(
+    path.join(root, 'cloudfunctions/warehouse-api/modules/product/product-service.js'),
+    'utf8'
+  );
+  const indexes = fs.readFileSync(path.join(root, 'database/indexes.md'), 'utf8');
+  const deployment = fs.readFileSync(path.join(root, 'docs/阶段2C3B部署与验收.md'), 'utf8');
+  assert.strictEqual(service.includes('assertCatalogWarehouseInstances'), false);
+  assert.strictEqual(service.includes('CATALOG_WAREHOUSE_CHECK_PAGE_SIZE'), false);
+  const expectedIndexes = [
+    'uidx_wh_products_relation',
+    'uidx_wh_products_request',
+    'idx_wh_products_status_updated',
+    'idx_wh_products_stock_status',
+    'idx_wh_products_category',
+    'idx_wh_products_category_stock',
+    'idx_wh_products_name',
+    'idx_wh_products_code',
+    'idx_wh_products_keyword',
+    'idx_wh_products_category_name',
+    'idx_wh_products_category_code',
+    'idx_wh_products_category_keyword',
+    'idx_wh_products_stock_name',
+    'idx_wh_products_stock_code',
+    'idx_wh_products_stock_keyword',
+    'idx_wh_products_category_stock_name',
+    'idx_wh_products_category_stock_code',
+    'idx_wh_products_category_stock_keyword'
+  ];
+  expectedIndexes.forEach((name) => assert.ok(indexes.includes(`| \`${name}\``)));
+  assert.strictEqual(new Set(expectedIndexes).size, 18);
+  assert.ok(indexes.includes('idx_wh_products_team_product'));
+  assert.ok(indexes.includes('取消，不再需要'));
+  assert.ok(deployment.includes('无需新增任何 `warehouse_products` 索引'));
+  assert.strictEqual(deployment.includes('人工创建以下一个普通索引'), false);
+}
+
 async function run() {
   testValidatorsAndClientWhitelists();
   await testDeleteRestoreTransactionsAndIdempotency();
@@ -470,6 +529,7 @@ async function run() {
   await testDeletedListPaginationAndRedaction();
   await testSerializedRaceOutcomes();
   testFrontendAndRoutingBoundaries();
+  testNoNewWarehouseProductIndexDependency();
   console.log('stage2c3b tests passed');
 }
 

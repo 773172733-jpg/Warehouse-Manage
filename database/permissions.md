@@ -47,7 +47,7 @@
 
 同时满足以下条件才允许访问：用户为active、成员关系为active、团队为active、仓库为active。disabled/deleted团队、disabled/deleted仓库和pending/removed成员不能继续读取业务数据。
 
-当前仓库移除操作只修改 `warehouse_products`，要求stock为0，并必须支持回收站恢复。全局目录删除只软删除 `products` 并更新teams.activeProductCount，要求activeWarehouseCount为0，同时通过按teamId+productId的定向查询确认所有仓库实例均removed且stock为0。目录恢复不自动恢复warehouse_products。两种删除和恢复都不影响永久流水。
+当前仓库移除操作要求stock为0，并在同一事务内将 `warehouse_products` 设为removed、严格递减products.activeWarehouseCount。仓库恢复要求products仍为active，并在同一事务内恢复实例、严格递增计数。全局目录删除只软删除products并更新teams.activeProductCount，事务内要求activeWarehouseCount严格为0。目录恢复不自动恢复warehouse_products。两种删除和恢复都不影响永久流水。
 
 目录删除、目录回收站读取和目录恢复均要求云端从可信active成员关系确认role=owner。admin即使伪造role或直接调用action也返回FORBIDDEN；页面入口和 `canDeleteCatalog` 只是交互提示，云函数事务仍是最终权限边界。
 

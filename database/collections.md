@@ -1,6 +1,6 @@
 # 集合设计
 
-阶段2C3B代码已经实现产品、仓库实例和共享目录两层软删除/恢复，但代码不会自动创建集合、索引或权限。首次产品部署按 `docs/阶段2C2A部署与验收.md` 配置基础资源，本阶段再按 `docs/阶段2C3B部署与验收.md` 增加跨仓校验索引。
+阶段2C3B代码已经实现产品、仓库实例和共享目录两层软删除/恢复，但代码不会自动创建集合、索引或权限。首次产品部署按 `docs/阶段2C2A部署与验收.md` 配置基础资源；2C3B不新增warehouse_products索引。
 
 ## users
 
@@ -74,9 +74,9 @@
 
 products不得保存 `warehouseId`、`stock`、`minStock`、`stockStatus`或 `stockVersion`。名称和编号允许重复，`_id`是唯一身份。每团队最多99,999个active产品。
 
-阶段2C3A按需自然写入 `lastUpdateRequestKey`、`lastUpdateRequestHash`、`lastUpdateResultVersion`、`lastUpdateAt`，用于产品更新幂等；这些内部字段不返回客户端。`activeWarehouseCount` 缺失时，移除按当前active关系兼容为1，恢复按当前removed关系兼容为0，无需批量迁移。
+阶段2C3A按需自然写入 `lastUpdateRequestKey`、`lastUpdateRequestHash`、`lastUpdateResultVersion`、`lastUpdateAt`，用于产品更新幂等；这些内部字段不返回客户端。仓库移除、恢复和目录删除要求 `activeWarehouseCount` 为非负安全整数；缺失或异常时返回 `PRODUCT_WAREHOUSE_STATE_CONFLICT`，不再用默认值或归零逻辑掩盖状态错误。2C2A正式接口创建的产品已包含该字段。
 
-阶段2C3B按需自然写入 `catalogDeleteRequestKey`、`catalogDeleteRequestHash`、`catalogDeleteResultVersion`、`catalogRestoreRequestKey`、`catalogRestoreRequestHash`、`catalogRestoreResultVersion`、`deletionReason`、`deletedBy`、`deletedAt`、`restoredBy`、`restoredAt`。目录删除将status改为deleted且version加1；目录恢复复用原productId、改回active且version加1。activeWarehouseCount在两次操作中都必须严格为0。旧记录无需批量迁移，内部幂等字段不返回客户端。
+阶段2C3B按需自然写入 `catalogDeleteRequestKey`、`catalogDeleteRequestHash`、`catalogDeleteResultVersion`、`catalogRestoreRequestKey`、`catalogRestoreRequestHash`、`catalogRestoreResultVersion`、`deletionReason`、`deletedBy`、`deletedAt`、`restoredBy`、`restoredAt`。目录删除将status改为deleted且version加1；目录恢复复用原productId、改回active且version加1。activeWarehouseCount在两次操作中都必须严格为0。目录幂等字段无需批量迁移；若存在2C2A以前创建且缺少activeWarehouseCount的产品，必须先离线核对并补齐正确计数，接口不会猜测或自动修复。
 
 ## warehouse_products（2C2A部署时人工创建）
 
