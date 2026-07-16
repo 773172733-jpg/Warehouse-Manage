@@ -1,6 +1,6 @@
 # 轻仓｜微信小程序仓库管理器
 
-当前进入阶段2B2B2：在真实邀请、审核和active成员列表之上，接入owner成员角色管理与移除，以及admin/viewer主动退出团队流程。
+当前进入阶段2C1：在真实团队与成员权限基础上，定稿产品、库存余额、不可变流水、事务、搜索、图片和多仓库演进架构。本阶段只更新文档，不提前实现产品或库存云函数。
 
 ## 技术栈
 
@@ -27,6 +27,9 @@
 - [`docs/阶段2B2B1部署与验收.md`](docs/阶段2B2B1部署与验收.md)
 - [`docs/阶段2B2B2成员管理与退出团队.md`](docs/阶段2B2B2成员管理与退出团队.md)
 - [`docs/阶段2B2B2部署与验收.md`](docs/阶段2B2B2部署与验收.md)
+- [`docs/阶段2C1产品库存与流水架构.md`](docs/阶段2C1产品库存与流水架构.md)
+- [`docs/阶段2C1接口契约.md`](docs/阶段2C1接口契约.md)
+- [`docs/阶段2C1实施拆分与迁移.md`](docs/阶段2C1实施拆分与迁移.md)
 - [`database/collections.md`](database/collections.md)
 - [`database/indexes.md`](database/indexes.md)
 - [`database/permissions.md`](database/permissions.md)
@@ -55,11 +58,13 @@
 - owner真实邀请码生成、pending批准/拒绝及全角色真实active成员页面
 - owner将viewer升级为admin、将admin降为viewer及移除active成员
 - admin/viewer主动退出团队、统一团队上下文清理及startup重新路由
+- 阶段2C1仓库级产品文档、库存事务、不可变流水、图片生命周期和多仓演进设计
+- 产品、库存、流水接口契约、错误码、索引与mock页面分阶段迁移方案
 
 暂不包含：
 
-- 产品列表、搜索、新增、编辑
-- 入库、出库、库存调整
+- 真实产品列表、搜索、新增、编辑和软删除接口
+- 真实入库、出库、库存调整和库存流水接口
 - 邀请二维码、微信分享卡片和owner转让
 - 团队解散、多团队切换和实时成员状态推送
 - 微信头像昵称授权

@@ -1,6 +1,6 @@
 # 集合设计
 
-阶段2B1需要在轻仓环境 `cloud1-d8gm59cz2be4e7c23` 新增 `invites`，并继续使用 `users`、`teams`、`team_members`、`warehouses`。代码不会自动创建集合、索引或权限。
+阶段2C1只定稿产品、库存和流水架构，不创建集合。当前云端继续使用 `users`、`teams`、`team_members`、`warehouses`、`invites`；`products` 和 `stock_records` 等到2C2按部署文档人工创建，以保证带初始库存的产品创建能原子写入initial流水。代码不会自动创建集合、索引或权限。
 
 ## users
 
@@ -61,27 +61,38 @@
 
 以上集合的真实读写全部经过 `warehouse-api`。产品、库存和流水集合仍属于后续阶段。
 
-## products
+## products（2C2创建）
 
-产品主表，使用软删除。
+V1采用仓库级产品文档：产品资料、库存余额、最低库存和派生库存状态保存在同一文档，使用软删除。
 
-规划字段：`teamId`、`warehouseId`、`name`、`code`、`description`、`categoryId`、`unit`、`stock`、`minStock`、`coverMode`、`systemAssetKey`、`customFileId`、`displayText`、`searchText`、`searchKeywords`、`status`、`createdBy`、`updatedBy`、`createdAt`、`updatedAt`、`deletedAt`、`deletedBy`。
+- 身份与归属：`_id`、`teamId`、`warehouseId`
+- 基本资料：`name`、`normalizedName`、`code`、`normalizedCode`、`category`、`unit`、`brand`、`specification`、`description`、`keywords`、`searchText`
+- 封面：`coverType`、`coverText`、`coverEmoji`、`coverAssetKey`、`coverFileId`、`coverBackground`
+- 余额：`stock`、`minStock`、`stockStatus`、`stockVersion`
+- 生命周期与并发：`status`、`version`、`createRequestKey`、`lastMutationAction`、`lastMutationRequestKey`、`lastMutationInputHash`
+- 审计：`createdBy`、`updatedBy`、`deletedBy`、`createdAt`、`updatedAt`、`deletedAt`
 
-## stock_records
+`stockStatus`由云端按 `out/low/normal` 规则计算并持久化，客户端不得提交。普通产品编辑不得修改 `stock`。产品名称和编号V1允许重复，`_id`是唯一身份。
 
-库存流水表。库存不允许仅修改 `products.stock` 而不产生 `stock_records` 流水。
+## stock_records（2C2创建，2C4启用完整库存写入）
 
-规划字段：`teamId`、`warehouseId`、`productId`、`type`、`quantityDelta`、`stockBefore`、`stockAfter`、`reason`、`remark`、`operatorId`、`requestKey`、`createdAt`。
+不可变库存流水。库存更新与流水创建必须由 `warehouse-api` 在同一事务完成。
 
-`type` 可取值：`initial`、`inbound`、`outbound`、`adjustment`。
+- `_id`、`teamId`、`warehouseId`、`productId`
+- `productNameSnapshot`、`productCodeSnapshot`、`unitSnapshot`
+- `type`：`initial`、`inbound`、`outbound`、`adjust`
+- `changeQuantity`：有符号整数
+- `beforeStock`、`afterStock`
+- `reason`、`sourceOrDestination`、`remark`
+- `operatorId`、`operatorMemberId`、`operatorNameSnapshot`
+- `requestAction`、`requestKey`、`requestInputHash`
+- `createdAt`
 
-后续库存变更必须在云函数中完成，并考虑并发一致性与重复提交。
+流水创建后不修改、不物理删除。产品改名、删除或操作人离队后，历史仍通过快照正常显示。
 
-## categories
+## categories（当前不创建）
 
-产品分类。
-
-预留字段：`teamId`、`warehouseId`、`name`、`sortOrder`、`status`、`createdAt`、`updatedAt`。
+V1分类直接保存为 `products.category` 字符串，单位直接保存为 `products.unit` 字符串。只有出现分类排序、停用、合并或权限需求后才引入独立集合，避免当前过度设计。
 
 ## invites
 
