@@ -1,6 +1,6 @@
 # 轻仓｜微信小程序仓库管理器
 
-当前进入阶段2C1：已定稿团队共享产品目录、仓库产品库存实例、永久流水、事务、搜索、图片和多仓库架构。本阶段只更新文档，不提前实现产品或库存云函数。2C1文档已封口，三项关键决策由项目负责人最终确认（见各文档2C1章节）。
+当前进入阶段2C2A：已实现团队共享产品目录的云端核心，包括 `product.create`、`product.list`、`product.detail`、默认仓库实例、可选initial流水、99,999产品上限、幂等创建和游标分页。本阶段尚未接入页面，也不会自动创建集合、索引或部署云函数。
 
 ## 技术栈
 
@@ -30,6 +30,8 @@
 - [`docs/阶段2C1产品库存与流水架构.md`](docs/阶段2C1产品库存与流水架构.md)
 - [`docs/阶段2C1接口契约.md`](docs/阶段2C1接口契约.md)
 - [`docs/阶段2C1实施拆分与迁移.md`](docs/阶段2C1实施拆分与迁移.md)
+- [`docs/阶段2C2A产品目录云端核心.md`](docs/阶段2C2A产品目录云端核心.md)
+- [`docs/阶段2C2A部署与验收.md`](docs/阶段2C2A部署与验收.md)
 - [`database/collections.md`](database/collections.md)
 - [`database/indexes.md`](database/indexes.md)
 - [`database/permissions.md`](database/permissions.md)
@@ -64,10 +66,15 @@
 - searchKeywords只能由warehouse-api服务端生成，前端禁止提交searchKeywords/normalizedName/normalizedCode
 - 全局目录删除与恢复UI定于2C3B，仅owner可操作，不阻塞2C2
 - 99,999压测定于2C5，使用独立测试环境；2C2只完成游标分页、事务限额和必要索引
+- `products`、`warehouse_products`、`stock_records` 云端模型及全部客户端直访关闭方案
+- `product.create/list/detail` 静态白名单路由、可信身份复核和字段脱敏
+- 服务端名称/编号规范化、受控searchKeywords、库存状态和封面校验纯函数
+- 创建产品、默认仓库实例、可选initial流水及teams计数的单事务写入
+- `miniprogram/services/product-service.js` 请求白名单封装（暂未接页面）
 
 暂不包含：
 
-- 真实共享产品列表、搜索、新增、编辑及当前仓库移除/恢复接口
+- 真实产品页面接入、产品编辑及当前仓库移除/恢复接口
 - 真实入库、出库、库存调整和库存流水接口
 - 邀请二维码、微信分享卡片和owner转让
 - 团队解散、多团队切换和实时成员状态推送

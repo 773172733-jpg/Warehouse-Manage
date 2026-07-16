@@ -34,45 +34,60 @@
 
 在云开发控制台进入对应集合的“索引管理”，选择“新建索引”，严格按上述字段顺序和升降序逐项添加，并只为标注“唯一”的索引打开唯一开关。等待全部索引状态变为可用后再测试接口。
 
-上述索引没有重复前缀用途：唯一索引负责身份和成员关系约束，普通索引对应阶段2A实际查询。其余后续业务索引暂不创建。
+上述索引没有重复前缀用途：唯一索引负责身份和成员关系约束，普通索引对应阶段2A实际查询。以下2C2A产品索引需要在本阶段部署前继续创建。
 
-## products（2C2）
+## products（2C2A部署前）
 
-以下索引尚未创建。字段顺序按“租户等值条件、业务等值条件、排序字段、稳定ID”排列。
+以下索引尚未创建。字段顺序按“租户等值条件、业务等值条件、排序字段、稳定ID”排列。`product.create`主要使用确定性文档ID，但唯一索引仍作为跨实现幂等约束。
 
-| 索引名 | 字段 | 唯一 | 用途 | 创建时间 |
+| 索引名 | 字段 | 唯一 | 用途 | 2C2A部署前必须 |
 | --- | --- | --- | --- | --- |
-| `idx_products_team_status_updated` | `teamId`升序、`status`升序、`updatedAt`降序、`_id`降序 | 否 | 共享目录列表 | 2C2前 |
-| `idx_products_team_status_name` | `teamId`升序、`status`升序、`normalizedName`升序、`_id`升序 | 否 | 名称前缀搜索 | 2C2前 |
-| `idx_products_team_status_code` | `teamId`升序、`status`升序、`normalizedCode`升序、`_id`升序 | 否 | 编号定位 | 2C2前 |
-| `idx_products_team_category_status` | `teamId`升序、`category`升序、`status`升序、`updatedAt`降序、`_id`降序 | 否 | 目录分类 | 2C2前 |
-| `idx_products_team_status_keyword` | `teamId`升序、`status`升序、`searchKeywords`升序、`_id`升序 | 否 | 受控关键词token | 搜索上线前 |
-| `uidx_products_team_request` | `teamId`升序、`createRequestKey`升序 | 是 | 创建幂等 | 2C2前 |
+| `idx_products_team_status_updated` | `teamId`升序、`status`升序、`updatedAt`降序、`_id`降序 | 否 | 共享目录列表预留 | 是 |
+| `idx_products_team_status_name` | `teamId`升序、`status`升序、`normalizedName`升序、`_id`升序 | 否 | 共享目录名称前缀预留 | 是 |
+| `idx_products_team_status_code` | `teamId`升序、`status`升序、`normalizedCode`升序、`_id`升序 | 否 | 共享目录编号定位预留 | 是 |
+| `idx_products_team_category_status` | `teamId`升序、`category`升序、`status`升序、`updatedAt`降序、`_id`降序 | 否 | 共享目录分类预留 | 是 |
+| `idx_products_team_status_keyword` | `teamId`升序、`status`升序、`searchKeywords`升序、`_id`升序 | 否 | 受控关键词token预留 | 是 |
+| `uidx_products_team_request` | `teamId`升序、`createRequestKey`升序 | 是 | `product.create`幂等 | 是 |
 
 products没有仓库和库存字段。名称使用前缀范围查询；任意包含式正则不能依赖普通索引，也不作为99,999规模承诺。
 
-## warehouse_products（2C2）
+## warehouse_products（2C2A部署前）
 
-| 索引名 | 字段 | 唯一 | 用途 | 创建时间 |
+| 索引名 | 字段 | 唯一 | 用途 | 2C2A部署前必须 |
 | --- | --- | --- | --- | --- |
-| `uidx_wh_products_relation` | `teamId`升序、`warehouseId`升序、`productId`升序 | 是 | 一仓一产品实例 | 2C2前 |
-| `idx_wh_products_status_updated` | `teamId`升序、`warehouseId`升序、`status`升序、`updatedAt`降序、`_id`降序 | 否 | 当前库存和回收状态列表 | 2C2前 |
-| `idx_wh_products_stock_status` | `teamId`升序、`warehouseId`升序、`status`升序、`stockStatus`升序、`updatedAt`降序、`_id`降序 | 否 | 库存状态筛选与统计 | 2C2前 |
-| `idx_wh_products_category` | `teamId`升序、`warehouseId`升序、`status`升序、`categorySnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 分类筛选 | 2C2前 |
-| `uidx_wh_products_request` | `teamId`升序、`warehouseId`升序、`createRequestKey`升序 | 是 | 创建/加入仓库幂等 | 2C2前 |
+| `uidx_wh_products_relation` | `teamId`升序、`warehouseId`升序、`productId`升序 | 是 | 一仓一产品实例 | 是 |
+| `uidx_wh_products_request` | `teamId`升序、`warehouseId`升序、`createRequestKey`升序 | 是 | 创建/加入仓库幂等 | 是 |
+| `idx_wh_products_status_updated` | `teamId`升序、`warehouseId`升序、`status`升序、`updatedAt`降序、`_id`降序 | 否 | 无筛选列表 | 是 |
+| `idx_wh_products_stock_status` | `teamId`升序、`warehouseId`升序、`status`升序、`stockStatus`升序、`updatedAt`降序、`_id`降序 | 否 | 库存状态筛选 | 是 |
+| `idx_wh_products_category` | `teamId`升序、`warehouseId`升序、`status`升序、`categorySnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 分类筛选 | 是 |
+| `idx_wh_products_category_stock` | `teamId`升序、`warehouseId`升序、`status`升序、`categorySnapshot`升序、`stockStatus`升序、`updatedAt`降序、`_id`降序 | 否 | 分类+库存状态 | 是 |
+| `idx_wh_products_name` | `teamId`升序、`warehouseId`升序、`status`升序、`normalizedNameSnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 名称前缀 | 是 |
+| `idx_wh_products_code` | `teamId`升序、`warehouseId`升序、`status`升序、`normalizedCodeSnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 编号精确查询 | 是 |
+| `idx_wh_products_keyword` | `teamId`升序、`warehouseId`升序、`status`升序、`searchKeywordsSnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 受控关键词 | 是 |
+| `idx_wh_products_category_name` | `teamId`升序、`warehouseId`升序、`status`升序、`categorySnapshot`升序、`normalizedNameSnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 分类+名称 | 是 |
+| `idx_wh_products_category_code` | `teamId`升序、`warehouseId`升序、`status`升序、`categorySnapshot`升序、`normalizedCodeSnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 分类+编号 | 是 |
+| `idx_wh_products_category_keyword` | `teamId`升序、`warehouseId`升序、`status`升序、`categorySnapshot`升序、`searchKeywordsSnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 分类+关键词 | 是 |
+| `idx_wh_products_stock_name` | `teamId`升序、`warehouseId`升序、`status`升序、`stockStatus`升序、`normalizedNameSnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 库存状态+名称 | 是 |
+| `idx_wh_products_stock_code` | `teamId`升序、`warehouseId`升序、`status`升序、`stockStatus`升序、`normalizedCodeSnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 库存状态+编号 | 是 |
+| `idx_wh_products_stock_keyword` | `teamId`升序、`warehouseId`升序、`status`升序、`stockStatus`升序、`searchKeywordsSnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 库存状态+关键词 | 是 |
+| `idx_wh_products_category_stock_name` | `teamId`升序、`warehouseId`升序、`status`升序、`categorySnapshot`升序、`stockStatus`升序、`normalizedNameSnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 分类+状态+名称 | 是 |
+| `idx_wh_products_category_stock_code` | `teamId`升序、`warehouseId`升序、`status`升序、`categorySnapshot`升序、`stockStatus`升序、`normalizedCodeSnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 分类+状态+编号 | 是 |
+| `idx_wh_products_category_stock_keyword` | `teamId`升序、`warehouseId`升序、`status`升序、`categorySnapshot`升序、`stockStatus`升序、`searchKeywordsSnapshot`升序、`updatedAt`降序、`_id`降序 | 否 | 分类+状态+关键词 | 是 |
 
-## stock_records（2C2至2C5）
+可选筛选字段位于排序字段之前；缺少其中任一等值字段会形成索引间隙，因此不能用一个超长索引代替上述实际查询形状。若控制台对OR分支提示不同索引，以实际提示核对字段顺序，不得放宽为客户端全量筛选。
+
+## stock_records（2C2A至2C5）
 
 以下索引尚未创建。
 
 | 索引名 | 字段 | 唯一 | 用途 | 创建时间 |
 | --- | --- | --- | --- | --- |
-| `idx_records_wh_created` | `teamId`升序、`warehouseId`升序、`createdAt`降序、`_id`降序 | 否 | 仓库流水和时间范围 | 2C5前 |
-| `idx_records_wh_product_created` | `teamId`升序、`warehouseId`升序、`warehouseProductId`升序、`createdAt`降序、`_id`降序 | 否 | 仓库产品流水 | 2C2前 |
-| `idx_records_product_created` | `teamId`升序、`productId`升序、`createdAt`降序、`_id`降序 | 否 | 跨仓产品历史 | 2C2前 |
+| `idx_records_wh_created` | `teamId`升序、`warehouseId`升序、`createdAt`降序、`_id`降序 | 否 | 仓库流水和时间范围 | 2C2A前 |
+| `idx_records_wh_product_created` | `teamId`升序、`warehouseId`升序、`warehouseProductId`升序、`createdAt`降序、`_id`降序 | 否 | 仓库产品流水 | 2C2A前 |
+| `idx_records_product_created` | `teamId`升序、`productId`升序、`createdAt`降序、`_id`降序 | 否 | 跨仓产品历史 | 2C2A前 |
 | `idx_records_type_created` | `teamId`升序、`warehouseId`升序、`type`升序、`createdAt`降序、`_id`降序 | 否 | 类型筛选 | 2C5前 |
 | `idx_records_operator_created` | `teamId`升序、`warehouseId`升序、`operatorId`升序、`createdAt`降序、`_id`降序 | 否 | 经验证的操作人筛选 | 2C5前 |
-| `uidx_records_request` | `teamId`升序、`warehouseId`升序、`requestKey`升序 | 是 | initial及库存写入幂等 | 2C2前 |
+| `uidx_records_request` | `teamId`升序、`warehouseId`升序、`requestKey`升序 | 是 | initial及库存写入幂等 | 2C2A前 |
 
 不预先为所有筛选排列创建重复索引。根据2C5真实慢查询和数据规模再补充必要组合。
 

@@ -32,6 +32,8 @@
 
 ## 产品、库存和流水权限
 
+阶段2C2A实际开放 `product.create`、`product.list`、`product.detail`。其他能力仍是后续阶段契约，不代表已经实现。
+
 | 能力 | owner | admin | viewer | pending/removed |
 | --- | --- | --- | --- | --- |
 | 共享产品及当前仓库实例读取 | 允许 | 允许 | 允许 | 拒绝 |
@@ -54,4 +56,5 @@
 - 流水可返回产品/单位/操作人快照、变动数量、前后库存、原因、来源去向、备注和时间。
 - 不返回 `openId`、内部 `userId`、`teamId`、`warehouseId`、`operatorId`、`createdBy`、`updatedBy`、requestKey、输入哈希或完整数据库文档。
 - viewer可通过产品读接口获得active产品封面的临时URL，但无存储写权限。
+- 2C2A尚未接入自定义图片，因此当前读接口只返回none、text或emoji封面结构，不生成临时图片URL。
 - 流水永久保留，普通业务接口不提供修改和删除能力；未来只能做保持审计可查的冷归档。

@@ -1,6 +1,6 @@
 # 集合设计
 
-阶段2C1只定稿架构，不创建集合。当前云端继续使用 `users`、`teams`、`team_members`、`warehouses`、`invites`；`products`、`warehouse_products`、`stock_records` 等到2C2按部署文档人工创建。代码不会自动创建集合、索引或权限。
+阶段2C2A代码已经实现 `products`、`warehouse_products`、`stock_records` 的访问，但代码不会自动创建集合、索引或权限。部署前必须按 `docs/阶段2C2A部署与验收.md` 在轻仓环境人工配置。
 
 ## users
 
@@ -26,7 +26,7 @@
 - `createdAt`、`updatedAt`：服务端时间
 - `deletedAt`：软删除预留，本阶段为 `null`
 - `activeInviteId`：最近一次刷新生成的邀请码ID，可为空；用于并发刷新时锁定团队状态
-- `activeProductCount`：2C2启用的active共享目录产品计数，默认0，由云端事务维护，用于99,999上限
+- `activeProductCount`：active共享目录产品计数，默认0，由云端事务维护，用于99,999上限；旧团队缺少时product.create兼容为0，首次成功创建后写回
 
 ## team_members
 
@@ -60,33 +60,33 @@
 - `createdAt`、`updatedAt`：服务端时间
 - `deletedAt`：软删除预留，本阶段为 `null`
 
-以上集合的真实读写全部经过 `warehouse-api`。产品、库存和流水集合仍属于后续阶段。
+以上集合以及产品、库存和流水集合的真实读写全部经过 `warehouse-api`。
 
-## products（2C2创建）
+## products（2C2A部署时人工创建）
 
 团队级共享产品主目录，是产品资料权威来源。
 
 - 身份与归属：`_id`、`teamId`
 - 主资料：`name`、`normalizedName`、`productCode`、`normalizedCode`、`category`、`unit`、`brand`、`specification`、`description`、`searchKeywords`
 - 封面：`coverType`、`coverText`、`coverEmoji`、`coverAssetKey`、`coverFileId`、`coverBackground`
-- 生命周期与并发：`status`、`version`、`activeWarehouseCount`、`createRequestKey`、最近写入action/requestKey/inputHash
+- 生命周期与并发：`status`、`version`、`activeWarehouseCount`、`createRequestKey`、`createRequestHash`、最近写入action/requestKey/inputHash
 - 审计：创建、更新、删除、恢复的操作者和时间
 
 products不得保存 `warehouseId`、`stock`、`minStock`、`stockStatus`或 `stockVersion`。名称和编号允许重复，`_id`是唯一身份。每团队最多99,999个active产品。
 
-## warehouse_products（2C2创建）
+## warehouse_products（2C2A部署时人工创建）
 
 共享产品在具体仓库的实例、库存余额和最低库存阈值。
 
 - 唯一关系：`_id`、`teamId`、`warehouseId`、`productId`
 - 余额：`stock`、`minStock`、`stockStatus`、`stockVersion`
-- 快照：`productVersion`、`productNameSnapshot`、`productCodeSnapshot`、`categorySnapshot`、`unitSnapshot`、`coverSummarySnapshot`
-- 生命周期与幂等：`status`、`createRequestKey`、最近写入action/requestKey/inputHash
+- 快照：`productVersion`、`productNameSnapshot`、`normalizedNameSnapshot`、`productCodeSnapshot`、`normalizedCodeSnapshot`、`categorySnapshot`、`unitSnapshot`、`brandSnapshot`、`specificationSnapshot`、`searchKeywordsSnapshot`、`coverSummarySnapshot`
+- 生命周期与幂等：`status`、`createRequestKey`、`createRequestHash`、最近写入action/requestKey/inputHash
 - 审计：创建、更新、移除、恢复的操作者和时间
 
 `teamId + warehouseId + productId`必须唯一。stockStatus由云端计算并持久化；products始终是主资料权威。仓库移除要求stock为0，恢复复用原文档且stock保持0。
 
-## stock_records（2C2创建，2C4启用完整库存写入）
+## stock_records（2C2A部署时人工创建，2C4启用完整库存写入）
 
 不可变库存流水。库存更新与流水创建必须由 `warehouse-api` 在同一事务完成。
 
@@ -97,7 +97,7 @@ products不得保存 `warehouseId`、`stock`、`minStock`、`stockStatus`或 `st
 - `beforeStock`、`afterStock`
 - `reason`、`sourceOrDestination`、`remark`
 - `operatorId`、`operatorMemberId`、`operatorNameSnapshot`
-- `requestAction`、`requestKey`、`requestInputHash`
+- `requestAction`、`requestKey`、`requestHash`
 - `createdAt`
 
 流水永久保留，用户不能修改或删除。产品、仓库实例或成员变化后，历史仍通过快照正常显示；未来只允许不可变冷归档。
