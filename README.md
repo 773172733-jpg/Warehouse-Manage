@@ -1,6 +1,6 @@
 # 轻仓｜微信小程序仓库管理器
 
-当前进入阶段2C2A：已实现团队共享产品目录的云端核心，包括 `product.create`、`product.list`、`product.detail`、默认仓库实例、可选initial流水、99,999产品上限、幂等创建和游标分页。本阶段尚未接入页面，也不会自动创建集合、索引或部署云函数。
+当前进入阶段2C2B1：现有三步产品创建页面已接入真实 `product.create`，支持owner/admin创建、严格字段映射、文字/emoji封面、初始库存事务写入和幂等重试。库存首页仍使用mock列表，真实列表与详情将在阶段2C2B2接入。
 
 ## 技术栈
 
@@ -32,6 +32,8 @@
 - [`docs/阶段2C1实施拆分与迁移.md`](docs/阶段2C1实施拆分与迁移.md)
 - [`docs/阶段2C2A产品目录云端核心.md`](docs/阶段2C2A产品目录云端核心.md)
 - [`docs/阶段2C2A部署与验收.md`](docs/阶段2C2A部署与验收.md)
+- [`docs/阶段2C2B1产品创建页面接入.md`](docs/阶段2C2B1产品创建页面接入.md)
+- [`docs/阶段2C2B1部署与验收.md`](docs/阶段2C2B1部署与验收.md)
 - [`database/collections.md`](database/collections.md)
 - [`database/indexes.md`](database/indexes.md)
 - [`database/permissions.md`](database/permissions.md)
@@ -70,11 +72,14 @@
 - `product.create/list/detail` 静态白名单路由、可信身份复核和字段脱敏
 - 服务端名称/编号规范化、受控searchKeywords、库存状态和封面校验纯函数
 - 创建产品、默认仓库实例、可选initial流水及teams计数的单事务写入
-- `miniprogram/services/product-service.js` 请求白名单封装（暂未接页面）
+- `miniprogram/services/product-service.js` 请求白名单封装
+- 三步产品创建页真实接入 `product.create`，网络失败可按同一requestKey安全重试
+- owner/admin新增入口和路由权限检查，viewer保持只读
+- 本地图片只保留预览并在保存前明确阻断，未向数据库提交临时路径
 
 暂不包含：
 
-- 真实产品页面接入、产品编辑及当前仓库移除/恢复接口
+- 真实产品列表和详情页面接入、产品编辑及当前仓库移除/恢复接口
 - 真实入库、出库、库存调整和库存流水接口
 - 邀请二维码、微信分享卡片和owner转让
 - 团队解散、多团队切换和实时成员状态推送

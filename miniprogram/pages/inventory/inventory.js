@@ -1,4 +1,4 @@
-var mock = require('./mock-data');
+var mock = require('./mock-data.js');
 
 Page({
   data: {
@@ -10,15 +10,36 @@ Page({
     summary: { total: 0, lowCount: 0, outCount: 0 },
     categories: mock.CATEGORIES,
     placeholder: '搜索产品名称、编号或关键词',
-    searchFocused: false
+    searchFocused: false,
+    canCreateProduct: false
   },
 
   onShow: function () {
+    var app = getApp();
+    var role = app.globalData && app.globalData.currentRole;
     var products = mock.getProducts();
     var summary = this.calcSummary(products);
-    this.setData({ products: products, summary: summary }, function () {
+    this.setData({
+      products: products,
+      summary: summary,
+      canCreateProduct: role === 'owner' || role === 'admin'
+    }, function () {
       this.applyFilters();
     }.bind(this));
+    this.refreshCreatePermission(app);
+  },
+
+  refreshCreatePermission: function (app) {
+    var self = this;
+    if (!app.bootstrap || (app.globalData && app.globalData.bootstrapStatus === 'success')) return;
+    app.bootstrap()
+      .then(function () {
+        var role = app.globalData && app.globalData.currentRole;
+        self.setData({ canCreateProduct: role === 'owner' || role === 'admin' });
+      })
+      .catch(function () {
+        self.setData({ canCreateProduct: false });
+      });
   },
 
   calcSummary: function (products) {
@@ -65,6 +86,12 @@ Page({
   },
 
   onAddTap: function () {
+    var app = getApp();
+    var role = app.globalData && app.globalData.currentRole;
+    if (role !== 'owner' && role !== 'admin') {
+      wx.showToast({ title: '你没有创建产品的权限', icon: 'none', duration: 2000 });
+      return;
+    }
     wx.navigateTo({
       url: '/pages/product-edit/product-edit?mode=create'
     });

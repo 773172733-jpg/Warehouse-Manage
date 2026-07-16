@@ -106,8 +106,8 @@
     </view>
   </view>
 
-  <!-- 悬浮新增按钮（模拟管理员）-->
-  <view class="inv-fab" catchtap="onAddTap">
+  <!-- 悬浮新增按钮 -->
+  <view wx:if="{{canCreateProduct}}" class="inv-fab" catchtap="onAddTap">
     <text class="inv-fab-icon">＋</text>
   </view>
 </view>

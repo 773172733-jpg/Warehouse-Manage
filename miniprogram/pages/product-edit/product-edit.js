@@ -1,3 +1,7 @@
+var productService = require('../../services/product-service.js');
+var ROUTES = require('../../constants/routes.js');
+var createUtils = require('./product-create-utils.js');
+
 var COVER_COLORS = [
   { name: '浅绿', value: '#EAF6EF' },
   { name: '米黄', value: '#F7F2E8' },
@@ -22,7 +26,7 @@ var CATEGORIES = ['瓷砖', '工具', '五金', '耗材', '办公用品', '其�
 
 var UNITS = ['个', '件', '台', '套', '箱', '盒', '包', '卷', '片', '米', '平方米', '其他'];
 
-var STOCK_MAX = 999999999;
+var STOCK_MAX = createUtils.STOCK_MAX;
 
 function getAssetByKey(key) {
   for (var i = 0; i < SYSTEM_ASSETS.length; i++) {
@@ -38,13 +42,12 @@ function getAssetLabel(key) {
   return '';
 }
 
-function sanitizeInteger(value, fallback) {
-  if (fallback === undefined) fallback = 0;
-  if (value === '' || value === undefined || value === null) return fallback;
-  var num = parseInt(value, 10);
-  if (isNaN(num) || num < 0) return fallback;
-  if (num > STOCK_MAX) return STOCK_MAX;
-  return num;
+function getValidQuantity(value) {
+  var text = String(value === undefined || value === null ? '' : value).trim();
+  if (!/^\d+$/.test(text)) return null;
+  var number = Number(text);
+  if (!Number.isSafeInteger(number) || number < 0 || number > STOCK_MAX) return null;
+  return number;
 }
 
 function computeStockStatus(stock, minStock) {
@@ -95,15 +98,68 @@ Page({
     pickerVisible: false,
     pickerTitle: '',
     pickerItems: [],
-    pickerTarget: ''
+    pickerTarget: '',
+    accessChecking: true,
+    accessDenied: false,
+    saving: false,
+    saveError: '',
+    createRequestKey: '',
+    submittedPayloadHash: '',
+    createdProduct: null
   },
 
   onLoad: function (query) {
+    this.pageActive = true;
+    this.createCompleted = false;
     if (query && query.mode !== 'create') {
       wx.showToast({ title: '当前仅支持新增模式', icon: 'none', duration: 2000 });
     }
     this.calcNavStyle();
     this.computeStockStatus();
+    this.verifyCreateAccess();
+  },
+
+  onUnload: function () {
+    this.pageActive = false;
+  },
+
+  safeSetData: function (updates, callback) {
+    if (!this.pageActive) return;
+    this.setData(updates, callback);
+  },
+
+  verifyCreateAccess: function () {
+    var self = this;
+    var app = getApp();
+
+    function applyRole() {
+      if (!self.pageActive) return;
+      var role = app.globalData && app.globalData.currentRole;
+      if (createUtils.isCreateAllowed(role)) {
+        self.safeSetData({ accessChecking: false, accessDenied: false });
+        return;
+      }
+      self.safeSetData({ accessChecking: false, accessDenied: true });
+      wx.showToast({ title: '你没有创建产品的权限', icon: 'none', duration: 2000 });
+      wx.switchTab({ url: ROUTES.INVENTORY });
+    }
+
+    if (app.globalData && app.globalData.bootstrapStatus === 'success') {
+      applyRole();
+      return;
+    }
+    if (!app.bootstrap) {
+      applyRole();
+      return;
+    }
+    app.bootstrap()
+      .then(applyRole)
+      .catch(function () {
+        if (!self.pageActive) return;
+        self.safeSetData({ accessChecking: false, accessDenied: true });
+        wx.showToast({ title: '当前团队状态不可用，请重新进入小程序', icon: 'none', duration: 2000 });
+        wx.reLaunch({ url: ROUTES.STARTUP });
+      });
   },
 
   calcNavStyle: function () {
@@ -122,6 +178,7 @@ Page({
   /* ====== 步骤导航 ====== */
 
   onNextStep: function () {
+    if (this.data.saving || this.data.accessChecking || this.data.accessDenied) return;
     if (this.data.currentStep === 1) {
       if (!this.validateStep1()) return;
     } else if (this.data.currentStep === 2) {
@@ -133,6 +190,7 @@ Page({
   },
 
   onPrevStep: function () {
+    if (this.data.saving) return;
     if (this.data.currentStep > 1) {
       this.setData({ currentStep: this.data.currentStep - 1 });
     }
@@ -307,19 +365,18 @@ Page({
   /* ====== 库存设置 ====== */
 
   onStockInput: function (e) {
-    var val = sanitizeInteger(e.detail.value, 0);
-    this.setData({ 'form.stock': val, 'fieldErrors.stock': '' });
+    this.setData({ 'form.stock': e.detail.value, 'fieldErrors.stock': '' });
     this.computeStockStatus();
   },
 
   onMinStockInput: function (e) {
-    var val = sanitizeInteger(e.detail.value, 0);
-    this.setData({ 'form.minStock': val });
+    this.setData({ 'form.minStock': e.detail.value });
     this.computeStockStatus();
   },
 
   onStockDecrease: function () {
-    var val = this.data.form.stock;
+    var val = getValidQuantity(this.data.form.stock);
+    if (val === null) return;
     if (val > 0) {
       val = val - 1;
       this.setData({ 'form.stock': val, 'fieldErrors.stock': '' });
@@ -328,7 +385,8 @@ Page({
   },
 
   onStockIncrease: function () {
-    var val = this.data.form.stock;
+    var val = getValidQuantity(this.data.form.stock);
+    if (val === null) return;
     if (val < STOCK_MAX) {
       val = val + 1;
       this.setData({ 'form.stock': val, 'fieldErrors.stock': '' });
@@ -337,7 +395,8 @@ Page({
   },
 
   onMinStockDecrease: function () {
-    var val = this.data.form.minStock;
+    var val = getValidQuantity(this.data.form.minStock);
+    if (val === null) return;
     if (val > 0) {
       this.setData({ 'form.minStock': val - 1 });
       this.computeStockStatus();
@@ -345,7 +404,8 @@ Page({
   },
 
   onMinStockIncrease: function () {
-    var val = this.data.form.minStock;
+    var val = getValidQuantity(this.data.form.minStock);
+    if (val === null) return;
     if (val < STOCK_MAX) {
       this.setData({ 'form.minStock': val + 1 });
       this.computeStockStatus();
@@ -353,12 +413,18 @@ Page({
   },
 
   onLowStockToggle: function () {
-    this.setData({ 'form.lowStockEnabled': !this.data.form.lowStockEnabled });
+    this.setData({
+      'form.lowStockEnabled': !this.data.form.lowStockEnabled
+    }, this.computeStockStatus.bind(this));
   },
 
   computeStockStatus: function () {
-    var stock = Number(this.data.form.stock) || 0;
-    var minStock = Number(this.data.form.minStock) || 0;
+    var stock = getValidQuantity(this.data.form.stock);
+    var minStock = this.data.form.lowStockEnabled
+      ? getValidQuantity(this.data.form.minStock)
+      : 0;
+    stock = stock === null ? 0 : stock;
+    minStock = minStock === null ? 0 : minStock;
     this.setData({ stockStatus: computeStockStatus(stock, minStock) });
   },
 
@@ -424,14 +490,12 @@ Page({
 
   validateStep2: function () {
     var form = this.data.form;
-    var stock = form.stock;
-    if (stock === null || stock === undefined || isNaN(Number(stock)) || Number(stock) < 0) {
+    if (getValidQuantity(form.stock) === null) {
       this.setData({ 'fieldErrors.stock': '请输入有效的初始库存' });
       wx.showToast({ title: '请输入有效的初始库存', icon: 'none', duration: 2000 });
       return false;
     }
-    var min = form.minStock;
-    if (min === null || min === undefined || isNaN(Number(min)) || Number(min) < 0) {
+    if (form.lowStockEnabled && getValidQuantity(form.minStock) === null) {
       wx.showToast({ title: '请输入有效的最低库存', icon: 'none', duration: 2000 });
       return false;
     }
@@ -442,20 +506,93 @@ Page({
 
   onComplete: function () {
     var self = this;
-    wx.showModal({
-      title: '提示',
-      content: '产品保存功能将在后续阶段接入',
-      showCancel: false,
-      confirmText: '知道了',
-      success: function (res) {
-        if (res.confirm) {
-          wx.navigateBack({
-            delta: 1,
-            fail: function () {
-              wx.switchTab({ url: '/pages/inventory/inventory' });
-            }
-          });
+    if (this.data.saving || this.createCompleted || this.data.accessChecking) return;
+    var app = getApp();
+    var role = app.globalData && app.globalData.currentRole;
+    if (this.data.accessDenied || !createUtils.isCreateAllowed(role)) {
+      wx.showToast({ title: '你没有创建产品的权限', icon: 'none', duration: 2000 });
+      return;
+    }
+    if (!this.validateStep1()) {
+      this.setData({ currentStep: 1 });
+      return;
+    }
+    if (!this.validateStep2()) {
+      this.setData({ currentStep: 2 });
+      return;
+    }
+
+    var basePayload;
+    try {
+      basePayload = createUtils.buildCreateProductPayload(this.data.form);
+    } catch (error) {
+      var localMessage = createUtils.getCreateErrorMessage(error);
+      this.safeSetData({ saveError: localMessage });
+      if (error && error.code === 'CUSTOM_IMAGE_NOT_SUPPORTED') {
+        wx.showModal({
+          title: '暂不支持图片上传',
+          content: localMessage,
+          showCancel: false,
+          confirmText: '返回修改'
+        });
+      } else {
+        wx.showToast({ title: localMessage, icon: 'none', duration: 2500 });
+      }
+      return;
+    }
+
+    var intent = createUtils.resolveCreateIntent(basePayload, {
+      createRequestKey: this.data.createRequestKey,
+      submittedPayloadHash: this.data.submittedPayloadHash
+    });
+    var payload = Object.assign({}, basePayload, { requestKey: intent.requestKey });
+    this.safeSetData({
+      saving: true,
+      saveError: '',
+      createRequestKey: intent.requestKey,
+      submittedPayloadHash: intent.signature
+    });
+
+    productService.createProduct(payload)
+      .then(function (result) {
+        createUtils.validateCreateResult(result, basePayload.initialStock);
+        if (!self.pageActive) return;
+        self.createCompleted = true;
+        self.safeSetData({
+          saving: false,
+          saveError: '',
+          createRequestKey: '',
+          submittedPayloadHash: '',
+          createdProduct: result.product
+        });
+        wx.showToast({ title: '产品创建成功', icon: 'success', duration: 1500 });
+        wx.switchTab({ url: ROUTES.INVENTORY });
+      })
+      .catch(function (error) {
+        if (!self.pageActive) return;
+        var message = createUtils.getCreateErrorMessage(error);
+        var updates = { saving: false, saveError: message };
+        if (error && error.code === 'REQUEST_KEY_CONFLICT') {
+          updates.createRequestKey = '';
+          updates.submittedPayloadHash = '';
         }
+        self.safeSetData(updates);
+        wx.showToast({ title: message, icon: 'none', duration: 2500 });
+        if (error && createUtils.shouldRestartStartup(error.code)) {
+          self.restartStartup();
+        }
+      });
+  },
+
+  restartStartup: function () {
+    var self = this;
+    var app = getApp();
+    var refresh = app.bootstrap ? app.bootstrap({ forceRefresh: true }) : Promise.resolve();
+    refresh.catch(function () {
+      // startup 页面负责展示新的初始化结果。
+    }).finally(function () {
+      if (self.pageActive) {
+        wx.reLaunch({ url: ROUTES.STARTUP });
       }
     });
   },
@@ -463,6 +600,7 @@ Page({
   /* ====== 导航返回 ====== */
 
   onBack: function () {
+    if (this.data.saving) return;
     if (this.data.currentStep > 1) {
       this.onPrevStep();
     } else {

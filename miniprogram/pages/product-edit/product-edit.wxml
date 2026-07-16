@@ -278,9 +278,10 @@
 </view>
 
 <!-- 操作按钮 --><view class="pe-confirm-actions">
-  <view class="pe-btn-pe pe-btn-pe--outline" catchtap="onPrevStep">返回修改</view>
-  <view class="pe-btn-pe pe-btn-pe--primary" catchtap="onComplete">完成</view>
+  <view class="pe-btn-pe pe-btn-pe--outline {{saving?'pe-btn-pe--disabled':''}}" catchtap="onPrevStep">返回修改</view>
+  <view class="pe-btn-pe pe-btn-pe--primary {{saving?'pe-btn-pe--disabled':''}}" catchtap="onComplete">{{saving?'正在创建…':'完成'}}</view>
 </view>
+<text wx:if="{{saveError}}" class="pe-save-error">{{saveError}}</text>
 
 </view><!-- /第三步 -->
 

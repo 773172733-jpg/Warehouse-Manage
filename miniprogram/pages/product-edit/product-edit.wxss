@@ -666,6 +666,17 @@
 .pe-btn-pe--ghost:active {
   background: #E7EBE8;
 }
+.pe-btn-pe--disabled {
+  opacity: 0.55;
+}
+.pe-save-error {
+  display: block;
+  margin-top: 16rpx;
+  color: #D94A45;
+  font-size: 24rpx;
+  line-height: 1.5;
+  text-align: center;
+}
 
 /* ===== 本地选择器弹层 ===== */
 .pe-picker-mask {
