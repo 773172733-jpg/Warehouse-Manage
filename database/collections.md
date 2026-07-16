@@ -94,6 +94,20 @@ products不得保存 `warehouseId`、`stock`、`minStock`、`stockStatus`或 `st
 
 阶段2C3B共享目录删除和恢复不修改或删除任何warehouse_products。目录恢复后实例仍保持removed，用户必须在产品回收站手动恢复，且继续复用原warehouseProductId。
 
+## product_image_assets（2C3C1部署时人工创建）
+
+产品单图封面的安全上传、确认、绑定和待清理状态。客户端不得直接读写。
+
+- 归属与幂等：`_id`、`teamId`、`createdBy`、`stageRequestKey`、`stageRequestHash`、`confirmRequestKey`、`confirmRequestHash`
+- 状态：`awaiting_upload`、`staged`、`bound`、`orphaned`、`rejected`
+- 声明信息：`declaredExtension`、`declaredSizeBytes`
+- 临时与安全文件：`uploadCloudPath`、`verifiedCloudPath`、`sourceUploadFileId`、`fileId`
+- 真实检测：`detectedMimeType`、`detectedExtension`、`sizeBytes`、`sha256`
+- 绑定：`productId`、`boundBy`、`boundAt`
+- 生命周期：`confirmedAt`、`orphanedAt`、`rejectedAt`、`expiresAt`、`cleanupAfter`、`createdAt`、`updatedAt`
+
+客户端只能把已确认资产标识作为 `coverAssetKey` 交给产品接口；`coverFileId`由云函数从该集合读取。awaiting_upload不写空fileId。2C3C1只记录清理时间，不物理删除文件。
+
 ## stock_records（2C2A部署时人工创建，2C4启用完整库存写入）
 
 不可变库存流水。库存更新与流水创建必须由 `warehouse-api` 在同一事务完成。

@@ -1,6 +1,6 @@
 # 轻仓｜微信小程序仓库管理器
 
-当前进入阶段2C3B：产品创建、列表、详情、资料编辑、当前仓库软移除/恢复，以及owner专属共享目录软删除/恢复均已接入真实云端接口。两层回收流程都保留warehouse_products和stock_records，使用产品版本锁、事务计数和服务端幂等；库存写入和真实流水列表仍按后续阶段实施。
+当前进入阶段2C3C1：产品单张JPG、PNG、WebP封面已实现CloudBase Storage分阶段上传、服务端真实字节校验、verified文件复制及产品事务安全绑定。产品与两层回收流程继续保留warehouse_products和stock_records；库存写入和真实流水列表仍按后续阶段实施。
 
 ## 技术栈
 
@@ -40,6 +40,7 @@
 - [`docs/阶段2C3A部署与验收.md`](docs/阶段2C3A部署与验收.md)
 - [`docs/阶段2C3B共享目录删除与恢复.md`](docs/阶段2C3B共享目录删除与恢复.md)
 - [`docs/阶段2C3B部署与验收.md`](docs/阶段2C3B部署与验收.md)
+- [`docs/阶段2C3C1-产品图片上传与安全绑定部署指南.md`](docs/阶段2C3C1-产品图片上传与安全绑定部署指南.md)
 - [`database/collections.md`](database/collections.md)
 - [`database/indexes.md`](database/indexes.md)
 - [`database/permissions.md`](database/permissions.md)
@@ -83,7 +84,7 @@
 - `miniprogram/services/product-service.js` 请求白名单封装
 - 三步产品创建页真实接入 `product.create`，网络失败可按同一requestKey安全重试
 - owner/admin新增入口和路由权限检查，viewer保持只读
-- 本地图片只保留预览并在保存前明确阻断，未向数据库提交临时路径
+- 单张产品图片通过prepare、临时上传、真实字节confirm和产品事务绑定接入，客户端不能指定最终fileID
 - 库存首页真实接入 `product.list`，支持20条cursor分页、搜索防抖和过时响应隔离
 - 分类与库存状态使用云端筛选，摘要数字明确限定为当前已加载真实数据
 - 产品卡片通过真实warehouseProductId进入 `product.detail`，组合主资料、库存和权限

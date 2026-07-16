@@ -90,6 +90,17 @@ CloudBase单集合最多20个索引，且套餐升级不能提高该上限。阶
 
 阶段2C3B的deleted products列表继续按 `updatedAt desc, _id desc`，复用既有 `idx_products_team_status_updated`、`idx_products_team_category_status` 以及名称、编号、关键词索引；不新增deletedAt排序索引。
 
+## product_image_assets（2C3C1部署前）
+
+| 索引名 | 字段 | 唯一 | 用途 |
+| --- | --- | --- | --- |
+| `uidx_image_assets_file` | `fileId`升序 | 是 | verified文件唯一绑定；awaiting_upload不写该字段 |
+| `uidx_image_assets_stage_request` | `teamId`升序、`stageRequestKey`升序 | 是 | prepare幂等 |
+| `idx_image_assets_product_status` | `teamId`升序、`productId`升序、`status`升序、`updatedAt`降序 | 否 | 产品图片状态查询 |
+| `idx_image_assets_cleanup` | `status`升序、`cleanupAfter`升序、`_id`升序 | 否 | 2C3C2清理游标 |
+
+以上4个索引属于独立新集合，不占用warehouse_products的单集合20索引额度。2C3C1不得调整warehouse_products索引。
+
 ## stock_records（2C2A至2C5）
 
 以下索引尚未创建。

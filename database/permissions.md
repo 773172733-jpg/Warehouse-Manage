@@ -4,7 +4,7 @@
 
 1. 前端隐藏按钮不是权限控制。
 2. 前端传入的 `role`、`teamId`、`warehouseId`、`openId`、`userId` 均不可信。
-3. `users`、`teams`、`team_members`、`warehouses`、`invites` 以及后续 `products`、`warehouse_products`、`stock_records` 的客户端读取和写入全部关闭。
+3. `users`、`teams`、`team_members`、`warehouses`、`invites`、`products`、`product_image_assets`、`warehouse_products`、`stock_records` 的客户端读取和写入全部关闭。
 4. 云函数使用 `cloud.getWXContext()` 获取可信身份，并由服务端 SDK 访问数据库。
 5. 页面不得调用 `wx.cloud.database()` 直接访问核心集合。
 
@@ -32,7 +32,7 @@
 
 ## 产品、库存和流水权限
 
-阶段2C3B实际开放 `product.create`、`product.list`、`product.detail`、`product.update`、`product.removeFromWarehouse`、`product.removed.list`、`product.restoreToWarehouse`、`product.catalog.delete`、`product.catalog.deleted.list` 和 `product.catalog.restore`。库存写入与流水读取仍是后续阶段契约。
+阶段2C3C1新增 `product.image.stage.prepare` 和 `product.image.stage.confirm`，仅owner/admin可调用。客户端只能向prepare下发的随机uploads路径传临时文件，不能写verified目录，也不能直接提交coverFileId。库存写入与流水读取仍是后续阶段契约。
 
 | 能力 | owner | admin | viewer | pending/removed |
 | --- | --- | --- | --- | --- |
@@ -60,5 +60,5 @@
 - 不返回 `openId`、内部 `userId`、`teamId`、`warehouseId`、`operatorId`、`createdBy`、`updatedBy`、requestKey、输入哈希或完整数据库文档。
 - 共享目录回收站只返回产品展示字段、deletedAt、deletionReason、安全version、activeWarehouseCount和canRestore；仓库回收站的canDeleteCatalog由后端结合可信角色和目录计数生成。
 - viewer可通过产品读接口获得active产品封面的临时URL，但无存储写权限。
-- 2C3A仍不接入自定义图片上传。历史或测试image封面可在编辑时原样保留，客户端不能提交本地路径或任意fileID；替换图片安排在2C3C。
+- 2C3C1通过staged资产接入单张JPG、PNG或WebP封面。云函数下载真实Buffer校验并复制到verified目录后，才允许产品事务绑定；客户端本地路径、任意fileID、云路径和图片元数据均不可信。
 - 流水永久保留，普通业务接口不提供修改和删除能力；未来只能做保持审计可查的冷归档。
