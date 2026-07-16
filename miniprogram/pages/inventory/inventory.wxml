@@ -1,7 +1,7 @@
 <view class="inv-page">
   <view class="inv-header">
     <view class="inv-header-left">
-      <text class="inv-header-title">轻仓</text>
+      <text class="inv-header-title">口袋仓库Go</text>
       <view class="inv-warehouse-badge">
         <view class="inv-warehouse-dot"></view>
         <text class="inv-warehouse-name">{{warehouseName}}</text>

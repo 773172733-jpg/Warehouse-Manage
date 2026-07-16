@@ -88,14 +88,16 @@
 <!-- 系统贴图设置 --><block wx:if="{{form.coverMode==='system'}}">
   <view class="pe-field">
     <text class="pe-field-label">选择贴图</text>
+    <scroll-view class="pe-asset-scroll" scroll-y enable-flex>
     <view class="pe-asset-grid">
       <block wx:for="{{systemAssets}}" wx:key="key">
         <view class="pe-asset-card {{form.systemAssetKey===item.key?'pe-asset-card--active':''}}" data-key="{{item.key}}" catchtap="onSystemAssetTap">
           <text class="pe-asset-emoji">{{item.emoji}}</text>
-          <text class="pe-asset-label">{{item.label}}</text>
         </view>
       </block>
     </view>
+    </scroll-view>
+    <text wx:if="{{form.legacyFallback}}" class="pe-field-note">当前产品使用旧版贴图 {{form.systemAssetEmoji}}，保存后将替换为新贴图。</text>
     <text wx:if="{{fieldErrors.systemAssetKey}}" class="pe-field-error">{{fieldErrors.systemAssetKey}}</text>
   </view>
 </block>

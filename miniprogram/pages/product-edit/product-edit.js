@@ -17,10 +17,46 @@ var COVER_COLORS = [
 var SYSTEM_ASSETS = [
   { key: 'box', label: '纸箱', emoji: '📦' },
   { key: 'tool', label: '工具', emoji: '🔧' },
-  { key: 'tile', label: '瓷砖', emoji: '🧱' },
+  { key: 'tile', label: '瓷砖', emoji: '▦' },
   { key: 'hardware', label: '五金', emoji: '🔩' },
   { key: 'consumable', label: '耗材', emoji: '🪣' },
-  { key: 'office', label: '办公', emoji: '📎' }
+  { key: 'office', label: '办公', emoji: '📎' },
+  { key: 'bag', label: '胶袋', emoji: '🛍️' },
+  { key: 'cement', label: '水泥', emoji: '🧱' },
+  { key: 'wood', label: '木材', emoji: '🪵' },
+  { key: 'paint', label: '油漆', emoji: '🎨' },
+  { key: 'snack', label: '零食', emoji: '🍪' },
+  { key: 'drink', label: '饮料', emoji: '🥤' },
+  { key: 'fruit', label: '水果', emoji: '🍎' },
+  { key: 'veggie', label: '蔬菜', emoji: '🥬' },
+  { key: 'frozen', label: '冷冻食品', emoji: '❄️' },
+  { key: 'bathroom', label: '卫浴', emoji: '🚿' },
+  { key: 'light', label: '灯具', emoji: '💡' },
+  { key: 'furniture', label: '家具', emoji: '🪑' },
+  { key: 'appliance', label: '家电', emoji: '🔌' },
+  { key: 'cleaning', label: '清洁用品', emoji: '🧹' },
+  { key: 'computer', label: '电脑', emoji: '💻' },
+  { key: 'phone', label: '手机', emoji: '📱' },
+  { key: 'card', label: '卡片', emoji: '💳' },
+  { key: 'camera', label: '相机', emoji: '📷' },
+  { key: 'file', label: '文件', emoji: '📁' },
+  { key: 'book', label: '书籍', emoji: '📚' },
+  { key: 'car', label: '汽车', emoji: '🚗' },
+  { key: 'tyre', label: '轮胎', emoji: '🛞' },
+  { key: 'parts', label: '零件', emoji: '⚙️' },
+  { key: 'battery', label: '电池', emoji: '🔋' },
+  { key: 'oil', label: '机油', emoji: '🧴' },
+  { key: 'shoe', label: '鞋子', emoji: '👟' },
+  { key: 'shirt', label: '衣服', emoji: '👕' },
+  { key: 'pants', label: '裤子', emoji: '👖' },
+  { key: 'hat', label: '帽子', emoji: '🧢' },
+  { key: 'bagwear', label: '包袋', emoji: '🎒' },
+  { key: 'cow', label: '牛', emoji: '🐄' },
+  { key: 'pig', label: '猪', emoji: '🐖' },
+  { key: 'sheep', label: '羊', emoji: '🐑' },
+  { key: 'chicken', label: '鸡', emoji: '🐓' },
+  { key: 'duck', label: '鸭', emoji: '🦆' },
+  { key: 'fish', label: '鱼', emoji: '🐟' }
 ];
 
 var CATEGORIES = ['瓷砖', '工具', '五金', '耗材', '办公用品', '其他'];
@@ -70,6 +106,7 @@ Page({
       systemAssetKey: '',
       systemAssetLabel: '',
       systemAssetEmoji: '',
+      legacyFallback: false,
       localImagePath: '',
       name: '',
       code: '',
@@ -199,6 +236,8 @@ Page({
         var asset = coverMode === 'system' ? SYSTEM_ASSETS.find(function (item) {
           return item.emoji === cover.emoji;
         }) : null;
+        var legacyEmoji = coverMode === 'system' && !asset ? cover.emoji || '' : '';
+        var legacyFallback = coverMode === 'system' && !asset;
         var unit = detail.product.unit;
         var knownUnit = UNITS.indexOf(unit) > -1;
         self.safeSetData({
@@ -217,6 +256,7 @@ Page({
             systemAssetKey: asset ? asset.key : '',
             systemAssetLabel: asset ? asset.label : '',
             systemAssetEmoji: cover.emoji || '',
+            legacyFallback: legacyFallback,
             localImagePath: cover.type === 'image' ? (cover.fileId || '') : '',
             name: detail.product.name,
             code: detail.product.productCode,

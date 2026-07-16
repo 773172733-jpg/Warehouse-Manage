@@ -14,7 +14,7 @@
     "pages/profile/profile"
   ],
   "window": {
-    "navigationBarTitleText": "轻仓",
+    "navigationBarTitleText": "口袋仓库Go",
     "navigationBarBackgroundColor": "#078B4B",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#F7F8F7"
