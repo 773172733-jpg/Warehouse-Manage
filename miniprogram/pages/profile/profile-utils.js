@@ -117,7 +117,7 @@ function buildQuickEntries(permission, hasTeam) {
   ];
 
   if (permission.canViewRecycleBin) {
-    entries.push({ key: 'recycle', title: '回收站', desc: '后续阶段开放', action: 'todo', disabled: false });
+    entries.push({ key: 'recycle', title: '回收站', desc: '查看和恢复已移除产品', action: 'recycle', disabled: false });
   }
   if (permission.canManageCategories) {
     entries.push({ key: 'categories', title: '分类管理', desc: '后续阶段开放', action: 'todo', disabled: false });

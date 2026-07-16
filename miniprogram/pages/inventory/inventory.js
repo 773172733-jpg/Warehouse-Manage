@@ -293,11 +293,6 @@ Page({
     });
   },
 
-  onRecycleBinTap() {
-    if (!this.data.canCreateProduct) return;
-    wx.navigateTo({ url: ROUTES.PRODUCT_RECYCLE_BIN });
-  },
-
   onCardTap(event) {
     this.openProduct(event.currentTarget.dataset.warehouseProductId);
   },

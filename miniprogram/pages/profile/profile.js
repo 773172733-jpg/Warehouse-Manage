@@ -1,5 +1,6 @@
 var mock = require('./mock-profile.js');
 var utils = require('./profile-utils.js');
+var ROUTES = require('../../constants/routes.js');
 
 var CURRENT_ROLE = 'owner';
 
@@ -86,7 +87,9 @@ Page({
   },
 
   resetLocalState: function () {
-    var normalized = utils.normalizeProfile(mock.MOCK_PROFILE, CURRENT_ROLE);
+    var app = getApp();
+    var currentRole = app.globalData && app.globalData.currentRole;
+    var normalized = utils.normalizeProfile(mock.MOCK_PROFILE, currentRole || CURRENT_ROLE);
     var permission = utils.getPermissionFlags(normalized.currentUser.role, normalized.hasTeam);
     var settings = utils.cloneSettings(mock.DEFAULT_SETTINGS);
     this.setData({
@@ -157,6 +160,14 @@ Page({
     }
     if (action === 'records') {
       wx.switchTab({ url: '/pages/records/records' });
+      return;
+    }
+    if (action === 'recycle') {
+      if (!this.data.permission.canViewRecycleBin) {
+        wx.showToast({ title: '你没有查看产品回收站的权限', icon: 'none' });
+        return;
+      }
+      wx.navigateTo({ url: ROUTES.PRODUCT_RECYCLE_BIN });
       return;
     }
     wx.showToast({ title: '该功能将在后续阶段开放', icon: 'none' });

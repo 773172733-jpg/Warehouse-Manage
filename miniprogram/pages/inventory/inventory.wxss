@@ -459,26 +459,3 @@
   line-height: 1;
   margin-top: -2rpx;
 }
-.inv-recycle-entry {
-  position: fixed;
-  z-index: 79;
-  right: 32rpx;
-  bottom: calc(248rpx + env(safe-area-inset-bottom));
-  display: flex;
-  align-items: center;
-  height: 64rpx;
-  padding: 0 20rpx;
-  border-radius: 8rpx;
-  background: #FFFFFF;
-  border: 1rpx solid #DDE4DF;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
-}
-.inv-recycle-icon {
-  margin-right: 8rpx;
-  color: #5F6561;
-  font-size: 28rpx;
-}
-.inv-recycle-text {
-  color: #3A3D3A;
-  font-size: 22rpx;
-}

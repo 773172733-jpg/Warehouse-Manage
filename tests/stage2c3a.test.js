@@ -20,6 +20,7 @@ const {
 } = require('../cloudfunctions/warehouse-api/modules/product/product-service.js');
 const clientService = require('../miniprogram/services/product-service.js');
 const editUtils = require('../miniprogram/pages/product-edit/product-create-utils.js');
+const profileUtils = require('../miniprogram/pages/profile/profile-utils.js');
 
 const TEAM_ID = 'team_12345678';
 const WAREHOUSE_ID = 'warehouse_12345678';
@@ -279,6 +280,16 @@ function testClientWhitelistsAndEditHelpers() {
     submittedPayloadHash: first.signature
   }, () => `key_${++keyCalls}_12345678`);
   assert.notStrictEqual(changed.requestKey, first.requestKey);
+  const adminEntries = profileUtils.buildQuickEntries(
+    profileUtils.getPermissionFlags('admin', true),
+    true
+  );
+  const viewerEntries = profileUtils.buildQuickEntries(
+    profileUtils.getPermissionFlags('viewer', true),
+    true
+  );
+  assert.ok(adminEntries.some((item) => item.action === 'recycle'));
+  assert.strictEqual(viewerEntries.some((item) => item.action === 'recycle'), false);
 }
 
 async function testCloudTransactionsAndPermissions() {
@@ -446,7 +457,8 @@ function testQueryAndStaticBoundaries() {
     'miniprogram/pages/product-edit/product-edit.js',
     'miniprogram/pages/product-detail/product-detail.js',
     'miniprogram/pages/product-recycle-bin/product-recycle-bin.js',
-    'miniprogram/pages/inventory/inventory.js'
+    'miniprogram/pages/inventory/inventory.js',
+    'miniprogram/pages/profile/profile.js'
   ];
   const frontend = frontendFiles.map((file) => fs.readFileSync(path.join(root, file), 'utf8')).join('\n');
   ['wx.cloud', '.database(', 'setStorage', 'setStorageSync', 'mock-data'].forEach((value) => {
@@ -461,6 +473,12 @@ function testQueryAndStaticBoundaries() {
     .forEach((action) => assert.ok(router.includes(`'${action}'`)));
   const appConfig = JSON.parse(fs.readFileSync(path.join(root, 'miniprogram/app.json'), 'utf8'));
   assert.ok(appConfig.pages.includes('pages/product-recycle-bin/product-recycle-bin'));
+  const inventoryWxml = fs.readFileSync(path.join(root, 'miniprogram/pages/inventory/inventory.wxml'), 'utf8');
+  const profileSource = fs.readFileSync(path.join(root, 'miniprogram/pages/profile/profile.js'), 'utf8');
+  const profileUtils = fs.readFileSync(path.join(root, 'miniprogram/pages/profile/profile-utils.js'), 'utf8');
+  assert.strictEqual(inventoryWxml.includes('回收站'), false);
+  assert.ok(profileSource.includes('ROUTES.PRODUCT_RECYCLE_BIN'));
+  assert.ok(profileUtils.includes("action: 'recycle'"));
 }
 
 async function run() {

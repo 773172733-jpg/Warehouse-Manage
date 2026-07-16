@@ -142,8 +142,4 @@
   <view wx:if="{{canCreateProduct}}" class="inv-fab" catchtap="onAddTap">
     <text class="inv-fab-icon">＋</text>
   </view>
-  <view wx:if="{{canCreateProduct}}" class="inv-recycle-entry" catchtap="onRecycleBinTap">
-    <text class="inv-recycle-icon">↺</text>
-    <text class="inv-recycle-text">回收站</text>
-  </view>
 </view>
