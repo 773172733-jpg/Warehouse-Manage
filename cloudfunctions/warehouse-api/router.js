@@ -15,6 +15,10 @@ const teamLeave = require('./modules/team/leave.js');
 const productCreate = require('./modules/product/create.js');
 const productList = require('./modules/product/list.js');
 const productDetail = require('./modules/product/detail.js');
+const productUpdate = require('./modules/product/update.js');
+const productRemoveFromWarehouse = require('./modules/product/remove-from-warehouse.js');
+const productRemovedList = require('./modules/product/removed-list.js');
+const productRestoreToWarehouse = require('./modules/product/restore-to-warehouse.js');
 const { ok, fail } = require('./common/response.js');
 const { ApiError, ERROR_CODES, isApiError } = require('./common/errors.js');
 const { buildContext } = require('./common/context.js');
@@ -35,7 +39,11 @@ const ACTION_HANDLERS = {
   'team.leave': teamLeave,
   'product.create': productCreate,
   'product.list': productList,
-  'product.detail': productDetail
+  'product.detail': productDetail,
+  'product.update': productUpdate,
+  'product.removeFromWarehouse': productRemoveFromWarehouse,
+  'product.removed.list': productRemovedList,
+  'product.restoreToWarehouse': productRestoreToWarehouse
 };
 
 function createRequestId(candidate) {

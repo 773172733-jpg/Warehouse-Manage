@@ -1,0 +1,37 @@
+<view class="pr-page">
+  <view class="pr-header">
+    <text class="pr-title">产品回收站</text>
+    <text class="pr-desc">从当前仓库移除的产品会保留在这里，恢复后库存仍为0。</text>
+  </view>
+
+  <view class="pr-search {{searchFocused?'pr-search--focused':''}}">
+    <text class="pr-search-icon">⌕</text>
+    <input class="pr-search-input" value="{{keyword}}" maxlength="40" placeholder="搜索名称、编号或关键词" bindinput="onSearchInput" bindfocus="onSearchFocus" bindblur="onSearchBlur" />
+    <text wx:if="{{keyword}}" class="pr-search-clear" catchtap="onSearchClear">×</text>
+  </view>
+
+  <scroll-view class="pr-categories" scroll-x enhanced show-scrollbar="{{false}}">
+    <view wx:for="{{categories}}" wx:key="*this" class="pr-category {{selectedCategory===item?'pr-category--active':''}}" data-category="{{item}}" catchtap="onCategoryTap">{{item}}</view>
+  </scroll-view>
+
+  <app-loading wx:if="{{loading||refreshing}}" text="正在加载已移除产品"></app-loading>
+  <error-state wx:elif="{{error&&!items.length}}" title="回收站加载失败" message="{{error}}" bind:retry="handleRetry"></error-state>
+  <empty-state wx:elif="{{initialized&&!items.length}}" title="暂无已移除产品" description="从当前仓库移除的产品会保留在这里，恢复后库存仍为0。"></empty-state>
+
+  <view wx:else class="pr-list">
+    <view wx:for="{{items}}" wx:key="warehouseProductId" class="pr-item">
+      <view class="pr-cover" style="background:{{item.cover.background}}"><image wx:if="{{item.cover.type==='image'}}" class="pr-cover-image" src="{{item.cover.fileId}}" mode="aspectFill"></image><text wx:else class="{{item.cover.type==='emoji'?'pr-cover-emoji':'pr-cover-text'}}">{{item.cover.content}}</text></view>
+      <view class="pr-info">
+        <text class="pr-name">{{item.name}}</text>
+        <text class="pr-meta">{{item.productCode||'无编号'}} · {{item.category}}</text>
+        <text class="pr-time">移除于 {{item.removedAtText}}</text>
+        <text class="pr-reason">原因：{{item.removalReason}}</text>
+        <text wx:if="{{item.catalogStatus!=='active'}}" class="pr-catalog-warning">共享产品目录当前不可恢复</text>
+      </view>
+      <view class="pr-restore {{(!item.canRestore||item.restoring)?'pr-restore--disabled':''}}" data-warehouse-product-id="{{item.warehouseProductId}}" catchtap="onRestoreTap">{{item.restoring?'恢复中':'恢复'}}</view>
+    </view>
+    <view wx:if="{{loadingMore}}" class="pr-footer">正在加载更多…</view>
+    <view wx:elif="{{error}}" class="pr-footer pr-footer--error" catchtap="handleRetry">{{error}}</view>
+    <view wx:elif="{{items.length&&!hasMore}}" class="pr-footer">已加载全部已移除产品</view>
+  </view>
+</view>

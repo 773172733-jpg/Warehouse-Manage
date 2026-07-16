@@ -54,6 +54,20 @@ const CREATE_FIELDS = [
   'initialStock',
   'requestKey'
 ];
+const PRODUCT_MAIN_FIELDS = [
+  'name',
+  'productCode',
+  'category',
+  'unit',
+  'brand',
+  'specification',
+  'description',
+  'coverType',
+  'coverText',
+  'coverEmoji',
+  'coverBackground'
+];
+const UPDATE_FIELDS = PRODUCT_MAIN_FIELDS.concat(['productId', 'expectedVersion', 'requestKey']);
 
 function hasOwn(source, field) {
   return Object.prototype.hasOwnProperty.call(source, field);
@@ -180,21 +194,8 @@ function sanitizeCover(source, name) {
   };
 }
 
-function sanitizeProductInput(rawInput) {
-  const source = rawInput && typeof rawInput === 'object' ? rawInput : {};
-  const forbidden = FORBIDDEN_PRODUCT_FIELDS.find((field) => hasOwn(source, field));
-  if (forbidden) {
-    throw new ApiError(ERROR_CODES.FORBIDDEN, '请求包含不能由客户端指定的身份或库存字段。');
-  }
-  const unknown = Object.keys(source).find((field) => {
-    return !CREATE_FIELDS.includes(field) &&
-      !SERVER_GENERATED_FIELDS.includes(field) &&
-      field !== 'coverFileId' && field !== 'localImagePath';
-  });
-  if (unknown) {
-    throw new ApiError(ERROR_CODES.FORBIDDEN, '请求包含不允许的产品字段。');
-  }
-
+function sanitizeProductMainFields(source, options) {
+  const settings = options || {};
   const name = validateText(source.name, {
     required: true,
     maxLength: 40,
@@ -237,8 +238,46 @@ function sanitizeProductInput(rawInput) {
     code: ERROR_CODES.INVALID_DESCRIPTION,
     message: '产品介绍不能超过200个字符。'
   });
+  const input = {
+    name,
+    normalizedName: normalizeProductName(name),
+    productCode,
+    normalizedCode: normalizeProductCode(productCode),
+    category,
+    unit,
+    brand,
+    specification,
+    description
+  };
+  input.searchKeywords = buildSearchKeywords(input);
+
+  const coverFieldsPresent = ['coverType', 'coverText', 'coverEmoji', 'coverBackground']
+    .some((field) => hasOwn(source, field));
+  if (!settings.allowPreserveCover || coverFieldsPresent) {
+    Object.assign(input, sanitizeCover(source, name));
+  } else {
+    input.preserveCover = true;
+  }
+  return input;
+}
+
+function sanitizeProductInput(rawInput) {
+  const source = rawInput && typeof rawInput === 'object' ? rawInput : {};
+  const forbidden = FORBIDDEN_PRODUCT_FIELDS.find((field) => hasOwn(source, field));
+  if (forbidden) {
+    throw new ApiError(ERROR_CODES.FORBIDDEN, '请求包含不能由客户端指定的身份或库存字段。');
+  }
+  const unknown = Object.keys(source).find((field) => {
+    return !CREATE_FIELDS.includes(field) &&
+      !SERVER_GENERATED_FIELDS.includes(field) &&
+      field !== 'coverFileId' && field !== 'localImagePath';
+  });
+  if (unknown) {
+    throw new ApiError(ERROR_CODES.FORBIDDEN, '请求包含不允许的产品字段。');
+  }
+
+  const mainFields = sanitizeProductMainFields(source);
   const requestKey = validateRequestKey(source.requestKey);
-  const cover = sanitizeCover(source, name);
   const minStock = validateSafeQuantity(
     source.minStock,
     ERROR_CODES.INVALID_MIN_STOCK,
@@ -249,22 +288,75 @@ function sanitizeProductInput(rawInput) {
     ERROR_CODES.INVALID_STOCK_QUANTITY,
     '初始库存必须是非负安全整数。'
   );
-  const input = Object.assign({
-    name,
-    normalizedName: normalizeProductName(name),
-    productCode,
-    normalizedCode: normalizeProductCode(productCode),
-    category,
-    unit,
-    brand,
-    specification,
-    description,
+  const input = Object.assign({}, mainFields, {
     minStock,
     initialStock,
     requestKey
-  }, cover);
-  input.searchKeywords = buildSearchKeywords(input);
+  });
   return input;
+}
+
+function validateProductId(value, code, message) {
+  const id = normalizeWhitespace(value);
+  if (!PRODUCT_ID_PATTERN.test(id)) {
+    throw new ApiError(code, message);
+  }
+  return id;
+}
+
+function sanitizeProductUpdateInput(rawInput) {
+  const source = rawInput && typeof rawInput === 'object' ? rawInput : {};
+  const unknown = Object.keys(source).find((field) => !UPDATE_FIELDS.includes(field));
+  if (unknown) {
+    throw new ApiError(ERROR_CODES.FORBIDDEN, '产品更新请求包含不允许的字段。');
+  }
+  const expectedVersion = Number(source.expectedVersion);
+  if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) {
+    throw new ApiError(ERROR_CODES.INVALID_PRODUCT_VERSION, '产品版本必须为正整数。');
+  }
+  return Object.assign(sanitizeProductMainFields(source, { allowPreserveCover: true }), {
+    productId: validateProductId(source.productId, ERROR_CODES.PRODUCT_NOT_FOUND, '产品不存在。'),
+    expectedVersion,
+    requestKey: validateRequestKey(source.requestKey)
+  });
+}
+
+function sanitizeWarehouseMutationInput(rawInput, allowReason) {
+  const source = rawInput && typeof rawInput === 'object' ? rawInput : {};
+  const allowed = allowReason
+    ? ['warehouseProductId', 'reason', 'requestKey']
+    : ['warehouseProductId', 'requestKey'];
+  const unknown = Object.keys(source).find((field) => !allowed.includes(field));
+  if (unknown) {
+    throw new ApiError(ERROR_CODES.FORBIDDEN, '仓库产品操作请求包含不允许的字段。');
+  }
+  const input = {
+    warehouseProductId: validateProductId(
+      source.warehouseProductId,
+      ERROR_CODES.PRODUCT_NOT_IN_WAREHOUSE,
+      '当前仓库没有该产品。'
+    ),
+    requestKey: validateRequestKey(source.requestKey)
+  };
+  if (allowReason) {
+    input.reason = validateText(source.reason, {
+      required: false,
+      maxLength: 100,
+      code: ERROR_CODES.INVALID_INPUT,
+      message: '移除原因不能超过100个字符。'
+    });
+  }
+  return input;
+}
+
+function validateRemovedProductListInput(rawInput) {
+  const source = rawInput && typeof rawInput === 'object' ? rawInput : {};
+  const allowed = ['keyword', 'category', 'cursor', 'pageSize', 'sort'];
+  const unknown = Object.keys(source).find((field) => !allowed.includes(field));
+  if (unknown) {
+    throw new ApiError(ERROR_CODES.FORBIDDEN, '回收站列表请求包含不允许的字段。');
+  }
+  return validateProductListInput(source);
 }
 
 function stableSerialize(value) {
@@ -283,6 +375,16 @@ function createProductRequestHash(input) {
   const payload = Object.assign({}, input);
   delete payload.requestKey;
   return crypto.createHash('sha256').update(stableSerialize(payload)).digest('hex');
+}
+
+function createMutationRequestHash(action, scope, input) {
+  const payload = Object.assign({}, input);
+  delete payload.requestKey;
+  return crypto.createHash('sha256').update(stableSerialize({
+    action,
+    scope,
+    input: payload
+  })).digest('hex');
 }
 
 function computeStockStatus(stock, minStock) {
@@ -471,6 +573,35 @@ function presentWarehouseProduct(warehouseProduct) {
   };
 }
 
+function presentRemovedProduct(product, warehouseProduct) {
+  const authoritative = product && product.status === 'active' ? product : null;
+  const source = authoritative || {
+    name: warehouseProduct.productNameSnapshot,
+    productCode: warehouseProduct.productCodeSnapshot,
+    category: warehouseProduct.categorySnapshot,
+    unit: warehouseProduct.unitSnapshot,
+    coverType: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.type,
+    coverText: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.text,
+    coverEmoji: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.emoji,
+    coverAssetKey: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.assetKey,
+    coverFileId: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.fileId,
+    coverBackground: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.background
+  };
+  return {
+    warehouseProductId: warehouseProduct._id,
+    productId: warehouseProduct.productId,
+    name: source.name || '未命名产品',
+    productCode: source.productCode || '',
+    category: source.category || '',
+    unit: source.unit || '',
+    cover: authoritative ? buildCoverSummary(source) : (warehouseProduct.coverSummarySnapshot || buildCoverSummary(source)),
+    removedAt: warehouseProduct.removedAt || null,
+    removalReason: warehouseProduct.removalReason || '',
+    canRestore: Boolean(authoritative && warehouseProduct.stock === 0),
+    catalogStatus: product ? product.status : 'missing'
+  };
+}
+
 function presentStockRecord(record) {
   return record ? {
     id: record._id,
@@ -500,17 +631,23 @@ module.exports = {
   normalizeProductName,
   normalizeProductCode,
   buildSearchKeywords,
+  sanitizeProductMainFields,
   sanitizeProductInput,
+  sanitizeProductUpdateInput,
+  sanitizeWarehouseMutationInput,
   createProductRequestHash,
+  createMutationRequestHash,
   computeStockStatus,
   assertProductCountWithinLimit,
   buildCoverSummary,
   encodeProductCursor,
   decodeProductCursor,
   validateProductListInput,
+  validateRemovedProductListInput,
   validateProductDetailInput,
   getProductPermissionFlags,
   presentProduct,
   presentWarehouseProduct,
+  presentRemovedProduct,
   presentStockRecord
 };

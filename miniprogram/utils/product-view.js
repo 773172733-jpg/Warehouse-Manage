@@ -41,13 +41,16 @@ function getCoverView(cover, name) {
   const type = safeText(source.type).toLowerCase();
   const background = safeText(source.background, '#F2F4F2');
   if (type === 'text' && safeText(source.text)) {
-    return { type: 'text', content: safeText(source.text), background };
+    return { type: 'text', content: safeText(source.text), text: safeText(source.text), emoji: '', fileId: '', background };
   }
   if (type === 'emoji' && safeText(source.emoji)) {
-    return { type: 'emoji', content: safeText(source.emoji), background };
+    return { type: 'emoji', content: safeText(source.emoji), text: '', emoji: safeText(source.emoji), fileId: '', background };
+  }
+  if (type === 'image' && safeText(source.fileId)) {
+    return { type: 'image', content: '', text: '', emoji: '', fileId: safeText(source.fileId), background };
   }
   const fallback = Array.from(safeText(name, '仓'))[0] || '仓';
-  return { type: 'none', content: fallback, background: '#F2F4F2' };
+  return { type: 'none', content: fallback, text: '', emoji: '', fileId: '', background: '#F2F4F2' };
 }
 
 function normalizeStockStatus(value) {
@@ -166,6 +169,7 @@ function mapProductDetail(response) {
   return {
     product: {
       id: safeText(product.id),
+      version: Number.isSafeInteger(product.version) && product.version > 0 ? product.version : null,
       name,
       productCode: safeText(product.productCode),
       category: safeText(product.category, '其他'),
@@ -193,6 +197,47 @@ function mapProductDetail(response) {
       canRemove: Boolean(permissions.canRemove)
     }
   };
+}
+
+function mapRemovedProduct(item) {
+  if (!item || !PRODUCT_ID_PATTERN.test(safeText(item.warehouseProductId))) return null;
+  const name = safeText(item.name, '未命名产品');
+  return {
+    warehouseProductId: safeText(item.warehouseProductId),
+    productId: safeText(item.productId),
+    name,
+    productCode: safeText(item.productCode),
+    category: safeText(item.category, '其他'),
+    unit: safeText(item.unit),
+    cover: getCoverView(item.cover, name),
+    removedAt: item.removedAt || null,
+    removedAtText: formatDateTime(item.removedAt),
+    removalReason: safeText(item.removalReason, '未填写原因'),
+    canRestore: Boolean(item.canRestore),
+    catalogStatus: safeText(item.catalogStatus, 'missing')
+  };
+}
+
+function normalizeRemovedListResponse(response) {
+  const source = response && typeof response === 'object' ? response : {};
+  const items = Array.isArray(source.items) ? source.items.map(mapRemovedProduct).filter(Boolean) : [];
+  const hasMore = Boolean(source.hasMore);
+  return {
+    items,
+    hasMore,
+    nextCursor: hasMore && typeof source.nextCursor === 'string' ? source.nextCursor : null
+  };
+}
+
+function buildRemovedListParams(state, cursor) {
+  const source = state && typeof state === 'object' ? state : {};
+  const params = { pageSize: PAGE_SIZE, sort: 'updated_desc' };
+  const keyword = safeText(source.keyword);
+  const category = safeText(source.selectedCategory);
+  if (keyword) params.keyword = keyword;
+  if (category && category !== '全部') params.category = category;
+  if (typeof cursor === 'string' && cursor) params.cursor = cursor;
+  return params;
 }
 
 function getWarehouseProductId(query) {
@@ -232,6 +277,9 @@ module.exports = {
   buildListParams,
   formatDateTime,
   mapProductDetail,
+  mapRemovedProduct,
+  normalizeRemovedListResponse,
+  buildRemovedListParams,
   getWarehouseProductId,
   getLoadErrorMessage,
   isContextInvalid

@@ -1,6 +1,7 @@
 const ROUTES = require('../../constants/routes.js');
 const productService = require('../../services/product-service.js');
 const productView = require('../../utils/product-view.js');
+const { createRequestKey } = require('../../utils/request-key.js');
 
 Page({
   data: {
@@ -17,7 +18,8 @@ Page({
     navStyle: '',
     navSideStyle: '',
     stockLabel: '当前库存',
-    stockSub: ''
+    stockSub: '',
+    removing: false
   },
 
   onLoad(query) {
@@ -25,6 +27,8 @@ Page({
     this.requestVersion = 0;
     this.detailPromise = null;
     this.navigatingToStartup = false;
+    this.awaitingEditReturn = false;
+    this.removeRequestKey = '';
     this.calcNavStyle();
     this.warehouseProductId = productView.getWarehouseProductId(query);
     if (!this.warehouseProductId) {
@@ -43,6 +47,13 @@ Page({
   onUnload() {
     this.pageActive = false;
     this.requestVersion += 1;
+  },
+
+  onShow() {
+    if (this.awaitingEditReturn) {
+      this.awaitingEditReturn = false;
+      this.loadDetail();
+    }
   },
 
   safeSetData(updates, callback) {
@@ -140,6 +151,7 @@ Page({
   },
 
   onMore() {
+    if (this.data.removing) return;
     const actions = [];
     if (this.data.permissions.canEdit) actions.push({ label: '编辑产品', type: 'edit' });
     if (this.data.permissions.canOperateStock) actions.push({ label: '调整库存', type: 'stock' });
@@ -150,13 +162,87 @@ Page({
       success: (result) => {
         const action = actions[result.tapIndex];
         if (!action) return;
-        const title = action.type === 'edit'
-          ? '产品编辑将在阶段2C3A接入'
-          : (action.type === 'remove'
-            ? '仓库产品移除将在阶段2C3B接入'
-            : '真实库存操作将在阶段2C4接入');
-        wx.showToast({ title, icon: 'none', duration: 2200 });
+        if (action.type === 'edit') {
+          this.openEdit();
+        } else if (action.type === 'remove') {
+          this.confirmRemove();
+        } else {
+          wx.showToast({ title: '真实库存操作将在阶段2C4接入', icon: 'none', duration: 2200 });
+        }
       }
+    });
+  },
+
+  openEdit() {
+    if (!this.data.permissions.canEdit || !this.warehouseProductId) return;
+    this.awaitingEditReturn = true;
+    wx.navigateTo({
+      url: '/pages/product-edit/product-edit?mode=edit&warehouseProductId=' +
+        encodeURIComponent(this.warehouseProductId),
+      fail: () => {
+        this.awaitingEditReturn = false;
+      }
+    });
+  },
+
+  confirmRemove() {
+    if (!this.data.permissions.canRemove || this.data.removing || !this.data.warehouseProduct) return;
+    if (this.data.warehouseProduct.stock !== 0) {
+      wx.showModal({
+        title: '暂时无法移除',
+        content: '当前库存不为0，请先完成出库或库存调整',
+        showCancel: false,
+        confirmText: '知道了'
+      });
+      return;
+    }
+    wx.showModal({
+      title: '从当前仓库移除',
+      content: '移除后产品将从当前仓库列表隐藏，历史库存流水仍会保留。',
+      confirmText: '确认移除',
+      confirmColor: '#D94A45',
+      success: (result) => {
+        if (result.confirm) this.removeFromWarehouse();
+      }
+    });
+  },
+
+  removeFromWarehouse() {
+    if (this.data.removing || !this.warehouseProductId) return Promise.resolve();
+    const app = getApp();
+    const requestKey = this.removeRequestKey || createRequestKey('product_remove');
+    this.removeRequestKey = requestKey;
+    this.safeSetData({ removing: true });
+    return productService.removeProductFromWarehouse({
+      warehouseProductId: this.warehouseProductId,
+      reason: '',
+      requestKey
+    }).then(() => {
+      if (!this.pageActive) return;
+      this.removeRequestKey = '';
+      this.safeSetData({ removing: false });
+      if (app.globalData) app.globalData.inventoryRefreshRequired = true;
+      wx.showToast({ title: '已从当前仓库移除', icon: 'success', duration: 1500 });
+      wx.switchTab({ url: ROUTES.INVENTORY });
+    }).catch((error) => {
+      if (!this.pageActive) return;
+      this.safeSetData({ removing: false });
+      if (error && error.code === 'REQUEST_KEY_CONFLICT') this.removeRequestKey = '';
+      if (error && error.code === 'PRODUCT_ALREADY_REMOVED') {
+        this.removeRequestKey = '';
+        if (app.globalData) app.globalData.inventoryRefreshRequired = true;
+        wx.showToast({ title: '该产品已经从当前仓库移除', icon: 'none' });
+        wx.switchTab({ url: ROUTES.INVENTORY });
+        return;
+      }
+      if (productView.isContextInvalid(error)) {
+        this.recoverContext();
+        return;
+      }
+      const message = error && error.code === 'PRODUCT_HAS_STOCK'
+        ? '当前库存不为0，请先完成出库或库存调整'
+        : (error && error.code === 'FORBIDDEN' ? '你没有执行该操作的权限' : '移除失败，请稍后重试');
+      wx.showToast({ title: message, icon: 'none', duration: 2500 });
     });
   },
 

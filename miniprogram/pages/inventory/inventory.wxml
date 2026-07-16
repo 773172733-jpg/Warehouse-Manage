@@ -99,7 +99,8 @@
           class="inv-card-cover {{item.stockStatus==='out'?'inv-card-cover--out':''}} {{item.stockStatus==='low'?'inv-card-cover--low':''}}"
           style="background:{{item.cover.background}}"
         >
-          <text class="{{item.cover.type==='emoji'?'inv-card-cover-emoji':'inv-card-cover-text'}}">{{item.cover.content}}</text>
+          <image wx:if="{{item.cover.type==='image'}}" class="inv-card-cover-image" src="{{item.cover.fileId}}" mode="aspectFill"></image>
+          <text wx:else class="{{item.cover.type==='emoji'?'inv-card-cover-emoji':'inv-card-cover-text'}}">{{item.cover.content}}</text>
         </view>
         <view class="inv-card-info">
           <text class="inv-card-name">{{item.name}}</text>
@@ -140,5 +141,9 @@
 
   <view wx:if="{{canCreateProduct}}" class="inv-fab" catchtap="onAddTap">
     <text class="inv-fab-icon">＋</text>
+  </view>
+  <view wx:if="{{canCreateProduct}}" class="inv-recycle-entry" catchtap="onRecycleBinTap">
+    <text class="inv-recycle-icon">↺</text>
+    <text class="inv-recycle-text">回收站</text>
   </view>
 </view>

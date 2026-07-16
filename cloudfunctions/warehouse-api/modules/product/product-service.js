@@ -9,20 +9,28 @@ const {
 const { requireCurrentTeamAccess, requireRole } = require('../../common/permissions.js');
 const {
   sanitizeProductInput,
+  sanitizeProductUpdateInput,
+  sanitizeWarehouseMutationInput,
   createProductRequestHash,
+  createMutationRequestHash,
   computeStockStatus,
   assertProductCountWithinLimit,
   buildCoverSummary,
   encodeProductCursor,
   validateProductListInput,
+  validateRemovedProductListInput,
   validateProductDetailInput,
   getProductPermissionFlags,
   presentProduct,
   presentWarehouseProduct,
+  presentRemovedProduct,
   presentStockRecord
 } = require('../../common/product-utils.js');
 
 const PRODUCT_CREATE_ACTION = 'product.create';
+const PRODUCT_UPDATE_ACTION = 'product.update';
+const PRODUCT_REMOVE_ACTION = 'product.removeFromWarehouse';
+const PRODUCT_RESTORE_ACTION = 'product.restoreToWarehouse';
 
 async function requireProductAccess(db, user, requiredRole) {
   const access = await requireCurrentTeamAccess(db, user);
@@ -346,11 +354,11 @@ function createNamePrefixCommand(command, keyword) {
   return command.gte(keyword).and(command.lt(`${keyword}\uffff`));
 }
 
-function buildProductListWhere(command, input, access) {
+function buildProductListWhere(command, input, access, status) {
   const base = {
     teamId: access.team._id,
     warehouseId: access.warehouse._id,
-    status: 'active'
+    status: status || 'active'
   };
   if (input.category) {
     base.categorySnapshot = input.category;
@@ -380,6 +388,374 @@ function buildProductListWhere(command, input, access) {
     }, []);
   }
   return branches.length === 1 ? branches[0] : command.or(branches);
+}
+
+function buildProductMainUpdate(input, currentProduct) {
+  const update = {
+    name: input.name,
+    normalizedName: input.normalizedName,
+    productCode: input.productCode,
+    normalizedCode: input.normalizedCode,
+    category: input.category,
+    unit: input.unit,
+    brand: input.brand,
+    specification: input.specification,
+    description: input.description,
+    searchKeywords: input.searchKeywords
+  };
+  if (!input.preserveCover) {
+    Object.assign(update, {
+      coverType: input.coverType,
+      coverText: input.coverText,
+      coverEmoji: input.coverEmoji,
+      coverAssetKey: input.coverAssetKey,
+      coverFileId: input.coverFileId,
+      coverBackground: input.coverBackground
+    });
+  } else {
+    Object.assign(update, {
+      coverType: currentProduct.coverType || 'none',
+      coverText: currentProduct.coverText || '',
+      coverEmoji: currentProduct.coverEmoji || '',
+      coverAssetKey: currentProduct.coverAssetKey || '',
+      coverFileId: currentProduct.coverFileId || '',
+      coverBackground: currentProduct.coverBackground || ''
+    });
+  }
+  return update;
+}
+
+function buildProductSnapshotUpdate(product, version, context) {
+  return {
+    productNameSnapshot: product.name,
+    normalizedNameSnapshot: product.normalizedName,
+    productCodeSnapshot: product.productCode,
+    normalizedCodeSnapshot: product.normalizedCode,
+    categorySnapshot: product.category,
+    unitSnapshot: product.unit,
+    brandSnapshot: product.brand,
+    specificationSnapshot: product.specification,
+    searchKeywordsSnapshot: product.searchKeywords,
+    coverSummarySnapshot: buildCoverSummary(product),
+    productVersion: version,
+    updatedBy: context.userId,
+    updatedAt: context.now
+  };
+}
+
+function assertWarehouseProductScope(warehouseProduct, access) {
+  if (!warehouseProduct || warehouseProduct.teamId !== access.team._id ||
+      warehouseProduct.warehouseId !== access.warehouse._id) {
+    throw new ApiError(ERROR_CODES.PRODUCT_NOT_IN_WAREHOUSE, '当前仓库没有该产品。');
+  }
+  return warehouseProduct;
+}
+
+function getCompatibleCount(value, fallback) {
+  return Number.isSafeInteger(value) && value >= 0 ? value : fallback;
+}
+
+async function updateProduct(db, user, rawInput) {
+  const input = sanitizeProductUpdateInput(rawInput);
+  const access = await requireProductAccess(db, user, 'admin');
+  const warehouseProductId = createWarehouseProductId(
+    access.team._id,
+    access.warehouse._id,
+    input.productId
+  );
+  const requestHash = createMutationRequestHash(PRODUCT_UPDATE_ACTION, {
+    teamId: access.team._id,
+    productId: input.productId
+  }, input);
+  let idempotent = false;
+
+  try {
+    await db.runTransaction(async (transaction) => {
+      const locked = await requireProductAccessInTransaction(transaction, user, access, 'admin');
+      const product = await getDocument(transaction, COLLECTIONS.PRODUCTS, input.productId);
+      assertProductAccess(product, locked.team._id);
+      const warehouseProduct = await getDocument(
+        transaction,
+        COLLECTIONS.WAREHOUSE_PRODUCTS,
+        warehouseProductId
+      );
+      assertWarehouseProductAccess(warehouseProduct, locked, input.productId);
+
+      if (product.lastUpdateRequestKey === input.requestKey) {
+        if (product.lastUpdateRequestHash !== requestHash) {
+          throw new ApiError(ERROR_CODES.REQUEST_KEY_CONFLICT, '请求标识已用于其他产品更新参数。');
+        }
+        idempotent = true;
+        return;
+      }
+      if (!Number.isSafeInteger(product.version) || product.version !== input.expectedVersion) {
+        throw new ApiError(ERROR_CODES.PRODUCT_VERSION_CONFLICT, '产品已被其他成员修改，请刷新后重新编辑。');
+      }
+
+      const now = db.serverDate();
+      const nextVersion = product.version + 1;
+      const mainUpdate = buildProductMainUpdate(input, product);
+      await transaction.collection(COLLECTIONS.PRODUCTS).doc(product._id).update({
+        data: Object.assign({}, mainUpdate, {
+          version: nextVersion,
+          updatedBy: locked.user._id,
+          updatedAt: now,
+          lastUpdateRequestKey: input.requestKey,
+          lastUpdateRequestHash: requestHash,
+          lastUpdateResultVersion: nextVersion,
+          lastUpdateAt: now,
+          lastMutationAction: PRODUCT_UPDATE_ACTION,
+          lastMutationRequestKey: input.requestKey,
+          lastMutationInputHash: requestHash
+        })
+      });
+      await transaction.collection(COLLECTIONS.WAREHOUSE_PRODUCTS).doc(warehouseProduct._id).update({
+        data: Object.assign(buildProductSnapshotUpdate(mainUpdate, nextVersion, {
+          userId: locked.user._id,
+          now
+        }), {
+          lastMutationAction: PRODUCT_UPDATE_ACTION,
+          lastMutationRequestKey: input.requestKey,
+          lastMutationInputHash: requestHash
+        })
+      });
+      idempotent = false;
+    }, 5);
+
+    const product = await getDocument(db, COLLECTIONS.PRODUCTS, input.productId);
+    const warehouseProduct = await getDocument(db, COLLECTIONS.WAREHOUSE_PRODUCTS, warehouseProductId);
+    if (!product || !warehouseProduct) {
+      throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品更新结果读取失败，请稍后重试。');
+    }
+    return {
+      product: presentProduct(product),
+      warehouseProduct: presentWarehouseProduct(warehouseProduct),
+      permissions: getProductPermissionFlags(access.membership.role),
+      idempotent
+    };
+  } catch (error) {
+    if (isApiError(error)) throw error;
+    throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品更新失败，请稍后使用原请求标识重试。');
+  }
+}
+
+async function removeProductFromWarehouse(db, user, rawInput) {
+  const input = sanitizeWarehouseMutationInput(rawInput, true);
+  const access = await requireProductAccess(db, user, 'admin');
+  const requestHash = createMutationRequestHash(PRODUCT_REMOVE_ACTION, {
+    teamId: access.team._id,
+    warehouseId: access.warehouse._id,
+    warehouseProductId: input.warehouseProductId
+  }, input);
+  let idempotent = false;
+
+  try {
+    await db.runTransaction(async (transaction) => {
+      const locked = await requireProductAccessInTransaction(transaction, user, access, 'admin');
+      const warehouseProduct = assertWarehouseProductScope(
+        await getDocument(transaction, COLLECTIONS.WAREHOUSE_PRODUCTS, input.warehouseProductId),
+        locked
+      );
+      if (warehouseProduct.removeRequestKey === input.requestKey &&
+          warehouseProduct.removeRequestHash !== requestHash) {
+        throw new ApiError(ERROR_CODES.REQUEST_KEY_CONFLICT, '请求标识已用于其他移除参数。');
+      }
+      if (warehouseProduct.status === 'removed') {
+        if (warehouseProduct.removeRequestKey === input.requestKey &&
+            warehouseProduct.removeRequestHash === requestHash) {
+          idempotent = true;
+          return;
+        }
+        throw new ApiError(ERROR_CODES.PRODUCT_ALREADY_REMOVED, '该产品已经从当前仓库移除。');
+      }
+      if (warehouseProduct.removeRequestKey === input.requestKey) {
+        throw new ApiError(ERROR_CODES.DUPLICATE_REQUEST, '该移除请求已完成且产品状态已变化，请刷新确认。');
+      }
+      if (warehouseProduct.status !== 'active') {
+        throw new ApiError(ERROR_CODES.PRODUCT_NOT_IN_WAREHOUSE, '当前仓库没有该产品。');
+      }
+      if (warehouseProduct.stock !== 0) {
+        throw new ApiError(ERROR_CODES.PRODUCT_HAS_STOCK, '当前库存不为0，请先完成出库或库存调整。');
+      }
+      const product = await getDocument(transaction, COLLECTIONS.PRODUCTS, warehouseProduct.productId);
+      assertProductAccess(product, locked.team._id);
+      const now = db.serverDate();
+      const activeWarehouseCount = getCompatibleCount(product.activeWarehouseCount, 1);
+      await transaction.collection(COLLECTIONS.WAREHOUSE_PRODUCTS).doc(warehouseProduct._id).update({
+        data: {
+          status: 'removed',
+          removalReason: input.reason,
+          removeRequestKey: input.requestKey,
+          removeRequestHash: requestHash,
+          removedBy: locked.user._id,
+          removedAt: now,
+          updatedBy: locked.user._id,
+          updatedAt: now,
+          lastMutationAction: PRODUCT_REMOVE_ACTION,
+          lastMutationRequestKey: input.requestKey,
+          lastMutationInputHash: requestHash
+        }
+      });
+      await transaction.collection(COLLECTIONS.PRODUCTS).doc(product._id).update({
+        data: { activeWarehouseCount: Math.max(0, activeWarehouseCount - 1) }
+      });
+      idempotent = false;
+    }, 5);
+    const warehouseProduct = await getDocument(
+      db,
+      COLLECTIONS.WAREHOUSE_PRODUCTS,
+      input.warehouseProductId
+    );
+    const product = warehouseProduct
+      ? await getDocument(db, COLLECTIONS.PRODUCTS, warehouseProduct.productId)
+      : null;
+    if (!warehouseProduct) {
+      throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品移除结果读取失败，请稍后重试。');
+    }
+    return { item: presentRemovedProduct(product, warehouseProduct), idempotent };
+  } catch (error) {
+    if (isApiError(error)) throw error;
+    throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品移除失败，请稍后使用原请求标识重试。');
+  }
+}
+
+async function listRemovedProducts(db, user, rawInput) {
+  const input = validateRemovedProductListInput(rawInput);
+  try {
+    const access = await requireProductAccess(db, user, 'admin');
+    const where = buildProductListWhere(db.command, input, access, 'removed');
+    const result = await db.collection(COLLECTIONS.WAREHOUSE_PRODUCTS)
+      .where(where)
+      .orderBy('updatedAt', 'desc')
+      .orderBy('_id', 'desc')
+      .limit(input.pageSize + 1)
+      .field({
+        _id: true,
+        productId: true,
+        teamId: true,
+        warehouseId: true,
+        status: true,
+        productNameSnapshot: true,
+        productCodeSnapshot: true,
+        categorySnapshot: true,
+        unitSnapshot: true,
+        coverSummarySnapshot: true,
+        stock: true,
+        removedAt: true,
+        removalReason: true,
+        updatedAt: true
+      })
+      .get();
+    const documents = result.data || [];
+    const hasMore = documents.length > input.pageSize;
+    const page = documents.slice(0, input.pageSize);
+    const products = await Promise.all(page.map((item) => {
+      return getDocument(db, COLLECTIONS.PRODUCTS, item.productId);
+    }));
+    return {
+      items: page.map((item, index) => presentRemovedProduct(products[index], item)),
+      nextCursor: hasMore && page.length ? encodeProductCursor(page[page.length - 1]) : null,
+      hasMore,
+      pageSize: input.pageSize
+    };
+  } catch (error) {
+    if (isApiError(error)) throw error;
+    throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品回收站读取失败，请稍后重试。');
+  }
+}
+
+async function restoreProductToWarehouse(db, user, rawInput) {
+  const input = sanitizeWarehouseMutationInput(rawInput, false);
+  const access = await requireProductAccess(db, user, 'admin');
+  const requestHash = createMutationRequestHash(PRODUCT_RESTORE_ACTION, {
+    teamId: access.team._id,
+    warehouseId: access.warehouse._id,
+    warehouseProductId: input.warehouseProductId
+  }, input);
+  let idempotent = false;
+
+  try {
+    await db.runTransaction(async (transaction) => {
+      const locked = await requireProductAccessInTransaction(transaction, user, access, 'admin');
+      const warehouseProduct = assertWarehouseProductScope(
+        await getDocument(transaction, COLLECTIONS.WAREHOUSE_PRODUCTS, input.warehouseProductId),
+        locked
+      );
+      if (warehouseProduct.restoreRequestKey === input.requestKey &&
+          warehouseProduct.restoreRequestHash !== requestHash) {
+        throw new ApiError(ERROR_CODES.REQUEST_KEY_CONFLICT, '请求标识已用于其他恢复参数。');
+      }
+      if (warehouseProduct.status === 'active') {
+        if (warehouseProduct.restoreRequestKey === input.requestKey &&
+            warehouseProduct.restoreRequestHash === requestHash) {
+          idempotent = true;
+          return;
+        }
+        throw new ApiError(ERROR_CODES.PRODUCT_ALREADY_ACTIVE, '该产品已经恢复到当前仓库。');
+      }
+      if (warehouseProduct.restoreRequestKey === input.requestKey) {
+        throw new ApiError(ERROR_CODES.DUPLICATE_REQUEST, '该恢复请求已完成且产品状态已变化，请刷新确认。');
+      }
+      if (warehouseProduct.status !== 'removed') {
+        throw new ApiError(ERROR_CODES.PRODUCT_NOT_IN_WAREHOUSE, '当前仓库没有可恢复的产品。');
+      }
+      if (warehouseProduct.stock !== 0) {
+        throw new ApiError(ERROR_CODES.PRODUCT_HAS_STOCK, '回收站产品库存异常，无法恢复。');
+      }
+      const product = await getDocument(transaction, COLLECTIONS.PRODUCTS, warehouseProduct.productId);
+      if (!product || product.teamId !== locked.team._id) {
+        throw new ApiError(ERROR_CODES.PRODUCT_NOT_FOUND, '产品不存在。');
+      }
+      if (product.status !== 'active') {
+        throw new ApiError(ERROR_CODES.PRODUCT_CATALOG_DELETED, '共享产品目录已删除，暂时无法恢复。');
+      }
+      const now = db.serverDate();
+      const activeWarehouseCount = getCompatibleCount(product.activeWarehouseCount, 0);
+      await transaction.collection(COLLECTIONS.WAREHOUSE_PRODUCTS).doc(warehouseProduct._id).update({
+        data: Object.assign(buildProductSnapshotUpdate(product, product.version, {
+          userId: locked.user._id,
+          now
+        }), {
+          status: 'active',
+          stock: 0,
+          stockStatus: computeStockStatus(0, warehouseProduct.minStock),
+          removalReason: '',
+          removedAt: null,
+          restoreRequestKey: input.requestKey,
+          restoreRequestHash: requestHash,
+          restoredBy: locked.user._id,
+          restoredAt: now,
+          lastMutationAction: PRODUCT_RESTORE_ACTION,
+          lastMutationRequestKey: input.requestKey,
+          lastMutationInputHash: requestHash
+        })
+      });
+      await transaction.collection(COLLECTIONS.PRODUCTS).doc(product._id).update({
+        data: { activeWarehouseCount: activeWarehouseCount + 1 }
+      });
+      idempotent = false;
+    }, 5);
+    const warehouseProduct = await getDocument(
+      db,
+      COLLECTIONS.WAREHOUSE_PRODUCTS,
+      input.warehouseProductId
+    );
+    const product = warehouseProduct
+      ? await getDocument(db, COLLECTIONS.PRODUCTS, warehouseProduct.productId)
+      : null;
+    if (!warehouseProduct || !product) {
+      throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品恢复结果读取失败，请稍后重试。');
+    }
+    return {
+      product: presentProduct(product),
+      warehouseProduct: presentWarehouseProduct(warehouseProduct),
+      permissions: getProductPermissionFlags(access.membership.role),
+      idempotent
+    };
+  } catch (error) {
+    if (isApiError(error)) throw error;
+    throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品恢复失败，请稍后使用原请求标识重试。');
+  }
 }
 
 function assertWarehouseProductAccess(warehouseProduct, access, requestedProductId) {
@@ -483,6 +859,9 @@ async function getProductDetail(db, user, rawInput) {
 
 module.exports = {
   PRODUCT_CREATE_ACTION,
+  PRODUCT_UPDATE_ACTION,
+  PRODUCT_REMOVE_ACTION,
+  PRODUCT_RESTORE_ACTION,
   requireProductAccess,
   requireProductAccessInTransaction,
   buildProductDocument,
@@ -490,9 +869,16 @@ module.exports = {
   buildInitialRecordDocument,
   assertExistingCreate,
   buildProductListWhere,
+  buildProductMainUpdate,
+  buildProductSnapshotUpdate,
+  assertWarehouseProductScope,
   assertWarehouseProductAccess,
   assertProductAccess,
   createProduct,
+  updateProduct,
+  removeProductFromWarehouse,
+  listRemovedProducts,
+  restoreProductToWarehouse,
   listProducts,
   getProductDetail
 };

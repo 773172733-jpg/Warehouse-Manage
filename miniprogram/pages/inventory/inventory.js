@@ -42,8 +42,11 @@ Page({
   },
 
   onShow() {
+    const app = getApp();
     this.applyCurrentRole();
-    if (!this.data.initialized || this.awaitingCreateReturn) {
+    const needsRefresh = Boolean(app.globalData && app.globalData.inventoryRefreshRequired);
+    if (needsRefresh && app.globalData) app.globalData.inventoryRefreshRequired = false;
+    if (!this.data.initialized || this.awaitingCreateReturn || needsRefresh) {
       this.awaitingCreateReturn = false;
       this.prepareAndReload();
     }
@@ -288,6 +291,11 @@ Page({
         this.awaitingCreateReturn = false;
       }
     });
+  },
+
+  onRecycleBinTap() {
+    if (!this.data.canCreateProduct) return;
+    wx.navigateTo({ url: ROUTES.PRODUCT_RECYCLE_BIN });
   },
 
   onCardTap(event) {

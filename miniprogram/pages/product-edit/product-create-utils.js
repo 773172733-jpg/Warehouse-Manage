@@ -29,6 +29,16 @@ const ERROR_MESSAGES = {
   CLOUD_ENV_NOT_CONFIGURED: '服务暂时不可用，请稍后重试'
 };
 
+const UPDATE_ERROR_MESSAGES = Object.assign({}, ERROR_MESSAGES, {
+  FORBIDDEN: '你没有编辑产品的权限',
+  PRODUCT_VERSION_CONFLICT: '产品已被其他成员修改，请刷新后重新编辑',
+  PRODUCT_NOT_FOUND: '产品不存在，请返回库存页刷新',
+  PRODUCT_NOT_ACTIVE: '产品当前不可编辑',
+  PRODUCT_NOT_IN_WAREHOUSE: '该产品已不在当前仓库',
+  INVALID_PRODUCT_VERSION: '产品版本无效，请重新加载',
+  INTERNAL_ERROR: '更新失败，请稍后重试'
+});
+
 function createLocalError(code, message) {
   const error = new Error(message);
   error.code = code;
@@ -128,6 +138,40 @@ function buildCreateProductPayload(form) {
   }, buildCoverPayload(source));
 }
 
+function buildProductMainPayload(form) {
+  const source = form && typeof form === 'object' ? form : {};
+  const name = normalizeText(source.name);
+  if (!name) throw createLocalError('INVALID_PRODUCT_NAME', ERROR_MESSAGES.INVALID_PRODUCT_NAME);
+  const category = normalizeText(source.category);
+  if (!category) throw createLocalError('INVALID_CATEGORY', ERROR_MESSAGES.INVALID_CATEGORY);
+  const unit = source.unit === '其他' ? normalizeText(source.customUnit) : normalizeText(source.unit);
+  if (!unit) throw createLocalError('INVALID_UNIT', ERROR_MESSAGES.INVALID_UNIT);
+  const payload = {
+    name,
+    productCode: normalizeText(source.code),
+    category,
+    unit,
+    brand: normalizeText(source.brand),
+    specification: normalizeText(source.specification),
+    description: normalizeText(source.description)
+  };
+  if (source.coverMode !== 'existing-image') {
+    Object.assign(payload, buildCoverPayload(source));
+  }
+  return payload;
+}
+
+function buildUpdateProductPayload(form, context) {
+  const state = context && typeof context === 'object' ? context : {};
+  const productId = normalizeText(state.productId);
+  const expectedVersion = Number(state.expectedVersion);
+  if (!productId) throw createLocalError('PRODUCT_NOT_FOUND', UPDATE_ERROR_MESSAGES.PRODUCT_NOT_FOUND);
+  if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) {
+    throw createLocalError('INVALID_PRODUCT_VERSION', UPDATE_ERROR_MESSAGES.INVALID_PRODUCT_VERSION);
+  }
+  return Object.assign({ productId, expectedVersion }, buildProductMainPayload(form));
+}
+
 function createPayloadSignature(payload) {
   const source = payload && typeof payload === 'object' ? payload : {};
   return JSON.stringify(Object.keys(source).sort().reduce((result, key) => {
@@ -148,6 +192,17 @@ function resolveCreateIntent(payload, state, keyFactory) {
     requestKey = generateKey('product');
   }
 
+  return { requestKey, signature };
+}
+
+function resolveUpdateIntent(payload, state, keyFactory) {
+  const current = state && typeof state === 'object' ? state : {};
+  const signature = createPayloadSignature(payload);
+  const generateKey = typeof keyFactory === 'function' ? keyFactory : createRequestKey;
+  let requestKey = current.updateRequestKey;
+  if (!requestKey || (current.submittedPayloadHash && current.submittedPayloadHash !== signature)) {
+    requestKey = generateKey('product_update');
+  }
   return { requestKey, signature };
 }
 
@@ -178,6 +233,12 @@ function getCreateErrorMessage(error) {
   return '创建失败，请稍后重试';
 }
 
+function getUpdateErrorMessage(error) {
+  if (error && error.code === 'CUSTOM_IMAGE_NOT_SUPPORTED') return CUSTOM_IMAGE_MESSAGE;
+  if (error && UPDATE_ERROR_MESSAGES[error.code]) return UPDATE_ERROR_MESSAGES[error.code];
+  return '更新失败，请稍后重试';
+}
+
 function shouldRestartStartup(code) {
   return ['NO_ACTIVE_TEAM', 'WAREHOUSE_NOT_FOUND', 'WAREHOUSE_NOT_ACTIVE'].indexOf(code) > -1;
 }
@@ -186,10 +247,14 @@ module.exports = {
   STOCK_MAX,
   CUSTOM_IMAGE_MESSAGE,
   buildCreateProductPayload,
+  buildProductMainPayload,
+  buildUpdateProductPayload,
   createPayloadSignature,
   resolveCreateIntent,
+  resolveUpdateIntent,
   validateCreateResult,
   isCreateAllowed,
   getCreateErrorMessage,
+  getUpdateErrorMessage,
   shouldRestartStartup
 };

@@ -1,6 +1,7 @@
 var productService = require('../../services/product-service.js');
 var ROUTES = require('../../constants/routes.js');
 var createUtils = require('./product-create-utils.js');
+var productView = require('../../utils/product-view.js');
 
 var COVER_COLORS = [
   { name: '浅绿', value: '#EAF6EF' },
@@ -58,6 +59,8 @@ function computeStockStatus(stock, minStock) {
 
 Page({
   data: {
+    mode: 'create',
+    pageTitle: '新增产品',
     currentStep: 1,
     form: {
       coverMode: 'text',
@@ -101,19 +104,29 @@ Page({
     pickerTarget: '',
     accessChecking: true,
     accessDenied: false,
+    detailLoading: false,
+    detailError: '',
     saving: false,
     saveError: '',
     createRequestKey: '',
+    updateRequestKey: '',
     submittedPayloadHash: '',
-    createdProduct: null
+    createdProduct: null,
+    productId: '',
+    warehouseProductId: '',
+    productVersion: null
   },
 
   onLoad: function (query) {
     this.pageActive = true;
     this.createCompleted = false;
-    if (query && query.mode !== 'create') {
-      wx.showToast({ title: '当前仅支持新增模式', icon: 'none', duration: 2000 });
-    }
+    var mode = query && query.mode === 'edit' ? 'edit' : 'create';
+    var warehouseProductId = mode === 'edit' ? productView.getWarehouseProductId(query) : '';
+    this.setData({
+      mode: mode,
+      pageTitle: mode === 'edit' ? '编辑产品' : '新增产品',
+      warehouseProductId: warehouseProductId
+    });
     this.calcNavStyle();
     this.computeStockStatus();
     this.verifyCreateAccess();
@@ -137,11 +150,12 @@ Page({
       var role = app.globalData && app.globalData.currentRole;
       if (createUtils.isCreateAllowed(role)) {
         self.safeSetData({ accessChecking: false, accessDenied: false });
+        if (self.data.mode === 'edit') self.loadEditProduct();
         return;
       }
       self.safeSetData({ accessChecking: false, accessDenied: true });
-      wx.showToast({ title: '你没有创建产品的权限', icon: 'none', duration: 2000 });
-      wx.switchTab({ url: ROUTES.INVENTORY });
+      wx.showToast({ title: self.data.mode === 'edit' ? '你没有编辑产品的权限' : '你没有创建产品的权限', icon: 'none', duration: 2000 });
+      wx.navigateBack({ fail: function () { wx.switchTab({ url: ROUTES.INVENTORY }); } });
     }
 
     if (app.globalData && app.globalData.bootstrapStatus === 'success') {
@@ -160,6 +174,73 @@ Page({
         wx.showToast({ title: '当前团队状态不可用，请重新进入小程序', icon: 'none', duration: 2000 });
         wx.reLaunch({ url: ROUTES.STARTUP });
       });
+  },
+
+  loadEditProduct: function () {
+    var self = this;
+    if (this.data.mode !== 'edit' || this.data.detailLoading) return Promise.resolve();
+    if (!this.data.warehouseProductId) {
+      this.safeSetData({ detailError: '产品标识无效，请返回库存页重新选择' });
+      return Promise.resolve();
+    }
+    this.safeSetData({ detailLoading: true, detailError: '', saveError: '' });
+    return productService.getProductDetail({ warehouseProductId: this.data.warehouseProductId })
+      .then(function (response) {
+        var detail = productView.mapProductDetail(response);
+        if (!detail.permissions.canEdit || !detail.product.version) {
+          var denied = new Error('产品不可编辑');
+          denied.code = detail.permissions.canEdit ? 'INVALID_PRODUCT_VERSION' : 'FORBIDDEN';
+          throw denied;
+        }
+        var cover = response.product.cover || {};
+        var coverMode = cover.type === 'emoji' ? 'system' : cover.type;
+        if (cover.type === 'image') coverMode = 'existing-image';
+        if (['none', 'text', 'system', 'existing-image'].indexOf(coverMode) === -1) coverMode = 'none';
+        var asset = coverMode === 'system' ? SYSTEM_ASSETS.find(function (item) {
+          return item.emoji === cover.emoji;
+        }) : null;
+        var unit = detail.product.unit;
+        var knownUnit = UNITS.indexOf(unit) > -1;
+        self.safeSetData({
+          detailLoading: false,
+          detailError: '',
+          productId: detail.product.id,
+          productVersion: detail.product.version,
+          currentStep: 1,
+          updateRequestKey: '',
+          submittedPayloadHash: '',
+          form: Object.assign({}, self.data.form, {
+            coverMode: coverMode,
+            displayText: cover.text || '',
+            coverColor: cover.background || '#EAF6EF',
+            coverTextEdited: true,
+            systemAssetKey: asset ? asset.key : '',
+            systemAssetLabel: asset ? asset.label : '',
+            systemAssetEmoji: cover.emoji || '',
+            localImagePath: cover.type === 'image' ? (cover.fileId || '') : '',
+            name: detail.product.name,
+            code: detail.product.productCode,
+            category: detail.product.category,
+            unit: knownUnit ? unit : '其他',
+            customUnit: knownUnit ? '' : unit,
+            specification: detail.product.specification,
+            brand: detail.product.brand,
+            description: detail.product.description,
+            stock: detail.warehouseProduct.stock === null ? 0 : detail.warehouseProduct.stock,
+            minStock: detail.warehouseProduct.minStock === null ? 0 : detail.warehouseProduct.minStock,
+            lowStockEnabled: true
+          })
+        }, self.computeStockStatus.bind(self));
+      })
+      .catch(function (error) {
+        if (!self.pageActive) return;
+        var message = createUtils.getUpdateErrorMessage(error);
+        self.safeSetData({ detailLoading: false, detailError: message });
+      });
+  },
+
+  onRetryDetail: function () {
+    return this.loadEditProduct();
   },
 
   calcNavStyle: function () {
@@ -331,6 +412,8 @@ Page({
     this.setData({ pickerVisible: false });
   },
 
+  noop: function () {},
+
   onCustomUnitInput: function (e) {
     this.setData({
       'form.customUnit': e.detail.value,
@@ -489,6 +572,7 @@ Page({
   },
 
   validateStep2: function () {
+    if (this.data.mode === 'edit') return true;
     var form = this.data.form;
     if (getValidQuantity(form.stock) === null) {
       this.setData({ 'fieldErrors.stock': '请输入有效的初始库存' });
@@ -507,6 +591,10 @@ Page({
   onComplete: function () {
     var self = this;
     if (this.data.saving || this.createCompleted || this.data.accessChecking) return;
+    if (this.data.mode === 'edit') {
+      this.completeUpdate();
+      return;
+    }
     var app = getApp();
     var role = app.globalData && app.globalData.currentRole;
     if (this.data.accessDenied || !createUtils.isCreateAllowed(role)) {
@@ -558,6 +646,7 @@ Page({
         createUtils.validateCreateResult(result, basePayload.initialStock);
         if (!self.pageActive) return;
         self.createCompleted = true;
+        if (app.globalData) app.globalData.inventoryRefreshRequired = true;
         self.safeSetData({
           saving: false,
           saveError: '',
@@ -582,6 +671,90 @@ Page({
           self.restartStartup();
         }
       });
+  },
+
+  completeUpdate: function () {
+    var self = this;
+    var app = getApp();
+    var role = app.globalData && app.globalData.currentRole;
+    if (this.data.saving || this.data.detailLoading || this.data.accessDenied ||
+        !createUtils.isCreateAllowed(role)) {
+      return;
+    }
+    if (!this.validateStep1()) {
+      this.safeSetData({ currentStep: 1 });
+      return;
+    }
+    var basePayload;
+    try {
+      basePayload = createUtils.buildUpdateProductPayload(this.data.form, {
+        productId: this.data.productId,
+        expectedVersion: this.data.productVersion
+      });
+    } catch (error) {
+      var localMessage = createUtils.getUpdateErrorMessage(error);
+      this.safeSetData({ saveError: localMessage });
+      wx.showToast({ title: localMessage, icon: 'none', duration: 2500 });
+      return;
+    }
+    var intent = createUtils.resolveUpdateIntent(basePayload, {
+      updateRequestKey: this.data.updateRequestKey,
+      submittedPayloadHash: this.data.submittedPayloadHash
+    });
+    var payload = Object.assign({}, basePayload, { requestKey: intent.requestKey });
+    this.safeSetData({
+      saving: true,
+      saveError: '',
+      updateRequestKey: intent.requestKey,
+      submittedPayloadHash: intent.signature
+    });
+    productService.updateProduct(payload)
+      .then(function (result) {
+        if (!self.pageActive || !result || !result.product || !result.product.version) return;
+        self.safeSetData({
+          saving: false,
+          saveError: '',
+          productVersion: result.product.version,
+          updateRequestKey: '',
+          submittedPayloadHash: ''
+        });
+        if (app.globalData) app.globalData.inventoryRefreshRequired = true;
+        wx.showToast({ title: '产品信息已更新', icon: 'success', duration: 1400 });
+        wx.navigateBack({ delta: 1 });
+      })
+      .catch(function (error) {
+        if (!self.pageActive) return;
+        var message = createUtils.getUpdateErrorMessage(error);
+        var updates = { saving: false, saveError: message };
+        if (error && error.code === 'REQUEST_KEY_CONFLICT') {
+          updates.updateRequestKey = '';
+          updates.submittedPayloadHash = '';
+        }
+        self.safeSetData(updates);
+        if (error && error.code === 'PRODUCT_VERSION_CONFLICT') {
+          self.showVersionConflict();
+          return;
+        }
+        wx.showToast({ title: message, icon: 'none', duration: 2500 });
+      });
+  },
+
+  showVersionConflict: function () {
+    var self = this;
+    wx.showModal({
+      title: '产品信息已变化',
+      content: '产品已被其他成员修改，请刷新后重新编辑',
+      confirmText: '重新加载',
+      cancelText: '取消返回',
+      success: function (result) {
+        self.safeSetData({ updateRequestKey: '', submittedPayloadHash: '' });
+        if (result.confirm) {
+          self.loadEditProduct();
+        } else {
+          wx.navigateBack({ delta: 1, fail: function () { wx.switchTab({ url: ROUTES.INVENTORY }); } });
+        }
+      }
+    });
   },
 
   restartStartup: function () {

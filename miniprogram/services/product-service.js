@@ -44,6 +44,37 @@ function buildProductDetailPayload(input = {}) {
   return copyDefined(input, ['productId', 'warehouseProductId']);
 }
 
+function buildUpdateProductPayload(input = {}) {
+  return copyDefined(input, [
+    'productId',
+    'expectedVersion',
+    'name',
+    'productCode',
+    'category',
+    'unit',
+    'brand',
+    'specification',
+    'description',
+    'coverType',
+    'coverText',
+    'coverEmoji',
+    'coverBackground',
+    'requestKey'
+  ]);
+}
+
+function buildRemoveProductPayload(input = {}) {
+  return copyDefined(input, ['warehouseProductId', 'reason', 'requestKey']);
+}
+
+function buildRemovedProductsPayload(input = {}) {
+  return copyDefined(input, ['keyword', 'category', 'cursor', 'pageSize', 'sort']);
+}
+
+function buildRestoreProductPayload(input = {}) {
+  return copyDefined(input, ['warehouseProductId', 'requestKey']);
+}
+
 function createProduct(input) {
   return cloudService.callApi('product.create', buildCreateProductPayload(input));
 }
@@ -56,11 +87,35 @@ function getProductDetail(input) {
   return cloudService.callApi('product.detail', buildProductDetailPayload(input));
 }
 
+function updateProduct(input) {
+  return cloudService.callApi('product.update', buildUpdateProductPayload(input));
+}
+
+function removeProductFromWarehouse(input) {
+  return cloudService.callApi('product.removeFromWarehouse', buildRemoveProductPayload(input));
+}
+
+function listRemovedProducts(input) {
+  return cloudService.callApi('product.removed.list', buildRemovedProductsPayload(input));
+}
+
+function restoreProductToWarehouse(input) {
+  return cloudService.callApi('product.restoreToWarehouse', buildRestoreProductPayload(input));
+}
+
 module.exports = {
   buildCreateProductPayload,
   buildListProductsPayload,
   buildProductDetailPayload,
+  buildUpdateProductPayload,
+  buildRemoveProductPayload,
+  buildRemovedProductsPayload,
+  buildRestoreProductPayload,
   createProduct,
   listProducts,
-  getProductDetail
+  getProductDetail,
+  updateProduct,
+  removeProductFromWarehouse,
+  listRemovedProducts,
+  restoreProductToWarehouse
 };

@@ -23,7 +23,8 @@
         class="pd-cover {{warehouseProduct.stockStatus==='out'?'pd-cover--out':''}} {{warehouseProduct.stockStatus==='low'?'pd-cover--low':''}}"
         style="background:{{product.cover.background}}"
       >
-        <text class="{{product.cover.type==='emoji'?'pd-cover-emoji':'pd-cover-text'}}">{{product.cover.content}}</text>
+        <image wx:if="{{product.cover.type==='image'}}" class="pd-cover-image" src="{{product.cover.fileId}}" mode="aspectFill"></image>
+        <text wx:else class="{{product.cover.type==='emoji'?'pd-cover-emoji':'pd-cover-text'}}">{{product.cover.content}}</text>
       </view>
       <view class="pd-hero-info">
         <text class="pd-hero-name">{{product.name}}</text>
@@ -118,5 +119,5 @@
 <view wx:if="{{loaded && product && !error && (permissions.canOperateStock||permissions.canEdit||permissions.canRemove)}}" class="pd-action-bar">
   <view wx:if="{{permissions.canOperateStock}}" class="pd-action-btn pd-action-btn--primary" catchtap="onInbound">入库</view>
   <view wx:if="{{permissions.canOperateStock}}" class="pd-action-btn pd-action-btn--outline" catchtap="onOutbound">出库</view>
-  <view wx:if="{{permissions.canEdit||permissions.canRemove}}" class="pd-action-btn pd-action-btn--outline" catchtap="onMore">更多</view>
+  <view wx:if="{{permissions.canEdit||permissions.canRemove}}" class="pd-action-btn pd-action-btn--outline {{removing?'pd-action-btn--disabled':''}}" catchtap="onMore">{{removing?'处理中':'更多'}}</view>
 </view>

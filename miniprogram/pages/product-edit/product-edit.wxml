@@ -2,16 +2,19 @@
   <view class="pe-nav-back" style="{{navSideStyle}}" catchtap="onBack">
     <view class="pe-nav-back-arrow"></view>
   </view>
-  <text class="pe-nav-title">新增产品</text>
+  <text class="pe-nav-title">{{pageTitle}}</text>
   <view class="pe-nav-placeholder" style="{{navSideStyle}}"></view>
 </view>
 
-<view class="pe-page"><!-- ===== 步骤指示器 ===== --><view class="pe-steps"><block wx:for="{{[1,2,3]}}" wx:key="*this"><view class="pe-step-item">
+<view class="pe-page">
+<app-loading wx:if="{{detailLoading}}" text="正在读取产品资料"></app-loading>
+<error-state wx:elif="{{detailError}}" title="产品加载失败" message="{{detailError}}" bind:retry="onRetryDetail"></error-state>
+<!-- ===== 步骤指示器 ===== --><view wx:else class="pe-steps"><block wx:for="{{[1,2,3]}}" wx:key="*this"><view class="pe-step-item">
       <view class="pe-step-dot {{currentStep===item?'pe-step-dot--active':''}} {{currentStep>item?'pe-step-dot--done':''}}">
         <text wx:if="{{currentStep>item}}" class="pe-step-check">✓</text>
         <text wx:else>{{item}}</text>
       </view>
-      <text class="pe-step-label {{currentStep>=item?'pe-step-label--active':''}}">{{item===1?'基本信息':item===2?'库存设置':'完成'}}</text>
+      <text class="pe-step-label {{currentStep>=item?'pe-step-label--active':''}}">{{item===1?'基本信息':item===2?(mode==='edit'?'库存说明':'库存设置'):'完成'}}</text>
     </view>
     <view wx:if="{{index<2}}" class="pe-step-line {{currentStep>item?'pe-step-line--done':''}}"></view></block></view>
 
@@ -30,6 +33,10 @@
   <view class="pe-cover-mode-card {{form.coverMode==='custom'?'pe-cover-mode-card--active':''}}" data-mode="custom" catchtap="onCoverModeTap">
     <view class="pe-cover-mode-icon pe-cover-mode-icon--custom">▣</view>
     <text class="pe-cover-mode-name">上传图片</text>
+  </view>
+  <view class="pe-cover-mode-card {{form.coverMode==='none'?'pe-cover-mode-card--active':''}}" data-mode="none" catchtap="onCoverModeTap">
+    <view class="pe-cover-mode-icon pe-cover-mode-icon--text">—</view>
+    <text class="pe-cover-mode-name">默认封面</text>
   </view>
 </view>
 
@@ -50,6 +57,12 @@
     <view wx:else class="pe-cover-preview-box pe-cover-preview-box--empty">
       <text class="pe-cover-preview-hint">请选择图片</text>
     </view>
+  </block>
+  <block wx:elif="{{form.coverMode==='existing-image'}}">
+    <image class="pe-cover-preview-img" src="{{form.localImagePath}}" mode="aspectFill"></image>
+  </block>
+  <block wx:else>
+    <view class="pe-cover-preview-box pe-cover-preview-box--empty"><text class="pe-cover-preview-hint">默认封面</text></view>
   </block>
 </view>
 
@@ -160,6 +173,7 @@
 
 <!-- ===== 第二步：库存设置 ===== --><view wx:if="{{currentStep===2}}" class="pe-step-body">
 
+<block wx:if="{{mode==='create'}}">
 <!-- 初始库存 --><view class="pe-field">
   <text class="pe-field-label">初始库存</text>
   <view class="pe-number-row">
@@ -205,6 +219,15 @@
     <text class="pe-sp-status pe-sp-status--{{stockStatus.color}}">{{stockStatus.label}}</text>
   </view>
 </view>
+ </block>
+
+<view wx:else class="pe-stock-preview-card">
+  <text class="pe-section-subtitle">库存信息不可在编辑资料时修改</text>
+  <view class="pe-stock-preview-row"><text class="pe-sp-label">当前库存</text><text class="pe-sp-value">{{form.stock}}</text></view>
+  <view class="pe-stock-preview-row"><text class="pe-sp-label">最低库存</text><text class="pe-sp-value">{{form.minStock}}</text></view>
+  <view class="pe-stock-preview-divider"></view>
+  <text class="pe-toggle-text">库存和预警值需要通过库存操作功能修改</text>
+</view>
 
 </view><!-- /第二步 -->
 
@@ -212,7 +235,7 @@
 <!-- ===== 第三步：确认完成 ===== --><view wx:if="{{currentStep===3}}" class="pe-step-body">
 
 <view class="pe-confirm-card">
-  <text class="pe-section-subtitle">新增产品预览</text>
+  <text class="pe-section-subtitle">{{mode==='edit'?'产品更新预览':'新增产品预览'}}</text>
 
   <!-- 封面 --><view class="pe-confirm-cover">
     <block wx:if="{{form.coverMode==='text'}}">
@@ -231,18 +254,24 @@
         <text class="pe-cover-preview-hint">无图片</text>
       </view>
     </block>
+    <block wx:elif="{{form.coverMode==='existing-image'}}">
+      <image class="pe-confirm-cover-img" src="{{form.localImagePath}}" mode="aspectFill"></image>
+    </block>
+    <block wx:else>
+      <view class="pe-confirm-cover-box pe-confirm-cover-box--empty"><text class="pe-cover-preview-hint">默认封面</text></view>
+    </block>
   </view>
 
   <!-- 预览字段 --><view class="pe-confirm-rows">
-    <view class="pe-confirm-row">
+    <view wx:if="{{mode==='create'}}" class="pe-confirm-row">
       <text class="pe-cr-key">产品名称</text>
       <text class="pe-cr-val">{{form.name||'—'}}</text>
     </view>
-    <view class="pe-confirm-row">
+    <view wx:if="{{mode==='create'}}" class="pe-confirm-row">
       <text class="pe-cr-key">产品编号</text>
       <text class="pe-cr-val">{{form.code||'—'}}</text>
     </view>
-    <view class="pe-confirm-row">
+    <view wx:if="{{mode==='create'}}" class="pe-confirm-row">
       <text class="pe-cr-key">分类</text>
       <text class="pe-cr-val">{{form.category||'—'}}</text>
     </view>
@@ -279,7 +308,7 @@
 
 <!-- 操作按钮 --><view class="pe-confirm-actions">
   <view class="pe-btn-pe pe-btn-pe--outline {{saving?'pe-btn-pe--disabled':''}}" catchtap="onPrevStep">返回修改</view>
-  <view class="pe-btn-pe pe-btn-pe--primary {{saving?'pe-btn-pe--disabled':''}}" catchtap="onComplete">{{saving?'正在创建…':'完成'}}</view>
+  <view class="pe-btn-pe pe-btn-pe--primary {{saving?'pe-btn-pe--disabled':''}}" catchtap="onComplete">{{saving?(mode==='edit'?'正在保存…':'正在创建…'):(mode==='edit'?'保存修改':'完成')}}</view>
 </view>
 <text wx:if="{{saveError}}" class="pe-save-error">{{saveError}}</text>
 

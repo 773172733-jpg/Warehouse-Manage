@@ -136,7 +136,8 @@ function testViewHelpersAndServiceWhitelists() {
   assert.strictEqual(emoji.cover.type, 'emoji');
   assert.strictEqual(emoji.cover.content, '📦');
   assert.strictEqual(none.cover.type, 'none');
-  assert.strictEqual(unknown.cover.type, 'none');
+  assert.strictEqual(unknown.cover.type, 'image');
+  assert.strictEqual(unknown.cover.fileId, 'forbidden');
   assert.strictEqual(unknown.stockText, '—');
   assert.strictEqual(unknown.stockStatus, 'unknown');
 
@@ -400,6 +401,7 @@ async function testDetailPage() {
     getMenuButtonBoundingClientRect: () => ({ width: 0, height: 0, left: 0 }),
     showToast: (options) => toasts.push(options.title),
     showActionSheet: (options) => options.success({ tapIndex: 0 }),
+    navigateTo: (options) => navigation.push(options.url),
     reLaunch: (options) => navigation.push(options.url),
     navigateBack: () => {},
     switchTab: (options) => navigation.push(options.url)
@@ -430,7 +432,7 @@ async function testDetailPage() {
     page.onOutbound();
     page.onMore();
     assert.ok(toasts.filter((item) => item === '真实库存操作将在阶段2C4接入').length >= 2);
-    assert.ok(toasts.includes('产品编辑将在阶段2C3A接入'));
+    assert.ok(navigation.includes('/pages/product-edit/product-edit?mode=edit&warehouseProductId=warehouse_product_12345678'));
     assert.strictEqual(navigation.some((url) => url.includes('stock-operation')), false);
 
     calls = [];
@@ -493,7 +495,6 @@ function testStaticBoundaries() {
   assert.strictEqual(source.includes('setStorage'), false);
   assert.strictEqual(source.includes('setStorageSync'), false);
   assert.strictEqual(source.includes('console.log'), false);
-  assert.strictEqual(source.includes('requestKey'), false);
   assert.strictEqual(source.includes('真实库存流水将在后续阶段接入'), true);
   assert.strictEqual(source.includes('已加载产品'), true);
   assert.strictEqual(source.includes('productService.listProducts'), true);

@@ -1,0 +1,13 @@
+{
+  "navigationBarTitleText": "产品回收站",
+  "navigationBarBackgroundColor": "#078B4B",
+  "navigationBarTextStyle": "white",
+  "enablePullDownRefresh": true,
+  "backgroundColor": "#F7F8F7",
+  "onReachBottomDistance": 120,
+  "usingComponents": {
+    "empty-state": "/components/empty-state/empty-state",
+    "app-loading": "/components/app-loading/app-loading",
+    "error-state": "/components/error-state/error-state"
+  }
+}
