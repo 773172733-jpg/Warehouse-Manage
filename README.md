@@ -1,6 +1,6 @@
 # 轻仓｜微信小程序仓库管理器
 
-当前进入阶段2C3A：产品创建、列表、详情、资料编辑、当前仓库软移除、仓库回收站和原实例恢复均已接入真实云端接口。编辑使用 `products.version` 乐观锁，移除与恢复保留库存流水并使用服务端幂等；库存写入和真实流水列表仍按后续阶段实施。
+当前进入阶段2C3B：产品创建、列表、详情、资料编辑、当前仓库软移除/恢复，以及owner专属共享目录软删除/恢复均已接入真实云端接口。两层回收流程都保留warehouse_products和stock_records，使用产品版本锁、事务计数和服务端幂等；库存写入和真实流水列表仍按后续阶段实施。
 
 ## 技术栈
 
@@ -38,6 +38,8 @@
 - [`docs/阶段2C2B2部署与验收.md`](docs/阶段2C2B2部署与验收.md)
 - [`docs/阶段2C3A产品编辑与仓库回收站.md`](docs/阶段2C3A产品编辑与仓库回收站.md)
 - [`docs/阶段2C3A部署与验收.md`](docs/阶段2C3A部署与验收.md)
+- [`docs/阶段2C3B共享目录删除与恢复.md`](docs/阶段2C3B共享目录删除与恢复.md)
+- [`docs/阶段2C3B部署与验收.md`](docs/阶段2C3B部署与验收.md)
 - [`database/collections.md`](database/collections.md)
 - [`database/indexes.md`](database/indexes.md)
 - [`database/permissions.md`](database/permissions.md)
@@ -70,7 +72,9 @@
 - 产品、库存、流水接口契约、错误码、索引与mock页面分阶段迁移方案
 - 当前仓库产品软删除回收站与恢复、99,999目录上限和2MB图片生命周期规则
 - searchKeywords只能由warehouse-api服务端生成，前端禁止提交searchKeywords/normalizedName/normalizedCode
-- 全局目录删除与恢复UI定于2C3B，仅owner可操作，不阻塞2C2
+- `product.catalog.delete/deleted.list/restore` owner专属共享目录软删除、回收站和原productId恢复
+- 产品回收站与共享目录回收站明确分层；目录恢复后仍需手动恢复原warehouseProductId
+- 全局删除前使用定向索引校验所有仓库实例均removed且stock=0，脏状态稳定阻断
 - 99,999压测定于2C5，使用独立测试环境；2C2只完成游标分页、事务限额和必要索引
 - `products`、`warehouse_products`、`stock_records` 云端模型及全部客户端直访关闭方案
 - `product.create/list/detail` 静态白名单路由、可信身份复核和字段脱敏
@@ -92,7 +96,6 @@
 
 暂不包含：
 
-- 全局共享产品目录删除与恢复（阶段2C3B）
 - 真实入库、出库、库存调整和库存流水接口
 - 邀请二维码、微信分享卡片和owner转让
 - 团队解散、多团队切换和实时成员状态推送

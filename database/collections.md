@@ -1,6 +1,6 @@
 # 集合设计
 
-阶段2C2A代码已经实现 `products`、`warehouse_products`、`stock_records` 的访问，但代码不会自动创建集合、索引或权限。部署前必须按 `docs/阶段2C2A部署与验收.md` 在轻仓环境人工配置。
+阶段2C3B代码已经实现产品、仓库实例和共享目录两层软删除/恢复，但代码不会自动创建集合、索引或权限。首次产品部署按 `docs/阶段2C2A部署与验收.md` 配置基础资源，本阶段再按 `docs/阶段2C3B部署与验收.md` 增加跨仓校验索引。
 
 ## users
 
@@ -26,7 +26,7 @@
 - `createdAt`、`updatedAt`：服务端时间
 - `deletedAt`：软删除预留，本阶段为 `null`
 - `activeInviteId`：最近一次刷新生成的邀请码ID，可为空；用于并发刷新时锁定团队状态
-- `activeProductCount`：active共享目录产品计数，默认0，由云端事务维护，用于99,999上限；旧团队缺少时product.create兼容为0，首次成功创建后写回
+- `activeProductCount`：active共享目录产品计数，默认0，由云端事务维护，用于99,999上限；product.create和目录恢复加1，目录删除减1，幂等重试不重复加减
 
 ## team_members
 
@@ -76,6 +76,8 @@ products不得保存 `warehouseId`、`stock`、`minStock`、`stockStatus`或 `st
 
 阶段2C3A按需自然写入 `lastUpdateRequestKey`、`lastUpdateRequestHash`、`lastUpdateResultVersion`、`lastUpdateAt`，用于产品更新幂等；这些内部字段不返回客户端。`activeWarehouseCount` 缺失时，移除按当前active关系兼容为1，恢复按当前removed关系兼容为0，无需批量迁移。
 
+阶段2C3B按需自然写入 `catalogDeleteRequestKey`、`catalogDeleteRequestHash`、`catalogDeleteResultVersion`、`catalogRestoreRequestKey`、`catalogRestoreRequestHash`、`catalogRestoreResultVersion`、`deletionReason`、`deletedBy`、`deletedAt`、`restoredBy`、`restoredAt`。目录删除将status改为deleted且version加1；目录恢复复用原productId、改回active且version加1。activeWarehouseCount在两次操作中都必须严格为0。旧记录无需批量迁移，内部幂等字段不返回客户端。
+
 ## warehouse_products（2C2A部署时人工创建）
 
 共享产品在具体仓库的实例、库存余额和最低库存阈值。
@@ -89,6 +91,8 @@ products不得保存 `warehouseId`、`stock`、`minStock`、`stockStatus`或 `st
 `teamId + warehouseId + productId`必须唯一。stockStatus由云端计算并持久化；products始终是主资料权威。仓库移除要求stock为0，恢复复用原文档且stock保持0。
 
 阶段2C3A按需写入 `removalReason`、`removeRequestKey`、`removeRequestHash`、`removedBy`、`removedAt`、`restoreRequestKey`、`restoreRequestHash`、`restoredBy`、`restoredAt`。恢复时清空当前移除展示字段，并从products刷新全部快照；内部身份和幂等字段不返回客户端。
+
+阶段2C3B共享目录删除和恢复不修改或删除任何warehouse_products。目录恢复后实例仍保持removed，用户必须在产品回收站手动恢复，且继续复用原warehouseProductId。
 
 ## stock_records（2C2A部署时人工创建，2C4启用完整库存写入）
 
@@ -105,6 +109,8 @@ products不得保存 `warehouseId`、`stock`、`minStock`、`stockStatus`或 `st
 - `createdAt`
 
 流水永久保留，用户不能修改或删除。产品、仓库实例或成员变化后，历史仍通过快照正常显示；未来只允许不可变冷归档。
+
+共享目录删除、共享目录恢复、仓库移除和仓库恢复都不会修改或删除既有stock_records；只有真实库存写接口可在余额事务中新增流水。
 
 ## categories（当前不创建）
 
