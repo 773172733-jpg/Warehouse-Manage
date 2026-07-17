@@ -298,12 +298,12 @@ Page({
   },
 
   onCoverImageError(event) {
-    const index = Number(event.currentTarget.dataset.index);
-    if (!Number.isInteger(index) || !this.data.items[index]) return;
-    const item = this.data.items[index];
-    this.safeSetData({
-      [`items[${index}].cover`]: productView.getCoverView(null, item.name)
-    });
+    const warehouseProductId = event.currentTarget.dataset.warehouseProductId;
+    if (!warehouseProductId) return;
+    const match = this.data.items.find(item => item.warehouseProductId === warehouseProductId);
+    if (!match) return;
+    const path = 'items[' + this.data.items.indexOf(match) + '].cover';
+    this.safeSetData({ [path]: productView.getCoverView(null, match.name) });
   },
 
   onCardMenu(event) {
