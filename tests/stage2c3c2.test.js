@@ -542,6 +542,10 @@ function testStaticScope() {
     'utf8'
   );
   const indexes = fs.readFileSync(path.join(root, 'database/indexes.md'), 'utf8');
+  const guide = fs.readFileSync(
+    path.join(root, 'docs/阶段2C3C2-产品图片资产延迟清理Worker部署指南.md'),
+    'utf8'
+  );
   assert.strictEqual(BATCH_SIZE, 20);
   assert(worker.includes("ASSET_COLLECTION = 'product_image_assets'"));
   assert(worker.includes("PRODUCT_COLLECTION = 'products'"));
@@ -552,6 +556,13 @@ function testStaticScope() {
   assert.strictEqual(worker.includes('warehouse_products'), false);
   assert.strictEqual((indexes.match(/\|\s*`(?:u?idx_image_assets_[^`]+)`\s*\|/g) || []).length, 3);
   assert.strictEqual(indexes.includes('fileId`不得建立唯一索引'), true);
+  assert(guide.includes('每小时一次'));
+  assert(guide.includes('不新增集合，不新增、删除或修改索引'));
+  assert(guide.includes('必须重新部署'));
+  assert(guide.includes('仅创建者及管理员可读写'));
+  assert(guide.includes('不需要购买'));
+  assert(guide.includes('绝不删除verified'));
+  assert(guide.includes('不代表已经完成真实CloudBase部署'));
 }
 
 async function run() {

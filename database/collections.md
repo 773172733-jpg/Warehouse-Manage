@@ -105,8 +105,10 @@ products不得保存 `warehouseId`、`stock`、`minStock`、`stockStatus`或 `st
 - 真实检测：`detectedMimeType`、`detectedExtension`、`sizeBytes`、`sha256`
 - 绑定：`productId`、`boundBy`、`boundAt`
 - 生命周期：`confirmedAt`、`orphanedAt`、`rejectedAt`、`expiresAt`、`cleanupAfter`、`createdAt`、`updatedAt`
+- 清理状态：`cleanupState`、`cleanupAttemptCount`、`cleanupLeaseToken`、`cleanupLeaseUntil`、`lastCleanupErrorCode`、`lastCleanupErrorAt`、`cleanupUpdatedAt`
+- 清理结果：`sourceDeletedAt`、`verifiedDeletedAt`、`cleanedAt`、`rejectionReasonCode`
 
-客户端只能把已确认资产标识作为 `coverAssetKey` 交给产品接口；`coverFileId`由云函数从该集合读取。awaiting_upload不写空fileId，且fileId不得建立唯一索引，否则CloudBase会把多条缺失字段记录视为重复null。2C3C1只记录清理时间，不物理删除文件。
+客户端只能把已确认资产标识作为 `coverAssetKey` 交给产品接口；`coverFileId`由云函数从该集合读取。awaiting_upload不写空fileId，且fileId不得建立唯一索引，否则CloudBase会把多条缺失字段记录视为重复null。2C3C2由独立Worker按租约延迟清理物理文件，保留资产审计记录；bound资产的verified文件永不由清理Worker删除。
 
 ## stock_records（2C2A部署时人工创建，2C4启用完整库存写入）
 
