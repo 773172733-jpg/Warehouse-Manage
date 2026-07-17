@@ -164,8 +164,12 @@ function createFixture(role = 'owner') {
 
 function createCloud() {
   const files = new Map();
+  let tempUrlCalls = 0;
   return {
     files,
+    get tempUrlCalls() {
+      return tempUrlCalls;
+    },
     async downloadFile({ fileID }) {
       if (!files.has(fileID)) throw new Error('missing file');
       return { fileContent: files.get(fileID) };
@@ -174,6 +178,18 @@ function createCloud() {
       const fileID = `cloud://${ENV_ID}.bucket/${cloudPath}`;
       files.set(fileID, Buffer.from(fileContent));
       return { fileID };
+    },
+    async getTempFileURL({ fileList }) {
+      tempUrlCalls += 1;
+      return {
+        fileList: fileList.map((item, index) => ({
+          fileID: item.fileID,
+          tempFileURL: files.has(item.fileID) ? `https://private.example/image-${index}` : '',
+          maxAge: item.maxAge,
+          status: files.has(item.fileID) ? 0 : -1,
+          errMsg: files.has(item.fileID) ? 'ok' : 'missing'
+        }))
+      };
     }
   };
 }
@@ -263,6 +279,27 @@ async function testPrepareConfirmPermissionsAndIdempotency() {
   await expectAsyncCode(() => prepareProductImage(viewer.db, viewer.user, {
     extension: 'jpg', sizeBytes: 8, requestKey: 'viewer_prepare_123456'
   }), ERROR_CODES.FORBIDDEN);
+  await expectAsyncCode(() => confirmProductImage(viewer.db, viewer.user, {
+    assetKey: 'product_image_1234567890abcdef1234567890abcdef',
+    fileId: `cloud://${ENV_ID}.bucket/product-images/uploads/viewer.jpg`,
+    requestKey: 'viewer_confirm_123456'
+  }, { cloud: createCloud(), envId: ENV_ID }), ERROR_CODES.FORBIDDEN);
+  await expectAsyncCode(() => updateProduct(viewer.db, viewer.user, createUpdateInput({
+    _id: 'product_12345678',
+    version: 1,
+    name: 'viewer product',
+    productCode: '',
+    category: '其他',
+    unit: '个',
+    brand: '',
+    specification: '',
+    description: ''
+  }, {
+    coverType: 'none',
+    coverText: '',
+    coverEmoji: '',
+    coverBackground: ''
+  }, 'viewer_update_12345678')), ERROR_CODES.FORBIDDEN);
 
   const fixture = createFixture('admin');
   const input = { extension: 'jpg', sizeBytes: 8, requestKey: 'prepare_idem_12345678' };
@@ -329,7 +366,12 @@ async function testCreateAndUpdateBinding() {
     Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x00, 0xFF, 0xD9]),
     'create'
   );
-  const created = await createProduct(fixture.db, fixture.user, createProductInput(firstAssetKey));
+  const created = await createProduct(
+    fixture.db,
+    fixture.user,
+    createProductInput(firstAssetKey),
+    { cloud }
+  );
   const productId = created.product.id;
   let product = fixture.documents.products.get(productId);
   assert.strictEqual(product.coverType, 'image');
@@ -337,14 +379,19 @@ async function testCreateAndUpdateBinding() {
   assert.ok(product.coverFileId.includes('/product-images/verified/'));
   assert.strictEqual(fixture.documents.product_image_assets.get(firstAssetKey).status, 'bound');
   assert.strictEqual(fixture.documents.product_image_assets.get(firstAssetKey).productId, productId);
-  assert.strictEqual(created.warehouseProduct.cover.fileId, product.coverFileId);
+  assert.strictEqual(created.warehouseProduct.cover.imageAvailable, true);
+  assert.ok(created.warehouseProduct.cover.imageUrl.startsWith('https://'));
+  assert.strictEqual(created.warehouseProduct.cover.fileId, undefined);
+  assert.strictEqual(created.warehouseProduct.cover.assetKey, undefined);
 
   const replacementKey = await stageAsset(fixture, cloud, 'png', createPng(), 'replace');
   const updated = await updateProduct(fixture.db, fixture.user, createUpdateInput(product, {
     coverType: 'image', coverAssetKey: replacementKey
-  }, 'update_image_12345678'));
+  }, 'update_image_12345678'), { cloud });
   product = fixture.documents.products.get(productId);
-  assert.strictEqual(updated.product.cover.assetKey, replacementKey);
+  assert.strictEqual(updated.product.cover.imageAvailable, true);
+  assert.strictEqual(updated.product.cover.assetKey, undefined);
+  assert.strictEqual(updated.product.cover.fileId, undefined);
   assert.strictEqual(fixture.documents.product_image_assets.get(replacementKey).status, 'bound');
   assert.strictEqual(fixture.documents.product_image_assets.get(firstAssetKey).status, 'orphaned');
   assert.ok(fixture.documents.product_image_assets.get(firstAssetKey).cleanupAfter instanceof Date);

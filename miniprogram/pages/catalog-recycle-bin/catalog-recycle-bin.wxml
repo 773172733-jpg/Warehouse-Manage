@@ -20,7 +20,7 @@
 
   <view wx:else class="cr-list">
     <view wx:for="{{items}}" wx:key="productId" class="cr-item">
-      <view class="cr-cover" style="background:{{item.cover.background}}"><image wx:if="{{item.cover.type==='image'}}" class="cr-cover-image" src="{{item.cover.fileId}}" mode="aspectFill" data-index="{{index}}" binderror="onCoverImageError"></image><text wx:else class="{{item.cover.type==='emoji'?'cr-cover-emoji':'cr-cover-text'}}">{{item.cover.content}}</text></view>
+      <view class="cr-cover" style="background:{{item.cover.background}}"><image wx:if="{{item.cover.type==='image' && item.cover.imageUrl}}" class="cr-cover-image" src="{{item.cover.imageUrl}}" mode="aspectFill" data-index="{{index}}" binderror="onCoverImageError"></image><text wx:else class="{{item.cover.type==='emoji'?'cr-cover-emoji':'cr-cover-text'}}">{{item.cover.content}}</text></view>
       <view class="cr-info">
         <text class="cr-name">{{item.name}}</text>
         <text class="cr-meta">{{item.productCode||'无编号'}} · {{item.category}}</text>

@@ -59,7 +59,7 @@
     </view>
   </block>
   <block wx:elif="{{form.coverMode==='existing-image'}}">
-    <image wx:if="{{!existingImageFailed}}" class="pe-cover-preview-img" src="{{form.localImagePath}}" mode="aspectFill" binderror="onExistingImageError"></image>
+    <image wx:if="{{!existingImageFailed && form.localImagePath}}" class="pe-cover-preview-img" src="{{form.localImagePath}}" mode="aspectFill" binderror="onExistingImageError"></image>
     <view wx:else class="pe-cover-preview-box pe-cover-preview-box--empty"><text class="pe-cover-preview-hint">图片暂不可用</text></view>
   </block>
   <block wx:else>
@@ -258,7 +258,7 @@
       </view>
     </block>
     <block wx:elif="{{form.coverMode==='existing-image'}}">
-      <image wx:if="{{!existingImageFailed}}" class="pe-confirm-cover-img" src="{{form.localImagePath}}" mode="aspectFill" binderror="onExistingImageError"></image>
+      <image wx:if="{{!existingImageFailed && form.localImagePath}}" class="pe-confirm-cover-img" src="{{form.localImagePath}}" mode="aspectFill" binderror="onExistingImageError"></image>
       <view wx:else class="pe-confirm-cover-box pe-confirm-cover-box--empty"><text class="pe-cover-preview-hint">图片暂不可用</text></view>
     </block>
     <block wx:else>

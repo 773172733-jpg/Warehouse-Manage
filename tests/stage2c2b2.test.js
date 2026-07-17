@@ -131,13 +131,23 @@ function testViewHelpersAndServiceWhitelists() {
     stock: 'bad',
     stockStatus: 'bad'
   }));
+  const privateImage = productView.mapInventoryItem(createCloudItem('warehouse_image_12345678', {
+    cover: {
+      type: 'image',
+      imageUrl: 'https://private.example/image',
+      imageAvailable: true,
+      imageUrlExpiresAt: '2026-07-18T01:00:00.000Z'
+    }
+  }));
   assert.strictEqual(text.cover.type, 'text');
   assert.strictEqual(text.cover.content, '扳手');
   assert.strictEqual(emoji.cover.type, 'emoji');
   assert.strictEqual(emoji.cover.content, '📦');
   assert.strictEqual(none.cover.type, 'none');
   assert.strictEqual(unknown.cover.type, 'image');
-  assert.strictEqual(unknown.cover.fileId, 'forbidden');
+  assert.strictEqual(unknown.cover.imageUrl, '');
+  assert.strictEqual(unknown.cover.fileId, undefined);
+  assert.strictEqual(privateImage.cover.imageUrl, 'https://private.example/image');
   assert.strictEqual(unknown.stockText, '—');
   assert.strictEqual(unknown.stockStatus, 'unknown');
 

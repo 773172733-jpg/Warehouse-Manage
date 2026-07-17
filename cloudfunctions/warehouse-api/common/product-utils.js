@@ -488,6 +488,22 @@ function buildCoverSummary(product) {
   };
 }
 
+function buildPublicCover(product, imageAccess) {
+  const type = product.coverType || 'none';
+  const access = imageAccess && typeof imageAccess === 'object' ? imageAccess : {};
+  return {
+    type,
+    text: product.coverText || '',
+    emoji: product.coverEmoji || '',
+    background: product.coverBackground || '',
+    imageUrl: type === 'image' && access.imageAvailable ? access.imageUrl || '' : '',
+    imageUrlExpiresAt: type === 'image' && access.imageAvailable
+      ? access.imageUrlExpiresAt || null
+      : null,
+    imageAvailable: Boolean(type === 'image' && access.imageAvailable && access.imageUrl)
+  };
+}
+
 function encodeBase64Url(value) {
   return Buffer.from(value, 'utf8').toString('base64')
     .replace(/\+/g, '-')
@@ -601,7 +617,7 @@ function getProductPermissionFlags(role) {
   };
 }
 
-function presentProduct(product) {
+function presentProduct(product, imageAccess) {
   return product ? {
     id: product._id,
     name: product.name,
@@ -611,7 +627,7 @@ function presentProduct(product) {
     brand: product.brand || '',
     specification: product.specification || '',
     description: product.description || '',
-    cover: buildCoverSummary(product),
+    cover: buildPublicCover(product, imageAccess),
     version: product.version,
     status: product.status,
     createdAt: product.createdAt || null,
@@ -619,7 +635,7 @@ function presentProduct(product) {
   } : null;
 }
 
-function presentWarehouseProduct(warehouseProduct) {
+function presentWarehouseProduct(warehouseProduct, imageAccess) {
   if (!warehouseProduct) {
     return null;
   }
@@ -632,7 +648,12 @@ function presentWarehouseProduct(warehouseProduct) {
     unit: warehouseProduct.unitSnapshot || '',
     brand: warehouseProduct.brandSnapshot || '',
     specification: warehouseProduct.specificationSnapshot || '',
-    cover: warehouseProduct.coverSummarySnapshot || buildCoverSummary({}),
+    cover: buildPublicCover({
+      coverType: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.type,
+      coverText: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.text,
+      coverEmoji: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.emoji,
+      coverBackground: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.background
+    }, imageAccess),
     stock: warehouseProduct.stock,
     minStock: warehouseProduct.minStock,
     stockStatus: computeStockStatus(warehouseProduct.stock, warehouseProduct.minStock),
@@ -642,7 +663,7 @@ function presentWarehouseProduct(warehouseProduct) {
   };
 }
 
-function presentRemovedProduct(product, warehouseProduct, role) {
+function presentRemovedProduct(product, warehouseProduct, role, imageAccess) {
   const authoritative = product && product.status === 'active' ? product : null;
   const source = authoritative || {
     name: warehouseProduct.productNameSnapshot,
@@ -663,7 +684,7 @@ function presentRemovedProduct(product, warehouseProduct, role) {
     productCode: source.productCode || '',
     category: source.category || '',
     unit: source.unit || '',
-    cover: authoritative ? buildCoverSummary(source) : (warehouseProduct.coverSummarySnapshot || buildCoverSummary(source)),
+    cover: buildPublicCover(source, imageAccess),
     removedAt: warehouseProduct.removedAt || null,
     removalReason: warehouseProduct.removalReason || '',
     canRestore: Boolean(authoritative && warehouseProduct.stock === 0),
@@ -682,7 +703,7 @@ function presentRemovedProduct(product, warehouseProduct, role) {
   };
 }
 
-function presentDeletedCatalogProduct(product, role) {
+function presentDeletedCatalogProduct(product, role, imageAccess) {
   if (!product) return null;
   return {
     productId: product._id,
@@ -692,7 +713,7 @@ function presentDeletedCatalogProduct(product, role) {
     unit: product.unit || '',
     brand: product.brand || '',
     specification: product.specification || '',
-    cover: buildCoverSummary(product),
+    cover: buildPublicCover(product, imageAccess),
     deletedAt: product.deletedAt || null,
     deletionReason: product.deletionReason || '',
     version: Number.isSafeInteger(product.version) ? product.version : null,
@@ -747,6 +768,7 @@ module.exports = {
   computeStockStatus,
   assertProductCountWithinLimit,
   buildCoverSummary,
+  buildPublicCover,
   encodeProductCursor,
   decodeProductCursor,
   validateProductListInput,

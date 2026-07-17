@@ -5,5 +5,5 @@ const { removeProductFromWarehouse } = require('./product-service.js');
 module.exports = async function productRemoveFromWarehouse({ data, context, cloud }) {
   const db = getDatabase(cloud);
   const user = await requireUser(db, context);
-  return removeProductFromWarehouse(db, user, data);
+  return removeProductFromWarehouse(db, user, data, { cloud });
 };

@@ -41,16 +41,37 @@ function getCoverView(cover, name) {
   const type = safeText(source.type).toLowerCase();
   const background = safeText(source.background, '#F2F4F2');
   if (type === 'text' && safeText(source.text)) {
-    return { type: 'text', content: safeText(source.text), text: safeText(source.text), emoji: '', fileId: '', background };
+    return { type: 'text', content: safeText(source.text), text: safeText(source.text), emoji: '', imageUrl: '', background };
   }
   if (type === 'emoji' && safeText(source.emoji)) {
-    return { type: 'emoji', content: safeText(source.emoji), text: '', emoji: safeText(source.emoji), fileId: '', background };
-  }
-  if (type === 'image' && safeText(source.fileId)) {
-    return { type: 'image', content: '', text: '', emoji: '', fileId: safeText(source.fileId), background };
+    return { type: 'emoji', content: safeText(source.emoji), text: '', emoji: safeText(source.emoji), imageUrl: '', background };
   }
   const fallback = Array.from(safeText(name, '仓'))[0] || '仓';
-  return { type: 'none', content: fallback, text: '', emoji: '', fileId: '', background: '#F2F4F2' };
+  const imageUrl = safeText(source.imageUrl);
+  if (type === 'image' && source.imageAvailable === true && /^https:\/\//i.test(imageUrl)) {
+    return {
+      type: 'image',
+      content: '',
+      text: '',
+      emoji: '',
+      imageUrl,
+      imageUrlExpiresAt: source.imageUrlExpiresAt || null,
+      background
+    };
+  }
+  if (type === 'image') {
+    return {
+      type: 'image',
+      content: fallback,
+      text: '',
+      emoji: '',
+      imageUrl: '',
+      imageUrlExpiresAt: null,
+      imageAvailable: false,
+      background: '#F2F4F2'
+    };
+  }
+  return { type: 'none', content: fallback, text: '', emoji: '', imageUrl: '', background: '#F2F4F2' };
 }
 
 function normalizeStockStatus(value) {

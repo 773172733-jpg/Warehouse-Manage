@@ -5,5 +5,5 @@ const { restoreProductToWarehouse } = require('./product-service.js');
 module.exports = async function productRestoreToWarehouse({ data, context, cloud }) {
   const db = getDatabase(cloud);
   const user = await requireUser(db, context);
-  return restoreProductToWarehouse(db, user, data);
+  return restoreProductToWarehouse(db, user, data, { cloud });
 };

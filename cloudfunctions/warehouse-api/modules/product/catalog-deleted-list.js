@@ -5,5 +5,5 @@ const { listDeletedCatalogProducts } = require('./product-service.js');
 module.exports = async function catalogDeletedList({ data, context, cloud }) {
   const db = getDatabase(cloud);
   const user = await requireUser(db, context);
-  return listDeletedCatalogProducts(db, user, data);
+  return listDeletedCatalogProducts(db, user, data, { cloud });
 };

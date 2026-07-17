@@ -5,5 +5,5 @@ const { restoreCatalogProduct } = require('./product-service.js');
 module.exports = async function catalogRestore({ data, context, cloud }) {
   const db = getDatabase(cloud);
   const user = await requireUser(db, context);
-  return restoreCatalogProduct(db, user, data);
+  return restoreCatalogProduct(db, user, data, { cloud });
 };

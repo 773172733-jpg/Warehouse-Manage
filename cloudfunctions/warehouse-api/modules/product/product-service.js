@@ -8,6 +8,9 @@ const {
 } = require('../../common/idempotency.js');
 const { requireCurrentTeamAccess, requireRole } = require('../../common/permissions.js');
 const {
+  resolveProductImageAccessUrls
+} = require('../../common/product-image-access.js');
+const {
   sanitizeProductInput,
   sanitizeProductUpdateInput,
   sanitizeWarehouseMutationInput,
@@ -42,6 +45,19 @@ const PRODUCT_REMOVE_ACTION = 'product.removeFromWarehouse';
 const PRODUCT_RESTORE_ACTION = 'product.restoreToWarehouse';
 const PRODUCT_CATALOG_DELETE_ACTION = 'product.catalog.delete';
 const PRODUCT_CATALOG_RESTORE_ACTION = 'product.catalog.restore';
+
+function getImageAccess(accessByProductId, productId) {
+  return accessByProductId instanceof Map ? accessByProductId.get(productId) : null;
+}
+
+function resolveImageAccess(db, options, teamId, products) {
+  return resolveProductImageAccessUrls({
+    cloud: options && options.cloud,
+    db,
+    teamId,
+    products
+  });
+}
 
 async function requireProductAccess(db, user, requiredRole) {
   const access = await requireCurrentTeamAccess(db, user);
@@ -262,7 +278,7 @@ async function loadCreateDocuments(source, ids) {
   return { product, warehouseProduct, initialRecord };
 }
 
-async function createProduct(db, user, rawInput) {
+async function createProduct(db, user, rawInput, options) {
   const input = sanitizeProductInput(rawInput);
   const requestHash = createProductRequestHash(input);
   const access = await requireProductAccess(db, user, 'admin');
@@ -366,9 +382,16 @@ async function createProduct(db, user, rawInput) {
     if (!documents.product || !documents.warehouseProduct) {
       throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品创建结果读取失败，请稍后重试。');
     }
+    const imageAccess = await resolveImageAccess(db, options, access.team._id, [documents.product]);
     return {
-      product: presentProduct(documents.product),
-      warehouseProduct: presentWarehouseProduct(documents.warehouseProduct),
+      product: presentProduct(
+        documents.product,
+        getImageAccess(imageAccess, documents.product._id)
+      ),
+      warehouseProduct: presentWarehouseProduct(
+        documents.warehouseProduct,
+        getImageAccess(imageAccess, documents.product._id)
+      ),
       initialRecord: presentStockRecord(documents.initialRecord),
       idempotent
     };
@@ -387,9 +410,21 @@ async function createProduct(db, user, rawInput) {
             input,
             requestHash
           );
+          const imageAccess = await resolveImageAccess(
+            db,
+            options,
+            access.team._id,
+            [documents.product]
+          );
           return {
-            product: presentProduct(documents.product),
-            warehouseProduct: presentWarehouseProduct(documents.warehouseProduct),
+            product: presentProduct(
+              documents.product,
+              getImageAccess(imageAccess, documents.product._id)
+            ),
+            warehouseProduct: presentWarehouseProduct(
+              documents.warehouseProduct,
+              getImageAccess(imageAccess, documents.product._id)
+            ),
             initialRecord: presentStockRecord(documents.initialRecord),
             idempotent: true
           };
@@ -527,7 +562,7 @@ function assertWarehouseProductScope(warehouseProduct, access) {
   return warehouseProduct;
 }
 
-async function updateProduct(db, user, rawInput) {
+async function updateProduct(db, user, rawInput, options) {
   const input = sanitizeProductUpdateInput(rawInput);
   const access = await requireProductAccess(db, user, 'admin');
   const warehouseProductId = createWarehouseProductId(
@@ -630,9 +665,13 @@ async function updateProduct(db, user, rawInput) {
     if (!product || !warehouseProduct) {
       throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品更新结果读取失败，请稍后重试。');
     }
+    const imageAccess = await resolveImageAccess(db, options, access.team._id, [product]);
     return {
-      product: presentProduct(product),
-      warehouseProduct: presentWarehouseProduct(warehouseProduct),
+      product: presentProduct(product, getImageAccess(imageAccess, product._id)),
+      warehouseProduct: presentWarehouseProduct(
+        warehouseProduct,
+        getImageAccess(imageAccess, product._id)
+      ),
       permissions: getProductPermissionFlags(access.membership.role),
       idempotent
     };
@@ -642,7 +681,7 @@ async function updateProduct(db, user, rawInput) {
   }
 }
 
-async function removeProductFromWarehouse(db, user, rawInput) {
+async function removeProductFromWarehouse(db, user, rawInput, options) {
   const input = sanitizeWarehouseMutationInput(rawInput, true);
   const access = await requireProductAccess(db, user, 'admin');
   const requestHash = createMutationRequestHash(PRODUCT_REMOVE_ACTION, {
@@ -725,8 +764,15 @@ async function removeProductFromWarehouse(db, user, rawInput) {
     if (!warehouseProduct) {
       throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品移除结果读取失败，请稍后重试。');
     }
+    const imageSource = product || warehouseProduct;
+    const imageAccess = await resolveImageAccess(db, options, access.team._id, [imageSource]);
     return {
-      item: presentRemovedProduct(product, warehouseProduct, access.membership.role),
+      item: presentRemovedProduct(
+        product,
+        warehouseProduct,
+        access.membership.role,
+        getImageAccess(imageAccess, warehouseProduct.productId)
+      ),
       idempotent
     };
   } catch (error) {
@@ -735,7 +781,7 @@ async function removeProductFromWarehouse(db, user, rawInput) {
   }
 }
 
-async function listRemovedProducts(db, user, rawInput) {
+async function listRemovedProducts(db, user, rawInput, options) {
   const input = validateRemovedProductListInput(rawInput);
   try {
     const access = await requireProductAccess(db, user, 'admin');
@@ -768,9 +814,18 @@ async function listRemovedProducts(db, user, rawInput) {
     const products = await Promise.all(page.map((item) => {
       return getDocument(db, COLLECTIONS.PRODUCTS, item.productId);
     }));
+    const imageSources = page.map((item, index) => {
+      return products[index] && products[index].status === 'active' ? products[index] : item;
+    });
+    const imageAccess = await resolveImageAccess(db, options, access.team._id, imageSources);
     return {
       items: page.map((item, index) => {
-        return presentRemovedProduct(products[index], item, access.membership.role);
+        return presentRemovedProduct(
+          products[index],
+          item,
+          access.membership.role,
+          getImageAccess(imageAccess, item.productId)
+        );
       }),
       nextCursor: hasMore && page.length ? encodeProductCursor(page[page.length - 1]) : null,
       hasMore,
@@ -782,7 +837,7 @@ async function listRemovedProducts(db, user, rawInput) {
   }
 }
 
-async function restoreProductToWarehouse(db, user, rawInput) {
+async function restoreProductToWarehouse(db, user, rawInput, options) {
   const input = sanitizeWarehouseMutationInput(rawInput, false);
   const access = await requireProductAccess(db, user, 'admin');
   const requestHash = createMutationRequestHash(PRODUCT_RESTORE_ACTION, {
@@ -868,9 +923,13 @@ async function restoreProductToWarehouse(db, user, rawInput) {
     if (!warehouseProduct || !product) {
       throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品恢复结果读取失败，请稍后重试。');
     }
+    const imageAccess = await resolveImageAccess(db, options, access.team._id, [product]);
     return {
-      product: presentProduct(product),
-      warehouseProduct: presentWarehouseProduct(warehouseProduct),
+      product: presentProduct(product, getImageAccess(imageAccess, product._id)),
+      warehouseProduct: presentWarehouseProduct(
+        warehouseProduct,
+        getImageAccess(imageAccess, product._id)
+      ),
       permissions: getProductPermissionFlags(access.membership.role),
       idempotent
     };
@@ -909,7 +968,7 @@ function assertCatalogProductScope(product, teamId) {
   return product;
 }
 
-async function deleteCatalogProduct(db, user, rawInput) {
+async function deleteCatalogProduct(db, user, rawInput, options) {
   const input = sanitizeCatalogDeleteInput(rawInput);
   const access = await requireCatalogAccess(db, user);
   const requestHash = createMutationRequestHash(PRODUCT_CATALOG_DELETE_ACTION, {
@@ -992,8 +1051,13 @@ async function deleteCatalogProduct(db, user, rawInput) {
     if (!product || product.teamId !== access.team._id || product.status !== 'deleted') {
       throw new ApiError(ERROR_CODES.DATABASE_ERROR, '共享目录删除结果读取失败，请稍后重试。');
     }
+    const imageAccess = await resolveImageAccess(db, options, access.team._id, [product]);
     return {
-      item: presentDeletedCatalogProduct(product, access.membership.role),
+      item: presentDeletedCatalogProduct(
+        product,
+        access.membership.role,
+        getImageAccess(imageAccess, product._id)
+      ),
       idempotent
     };
   } catch (error) {
@@ -1002,7 +1066,7 @@ async function deleteCatalogProduct(db, user, rawInput) {
   }
 }
 
-async function listDeletedCatalogProducts(db, user, rawInput) {
+async function listDeletedCatalogProducts(db, user, rawInput, options) {
   const input = validateDeletedCatalogListInput(rawInput);
   try {
     const access = await requireCatalogAccess(db, user);
@@ -1037,8 +1101,13 @@ async function listDeletedCatalogProducts(db, user, rawInput) {
     const documents = result.data || [];
     const hasMore = documents.length > input.pageSize;
     const page = documents.slice(0, input.pageSize);
+    const imageAccess = await resolveImageAccess(db, options, access.team._id, page);
     return {
-      items: page.map((product) => presentDeletedCatalogProduct(product, access.membership.role)),
+      items: page.map((product) => presentDeletedCatalogProduct(
+        product,
+        access.membership.role,
+        getImageAccess(imageAccess, product._id)
+      )),
       nextCursor: hasMore && page.length ? encodeProductCursor(page[page.length - 1]) : null,
       hasMore,
       pageSize: input.pageSize
@@ -1049,7 +1118,7 @@ async function listDeletedCatalogProducts(db, user, rawInput) {
   }
 }
 
-async function restoreCatalogProduct(db, user, rawInput) {
+async function restoreCatalogProduct(db, user, rawInput, options) {
   const input = sanitizeCatalogRestoreInput(rawInput);
   const access = await requireCatalogAccess(db, user);
   const requestHash = createMutationRequestHash(PRODUCT_CATALOG_RESTORE_ACTION, {
@@ -1132,7 +1201,11 @@ async function restoreCatalogProduct(db, user, rawInput) {
     if (!product || product.teamId !== access.team._id || product.status !== 'active') {
       throw new ApiError(ERROR_CODES.DATABASE_ERROR, '共享目录恢复结果读取失败，请稍后重试。');
     }
-    return { product: presentProduct(product), idempotent };
+    const imageAccess = await resolveImageAccess(db, options, access.team._id, [product]);
+    return {
+      product: presentProduct(product, getImageAccess(imageAccess, product._id)),
+      idempotent
+    };
   } catch (error) {
     if (isApiError(error)) throw error;
     throw new ApiError(ERROR_CODES.DATABASE_ERROR, '共享目录恢复失败，请稍后使用原请求标识重试。');
@@ -1163,7 +1236,7 @@ function assertProductAccess(product, teamId) {
   return product;
 }
 
-async function listProducts(db, user, rawInput) {
+async function listProducts(db, user, rawInput, options) {
   const input = validateProductListInput(rawInput);
   try {
     const access = await requireProductAccess(db, user);
@@ -1194,8 +1267,14 @@ async function listProducts(db, user, rawInput) {
     const documents = result.data || [];
     const hasMore = documents.length > input.pageSize;
     const page = documents.slice(0, input.pageSize);
+    const imageAccess = await resolveImageAccess(db, options, access.team._id, page);
     return {
-      items: page.map(presentWarehouseProduct),
+      items: page.map((warehouseProduct) => {
+        return presentWarehouseProduct(
+          warehouseProduct,
+          getImageAccess(imageAccess, warehouseProduct.productId)
+        );
+      }),
       nextCursor: hasMore && page.length ? encodeProductCursor(page[page.length - 1]) : null,
       hasMore,
       pageSize: input.pageSize
@@ -1208,7 +1287,7 @@ async function listProducts(db, user, rawInput) {
   }
 }
 
-async function getProductDetail(db, user, rawInput) {
+async function getProductDetail(db, user, rawInput, options) {
   const input = validateProductDetailInput(rawInput);
   try {
     const access = await requireProductAccess(db, user);
@@ -1225,9 +1304,13 @@ async function getProductDetail(db, user, rawInput) {
     assertWarehouseProductAccess(warehouseProduct, access, input.productId);
     const product = await getDocument(db, COLLECTIONS.PRODUCTS, warehouseProduct.productId);
     assertProductAccess(product, access.team._id);
+    const imageAccess = await resolveImageAccess(db, options, access.team._id, [product]);
     return {
-      product: presentProduct(product),
-      warehouseProduct: presentWarehouseProduct(warehouseProduct),
+      product: presentProduct(product, getImageAccess(imageAccess, product._id)),
+      warehouseProduct: presentWarehouseProduct(
+        warehouseProduct,
+        getImageAccess(imageAccess, product._id)
+      ),
       permissions: getProductPermissionFlags(access.membership.role)
     };
   } catch (error) {
