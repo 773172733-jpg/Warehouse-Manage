@@ -124,6 +124,9 @@ function createFixture(role = 'owner') {
               async get() { return { data: collection.get(id) || null }; },
               async set({ data }) {
                 if (failure && failure({ name, id, operation: 'set', transactional })) throw new Error('injected failure');
+                if (Object.prototype.hasOwnProperty.call(data, '_id')) {
+                  throw new Error('CloudBase set cannot update _id');
+                }
                 collection.set(id, Object.assign({ _id: id }, data));
               },
               async update({ data }) {

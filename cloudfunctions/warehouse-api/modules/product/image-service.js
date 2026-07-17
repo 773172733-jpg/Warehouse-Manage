@@ -113,8 +113,7 @@ async function prepareProductImage(db, user, rawInput, options) {
       : createPathToken;
     const uploadToken = createToken();
     const verifiedToken = createToken();
-    const asset = {
-      _id: assetKey,
+    const assetData = {
       teamId: locked.team._id,
       createdBy: locked.user._id,
       stageRequestKey: input.requestKey,
@@ -137,8 +136,10 @@ async function prepareProductImage(db, user, rawInput, options) {
       createdAt: now,
       updatedAt: now
     };
-    await transaction.collection(COLLECTIONS.PRODUCT_IMAGE_ASSETS).doc(assetKey).set({ data: asset });
-    result = presentPreparedAsset(asset, false);
+    await transaction.collection(COLLECTIONS.PRODUCT_IMAGE_ASSETS)
+      .doc(assetKey)
+      .set({ data: assetData });
+    result = presentPreparedAsset(Object.assign({ _id: assetKey }, assetData), false);
   }, 5);
 
   return result;

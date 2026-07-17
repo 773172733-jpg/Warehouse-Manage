@@ -303,6 +303,19 @@ function testPayloadAndSafeMessages() {
   );
 }
 
+function testImageIndexDoesNotBlockPendingAssets() {
+  const root = path.resolve(__dirname, '..');
+  const indexes = fs.readFileSync(path.join(root, 'database/indexes.md'), 'utf8');
+  const guide = fs.readFileSync(
+    path.join(root, 'docs/阶段2C3C1-产品图片上传与安全绑定部署指南.md'),
+    'utf8'
+  );
+  assert(!/\|\s*`uidx_image_assets_file`\s*\|/.test(indexes));
+  assert(!/\|\s*`uidx_image_assets_file`\s*\|/.test(guide));
+  assert(indexes.includes('`fileId`不得建立唯一索引'));
+  assert(guide.includes('必须删除该索引'));
+}
+
 async function run() {
   await testExtensionlessLocalImageInspection();
   await testStageDiagnosticsAndResponseParsing();
@@ -310,6 +323,7 @@ async function run() {
   await testCloudErrorMetadataPreserved();
   await testImageHydrationFailureDegrades();
   testPayloadAndSafeMessages();
+  testImageIndexDoesNotBlockPendingAssets();
   console.log('stage2c3c1b tests passed');
 }
 

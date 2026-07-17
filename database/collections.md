@@ -106,7 +106,7 @@ products不得保存 `warehouseId`、`stock`、`minStock`、`stockStatus`或 `st
 - 绑定：`productId`、`boundBy`、`boundAt`
 - 生命周期：`confirmedAt`、`orphanedAt`、`rejectedAt`、`expiresAt`、`cleanupAfter`、`createdAt`、`updatedAt`
 
-客户端只能把已确认资产标识作为 `coverAssetKey` 交给产品接口；`coverFileId`由云函数从该集合读取。awaiting_upload不写空fileId。2C3C1只记录清理时间，不物理删除文件。
+客户端只能把已确认资产标识作为 `coverAssetKey` 交给产品接口；`coverFileId`由云函数从该集合读取。awaiting_upload不写空fileId，且fileId不得建立唯一索引，否则CloudBase会把多条缺失字段记录视为重复null。2C3C1只记录清理时间，不物理删除文件。
 
 ## stock_records（2C2A部署时人工创建，2C4启用完整库存写入）
 
