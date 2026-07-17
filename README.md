@@ -1,6 +1,6 @@
 # 轻仓｜微信小程序仓库管理器
 
-当前进入阶段2C3C1：产品单张JPG、PNG、WebP封面已实现CloudBase Storage分阶段上传、服务端真实字节校验、verified文件复制及产品事务安全绑定。产品与两层回收流程继续保留warehouse_products和stock_records；库存写入和真实流水列表仍按后续阶段实施。
+当前进入阶段2C3C1A：产品单张JPG、PNG、WebP封面已实现CloudBase Storage分阶段上传、真实字节校验、verified复制、产品事务绑定及私有存储临时HTTPS访问。owner、admin和viewer均通过warehouse-api权限校验后查看图片，客户端不接触最终fileID。
 
 ## 技术栈
 
@@ -85,6 +85,7 @@
 - 三步产品创建页真实接入 `product.create`，网络失败可按同一requestKey安全重试
 - owner/admin新增入口和路由权限检查，viewer保持只读
 - 单张产品图片通过prepare、临时上传、真实字节confirm和产品事务绑定接入，客户端不能指定最终fileID
+- 私有verified图片由warehouse-api校验bound资产后批量生成约1小时有效的临时HTTPS链接，单图失败降级默认封面
 - 库存首页真实接入 `product.list`，支持20条cursor分页、搜索防抖和过时响应隔离
 - 分类与库存状态使用云端筛选，摘要数字明确限定为当前已加载真实数据
 - 产品卡片通过真实warehouseProductId进入 `product.detail`，组合主资料、库存和权限
@@ -101,7 +102,7 @@
 - 邀请二维码、微信分享卡片和owner转让
 - 团队解散、多团队切换和实时成员状态推送
 - 微信头像昵称授权
-- 图片上传、统计图表、Excel 导入导出、订阅消息
+- 多图相册、图片裁剪压缩、统计图表、Excel 导入导出、订阅消息
 
 ## 导入微信开发者工具
 

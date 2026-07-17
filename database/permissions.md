@@ -32,7 +32,7 @@
 
 ## 产品、库存和流水权限
 
-阶段2C3C1新增 `product.image.stage.prepare` 和 `product.image.stage.confirm`，仅owner/admin可调用。客户端只能向prepare下发的随机uploads路径传临时文件，不能写verified目录，也不能直接提交coverFileId。库存写入与流水读取仍是后续阶段契约。
+阶段2C3C1新增 `product.image.stage.prepare` 和 `product.image.stage.confirm`，仅owner/admin可调用。云存储保持“仅创建者及管理员可读写”，不要求公开读或个人版自定义规则。客户端只能向prepare下发的随机uploads路径传临时文件，不能直接读取verified fileID，也不能提交coverFileId。产品读接口完成可信团队权限校验和bound资产关系校验后，由 `warehouse-api` 批量生成短期HTTPS链接。
 
 | 能力 | owner | admin | viewer | pending/removed |
 | --- | --- | --- | --- | --- |
@@ -59,6 +59,6 @@
 - 流水可返回产品/单位/操作人快照、变动数量、前后库存、原因、来源去向、备注和时间。
 - 不返回 `openId`、内部 `userId`、`teamId`、`warehouseId`、`operatorId`、`createdBy`、`updatedBy`、requestKey、输入哈希或完整数据库文档。
 - 共享目录回收站只返回产品展示字段、deletedAt、deletionReason、安全version、activeWarehouseCount和canRestore；仓库回收站的canDeleteCatalog由后端结合可信角色和目录计数生成。
-- viewer可通过产品读接口获得active产品封面的临时URL，但无存储写权限。
+- owner、admin和viewer可通过产品读接口获得已绑定产品封面的短期HTTPS链接；pending/removed不可访问。客户端响应不包含fileID、assetKey、Storage路径、哈希或资产内部状态。
 - 2C3C1通过staged资产接入单张JPG、PNG或WebP封面。云函数下载真实Buffer校验并复制到verified目录后，才允许产品事务绑定；客户端本地路径、任意fileID、云路径和图片元数据均不可信。
 - 流水永久保留，普通业务接口不提供修改和删除能力；未来只能做保持审计可查的冷归档。
