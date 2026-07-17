@@ -59,6 +59,33 @@ function resolveImageAccess(db, options, teamId, products) {
   });
 }
 
+async function loadProductCoverSources(db, teamId, warehouseProducts) {
+  const productIds = Array.from(new Set(
+    (Array.isArray(warehouseProducts) ? warehouseProducts : [])
+      .map((warehouseProduct) => warehouseProduct && warehouseProduct.productId)
+      .filter(Boolean)
+  ));
+  if (!productIds.length) return new Map();
+  const result = await db.collection(COLLECTIONS.PRODUCTS)
+    .where({ _id: db.command.in(productIds) })
+    .limit(productIds.length)
+    .field({
+      _id: true,
+      teamId: true,
+      status: true,
+      coverType: true,
+      coverText: true,
+      coverEmoji: true,
+      coverAssetKey: true,
+      coverFileId: true,
+      coverBackground: true
+    })
+    .get();
+  return new Map((result.data || [])
+    .filter((product) => product.teamId === teamId && product.status === 'active')
+    .map((product) => [product._id, product]));
+}
+
 async function requireProductAccess(db, user, requiredRole) {
   const access = await requireCurrentTeamAccess(db, user);
   if (requiredRole) {
@@ -1267,12 +1294,18 @@ async function listProducts(db, user, rawInput, options) {
     const documents = result.data || [];
     const hasMore = documents.length > input.pageSize;
     const page = documents.slice(0, input.pageSize);
-    const imageAccess = await resolveImageAccess(db, options, access.team._id, page);
+    const productsById = await loadProductCoverSources(db, access.team._id, page);
+    const coverSources = page.map((warehouseProduct) => {
+      return productsById.get(warehouseProduct.productId) || warehouseProduct;
+    });
+    const imageAccess = await resolveImageAccess(db, options, access.team._id, coverSources);
     return {
       items: page.map((warehouseProduct) => {
+        const product = productsById.get(warehouseProduct.productId);
         return presentWarehouseProduct(
           warehouseProduct,
-          getImageAccess(imageAccess, warehouseProduct.productId)
+          getImageAccess(imageAccess, warehouseProduct.productId),
+          product
         );
       }),
       nextCursor: hasMore && page.length ? encodeProductCursor(page[page.length - 1]) : null,
@@ -1309,7 +1342,8 @@ async function getProductDetail(db, user, rawInput, options) {
       product: presentProduct(product, getImageAccess(imageAccess, product._id)),
       warehouseProduct: presentWarehouseProduct(
         warehouseProduct,
-        getImageAccess(imageAccess, product._id)
+        getImageAccess(imageAccess, product._id),
+        product
       ),
       permissions: getProductPermissionFlags(access.membership.role)
     };
@@ -1337,6 +1371,7 @@ module.exports = {
   buildInitialRecordDocument,
   assertExistingCreate,
   buildProductListWhere,
+  loadProductCoverSources,
   buildDeletedCatalogListWhere,
   buildProductMainUpdate,
   buildProductSnapshotUpdate,

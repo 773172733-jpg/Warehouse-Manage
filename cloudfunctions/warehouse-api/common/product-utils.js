@@ -635,10 +635,24 @@ function presentProduct(product, imageAccess) {
   } : null;
 }
 
-function presentWarehouseProduct(warehouseProduct, imageAccess) {
+function presentWarehouseProduct(warehouseProduct, imageAccess, product) {
   if (!warehouseProduct) {
     return null;
   }
+  const authoritativeProduct = product &&
+    product._id === warehouseProduct.productId &&
+    product.teamId === warehouseProduct.teamId &&
+    product.status === 'active'
+    ? product
+    : null;
+  const cover = authoritativeProduct
+    ? buildPublicCover(authoritativeProduct, imageAccess)
+    : buildPublicCover({
+      coverType: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.type,
+      coverText: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.text,
+      coverEmoji: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.emoji,
+      coverBackground: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.background
+    }, imageAccess);
   return {
     id: warehouseProduct._id,
     productId: warehouseProduct.productId,
@@ -648,12 +662,7 @@ function presentWarehouseProduct(warehouseProduct, imageAccess) {
     unit: warehouseProduct.unitSnapshot || '',
     brand: warehouseProduct.brandSnapshot || '',
     specification: warehouseProduct.specificationSnapshot || '',
-    cover: buildPublicCover({
-      coverType: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.type,
-      coverText: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.text,
-      coverEmoji: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.emoji,
-      coverBackground: warehouseProduct.coverSummarySnapshot && warehouseProduct.coverSummarySnapshot.background
-    }, imageAccess),
+    cover,
     stock: warehouseProduct.stock,
     minStock: warehouseProduct.minStock,
     stockStatus: computeStockStatus(warehouseProduct.stock, warehouseProduct.minStock),

@@ -4,11 +4,15 @@ const path = require('path');
 const {
   presentWarehouseProduct
 } = require('../cloudfunctions/warehouse-api/common/product-utils.js');
+const {
+  loadProductCoverSources
+} = require('../cloudfunctions/warehouse-api/modules/product/product-service.js');
 const productView = require('../miniprogram/utils/product-view.js');
 
 function createWarehouseProduct(id, coverSummarySnapshot) {
   return {
     _id: id,
+    teamId: 'team_12345678',
     productId: `product_${id}`,
     productNameSnapshot: `产品${id}`,
     productCodeSnapshot: `CODE-${id}`,
@@ -90,6 +94,97 @@ function testProductListPresentationAndViewMapping() {
   }).view;
   assert.strictEqual(invalid.cover.type, 'none');
   assert.strictEqual(invalid.cover.fallback, '产');
+
+  const staleWarehouseProduct = createWarehouseProduct('warehouse_stale_123', {
+    type: 'none'
+  });
+  const authoritativeProduct = {
+    _id: staleWarehouseProduct.productId,
+    teamId: staleWarehouseProduct.teamId,
+    status: 'active',
+    coverType: 'emoji',
+    coverText: '',
+    coverEmoji: '🚕',
+    coverBackground: '#F7F2E8'
+  };
+  const repairedResponse = presentWarehouseProduct(
+    staleWarehouseProduct,
+    null,
+    authoritativeProduct
+  );
+  assert.strictEqual(repairedResponse.cover.type, 'emoji');
+  assert.strictEqual(repairedResponse.cover.emoji, '🚕');
+  const fallbackResponse = presentWarehouseProduct(staleWarehouseProduct);
+  assert.strictEqual(fallbackResponse.cover.type, 'none');
+}
+
+async function testBatchProductCoverSources() {
+  const calls = [];
+  const products = [{
+    _id: 'product_warehouse_batch_one',
+    teamId: 'team_12345678',
+    status: 'active',
+    coverType: 'emoji',
+    coverEmoji: '🚕'
+  }, {
+    _id: 'product_warehouse_batch_two',
+    teamId: 'team_other_12345678',
+    status: 'active',
+    coverType: 'emoji',
+    coverEmoji: '📦'
+  }];
+  const db = {
+    command: {
+      in(values) {
+        calls.push({ type: 'in', values });
+        return { values };
+      }
+    },
+    collection(name) {
+      assert.strictEqual(name, 'products');
+      calls.push({ type: 'collection' });
+      return {
+        where() {
+          calls.push({ type: 'where' });
+          return {
+            limit(value) {
+              calls.push({ type: 'limit', value });
+              return {
+                field() {
+                  calls.push({ type: 'field' });
+                  return {
+                    async get() {
+                      calls.push({ type: 'get' });
+                      return { data: products };
+                    }
+                  };
+                }
+              };
+            }
+          };
+        }
+      };
+    }
+  };
+  const warehouseProducts = [{
+    productId: 'product_warehouse_batch_one'
+  }, {
+    productId: 'product_warehouse_batch_one'
+  }, {
+    productId: 'product_warehouse_batch_two'
+  }];
+  const result = await loadProductCoverSources(
+    db,
+    'team_12345678',
+    warehouseProducts
+  );
+  assert.strictEqual(calls.filter((call) => call.type === 'get').length, 1);
+  assert.deepStrictEqual(calls.find((call) => call.type === 'in').values, [
+    'product_warehouse_batch_one',
+    'product_warehouse_batch_two'
+  ]);
+  assert.strictEqual(result.size, 1);
+  assert.strictEqual(result.get('product_warehouse_batch_one').coverEmoji, '🚕');
 }
 
 function testImageFailureIsolation() {
@@ -219,9 +314,17 @@ function testInventoryImageErrorHandler() {
   }
 }
 
-testProductListPresentationAndViewMapping();
-testImageFailureIsolation();
-testListInteractionsPreserveCovers();
-testInventoryTemplateBranches();
-testInventoryImageErrorHandler();
-console.log('stage2c3c1c1 tests passed');
+async function run() {
+  testProductListPresentationAndViewMapping();
+  await testBatchProductCoverSources();
+  testImageFailureIsolation();
+  testListInteractionsPreserveCovers();
+  testInventoryTemplateBranches();
+  testInventoryImageErrorHandler();
+  console.log('stage2c3c1c1 tests passed');
+}
+
+run().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
