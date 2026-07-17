@@ -1,0 +1,10 @@
+{
+  "name": "product-image-cleanup-worker",
+  "version": "0.0.1",
+  "description": "口袋仓库Go产品图片资产延迟清理Worker",
+  "main": "index.js",
+  "private": true,
+  "dependencies": {
+    "wx-server-sdk": "4.0.2"
+  }
+}
