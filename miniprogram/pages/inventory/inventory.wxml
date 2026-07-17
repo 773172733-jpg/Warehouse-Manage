@@ -99,8 +99,10 @@
           class="inv-card-cover {{item.stockStatus==='out'?'inv-card-cover--out':''}} {{item.stockStatus==='low'?'inv-card-cover--low':''}}"
           style="background:{{item.cover.background}}"
         >
-          <image wx:if="{{item.cover.type==='image' && item.cover.imageUrl}}" class="inv-card-cover-image" src="{{item.cover.imageUrl}}" mode="aspectFill" data-warehouse-product-id="{{item.warehouseProductId}}" binderror="onCoverImageError"></image>
-          <text wx:else class="{{item.cover.type==='emoji'?'inv-card-cover-emoji':'inv-card-cover-text'}}">{{item.cover.content}}</text>
+          <image wx:if="{{item.cover.type==='image' && item.cover.imageAvailable && item.cover.imageUrl && !item.cover.imageFailed}}" class="inv-card-cover-image" src="{{item.cover.imageUrl}}" mode="aspectFill" data-warehouse-product-id="{{item.warehouseProductId}}" binderror="onCoverImageError"></image>
+          <text wx:elif="{{item.cover.type==='emoji' && item.cover.emoji}}" class="inv-card-cover-emoji">{{item.cover.emoji}}</text>
+          <text wx:elif="{{item.cover.type==='text' && item.cover.text}}" class="inv-card-cover-text">{{item.cover.text}}</text>
+          <text wx:else class="inv-card-cover-text">{{item.cover.fallback}}</text>
         </view>
         <view class="inv-card-info">
           <text class="inv-card-name">{{item.name}}</text>

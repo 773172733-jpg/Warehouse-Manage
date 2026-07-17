@@ -301,9 +301,9 @@ Page({
     const warehouseProductId = event.currentTarget.dataset.warehouseProductId;
     if (!warehouseProductId) return;
     const match = this.data.items.find(item => item.warehouseProductId === warehouseProductId);
-    if (!match) return;
+    if (!match || !match.cover || match.cover.type !== 'image') return;
     const path = 'items[' + this.data.items.indexOf(match) + '].cover';
-    this.safeSetData({ [path]: productView.getCoverView(null, match.name) });
+    this.safeSetData({ [path]: productView.markCoverImageFailed(match.cover, match.name) });
   },
 
   onCardMenu(event) {

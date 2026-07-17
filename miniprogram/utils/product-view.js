@@ -40,15 +40,10 @@ function getCoverView(cover, name) {
   const source = cover && typeof cover === 'object' ? cover : {};
   const type = safeText(source.type).toLowerCase();
   const background = safeText(source.background, '#F2F4F2');
-  if (type === 'text' && safeText(source.text)) {
-    return { type: 'text', content: safeText(source.text), text: safeText(source.text), emoji: '', imageUrl: '', background };
-  }
-  if (type === 'emoji' && safeText(source.emoji)) {
-    return { type: 'emoji', content: safeText(source.emoji), text: '', emoji: safeText(source.emoji), imageUrl: '', background };
-  }
   const fallback = Array.from(safeText(name, '仓'))[0] || '仓';
   const imageUrl = safeText(source.imageUrl);
-  if (type === 'image' && source.imageAvailable === true && /^https:\/\//i.test(imageUrl)) {
+  const imageFailed = source.imageFailed === true;
+  if (type === 'image' && source.imageAvailable === true && /^https:\/\//i.test(imageUrl) && !imageFailed) {
     return {
       type: 'image',
       content: '',
@@ -56,6 +51,9 @@ function getCoverView(cover, name) {
       emoji: '',
       imageUrl,
       imageUrlExpiresAt: source.imageUrlExpiresAt || null,
+      imageAvailable: true,
+      imageFailed: false,
+      fallback,
       background
     };
   }
@@ -68,10 +66,65 @@ function getCoverView(cover, name) {
       imageUrl: '',
       imageUrlExpiresAt: null,
       imageAvailable: false,
+      imageFailed,
+      fallback,
       background: '#F2F4F2'
     };
   }
-  return { type: 'none', content: fallback, text: '', emoji: '', imageUrl: '', background: '#F2F4F2' };
+  const emoji = safeText(source.emoji);
+  if (type === 'emoji' && emoji) {
+    return {
+      type: 'emoji',
+      content: emoji,
+      text: '',
+      emoji,
+      imageUrl: '',
+      imageAvailable: false,
+      imageFailed: false,
+      fallback,
+      background
+    };
+  }
+  const text = safeText(source.text);
+  if (type === 'text' && text) {
+    return {
+      type: 'text',
+      content: text,
+      text,
+      emoji: '',
+      imageUrl: '',
+      imageAvailable: false,
+      imageFailed: false,
+      fallback,
+      background
+    };
+  }
+  return {
+    type: 'none',
+    content: fallback,
+    text: '',
+    emoji: '',
+    imageUrl: '',
+    imageAvailable: false,
+    imageFailed: false,
+    fallback,
+    background: '#F2F4F2'
+  };
+}
+
+function markCoverImageFailed(cover, name) {
+  const current = getCoverView(cover, name);
+  if (current.type !== 'image') {
+    return current;
+  }
+  return Object.assign({}, current, {
+    content: current.fallback,
+    imageUrl: '',
+    imageUrlExpiresAt: null,
+    imageAvailable: false,
+    imageFailed: true,
+    background: '#F2F4F2'
+  });
 }
 
 function normalizeStockStatus(value) {
@@ -340,6 +393,7 @@ module.exports = {
   PRODUCT_CATEGORIES,
   safeQuantity,
   getCoverView,
+  markCoverImageFailed,
   normalizeStockStatus,
   mapInventoryItem,
   normalizeListResponse,
