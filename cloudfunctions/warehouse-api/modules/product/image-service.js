@@ -6,6 +6,7 @@ const { requireCurrentTeamAccess, requireRole } = require('../../common/permissi
 const {
   PREPARE_TTL_MS,
   STAGED_TTL_MS,
+  BOUND_SOURCE_CLEANUP_MS,
   REJECTED_CLEANUP_MS,
   ORPHANED_CLEANUP_MS,
   sanitizePrepareInput,
@@ -113,6 +114,7 @@ async function prepareProductImage(db, user, rawInput, options) {
       : createPathToken;
     const uploadToken = createToken();
     const verifiedToken = createToken();
+    const expiresAt = addMilliseconds(now, PREPARE_TTL_MS);
     const assetData = {
       teamId: locked.team._id,
       createdBy: locked.user._id,
@@ -129,8 +131,18 @@ async function prepareProductImage(db, user, rawInput, options) {
       confirmedAt: null,
       orphanedAt: null,
       rejectedAt: null,
-      expiresAt: addMilliseconds(now, PREPARE_TTL_MS),
-      cleanupAfter: null,
+      expiresAt,
+      cleanupAfter: expiresAt,
+      cleanupState: 'pending',
+      cleanupAttemptCount: 0,
+      cleanupLeaseToken: '',
+      cleanupLeaseUntil: null,
+      lastCleanupErrorCode: '',
+      lastCleanupErrorAt: null,
+      sourceDeletedAt: null,
+      verifiedDeletedAt: null,
+      cleanedAt: null,
+      cleanupUpdatedAt: now,
       confirmRequestKey: '',
       confirmRequestHash: '',
       createdAt: now,
@@ -153,8 +165,16 @@ async function rejectImageAsset(db, assetKey, now) {
       await transaction.collection(COLLECTIONS.PRODUCT_IMAGE_ASSETS).doc(assetKey).update({
         data: {
           status: 'rejected',
+          rejectionReasonCode: 'IMAGE_CONFIRM_REJECTED',
           rejectedAt: now,
           cleanupAfter: addMilliseconds(now, REJECTED_CLEANUP_MS),
+          cleanupState: 'pending',
+          cleanupLeaseToken: '',
+          cleanupLeaseUntil: null,
+          lastCleanupErrorCode: '',
+          lastCleanupErrorAt: null,
+          cleanedAt: null,
+          cleanupUpdatedAt: now,
           updatedAt: now
         }
       });
@@ -240,6 +260,7 @@ async function confirmProductImage(db, user, rawInput, options) {
       idempotent = true;
       return;
     }
+    const expiresAt = addMilliseconds(now, STAGED_TTL_MS);
     const update = {
       status: 'staged',
       sourceUploadFileId: input.fileId,
@@ -249,8 +270,15 @@ async function confirmProductImage(db, user, rawInput, options) {
       sizeBytes: inspected.sizeBytes,
       sha256: inspected.sha256,
       confirmedAt: now,
-      expiresAt: addMilliseconds(now, STAGED_TTL_MS),
-      cleanupAfter: null,
+      expiresAt,
+      cleanupAfter: expiresAt,
+      cleanupState: 'pending',
+      cleanupLeaseToken: '',
+      cleanupLeaseUntil: null,
+      lastCleanupErrorCode: '',
+      lastCleanupErrorAt: null,
+      cleanedAt: null,
+      cleanupUpdatedAt: now,
       confirmRequestKey: input.requestKey,
       confirmRequestHash: requestHash,
       updatedAt: now
@@ -271,6 +299,9 @@ function assertBindableImageAsset(asset, context, productId, now) {
   }
   if (asset.status !== 'staged') {
     throw new ApiError(ERROR_CODES.IMAGE_ASSET_NOT_READY, '图片尚未完成安全确认。');
+  }
+  if (asset.cleanupState === 'processing' || asset.cleanupState === 'completed') {
+    throw new ApiError(ERROR_CODES.IMAGE_ASSET_EXPIRED, '图片正在清理或已清理，请重新选择图片。');
   }
   if (isExpired(asset.expiresAt, now)) {
     throw new ApiError(ERROR_CODES.IMAGE_ASSET_EXPIRED, '已确认图片已过期，请重新选择图片。');
@@ -302,6 +333,7 @@ async function resolveImageCoverInTransaction(transaction, input, context, produ
 
 async function bindImageAssetInTransaction(transaction, asset, context, productId, now) {
   if (!asset || (asset.status === 'bound' && asset.productId === productId)) return;
+  const hasSourceFile = Boolean(asset.sourceUploadFileId && !asset.sourceDeletedAt);
   await transaction.collection(COLLECTIONS.PRODUCT_IMAGE_ASSETS).doc(asset._id).update({
     data: {
       status: 'bound',
@@ -309,7 +341,15 @@ async function bindImageAssetInTransaction(transaction, asset, context, productI
       boundBy: context.userId,
       boundAt: now,
       expiresAt: null,
-      cleanupAfter: null,
+      cleanupAfter: hasSourceFile ? addMilliseconds(now, BOUND_SOURCE_CLEANUP_MS) : null,
+      cleanupState: hasSourceFile ? 'pending' : 'completed',
+      cleanupAttemptCount: 0,
+      cleanupLeaseToken: '',
+      cleanupLeaseUntil: null,
+      lastCleanupErrorCode: '',
+      lastCleanupErrorAt: null,
+      cleanedAt: hasSourceFile ? null : now,
+      cleanupUpdatedAt: now,
       updatedAt: now
     }
   });
@@ -331,6 +371,15 @@ async function orphanImageAssetInTransaction(transaction, assetKey, context, pro
       status: 'orphaned',
       orphanedAt: now,
       cleanupAfter: addMilliseconds(now, ORPHANED_CLEANUP_MS),
+      cleanupState: 'pending',
+      cleanupAttemptCount: 0,
+      cleanupLeaseToken: '',
+      cleanupLeaseUntil: null,
+      lastCleanupErrorCode: '',
+      lastCleanupErrorAt: null,
+      verifiedDeletedAt: null,
+      cleanedAt: null,
+      cleanupUpdatedAt: now,
       updatedAt: now
     }
   });

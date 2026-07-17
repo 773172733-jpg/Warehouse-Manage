@@ -5,6 +5,7 @@ const { validateRequestKey } = require('./validators.js');
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const PREPARE_TTL_MS = 30 * 60 * 1000;
 const STAGED_TTL_MS = 24 * 60 * 60 * 1000;
+const BOUND_SOURCE_CLEANUP_MS = 24 * 60 * 60 * 1000;
 const REJECTED_CLEANUP_MS = 24 * 60 * 60 * 1000;
 const ORPHANED_CLEANUP_MS = 7 * 24 * 60 * 60 * 1000;
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
@@ -165,6 +166,7 @@ module.exports = {
   MAX_IMAGE_BYTES,
   PREPARE_TTL_MS,
   STAGED_TTL_MS,
+  BOUND_SOURCE_CLEANUP_MS,
   REJECTED_CLEANUP_MS,
   ORPHANED_CLEANUP_MS,
   IMAGE_EXTENSIONS,

@@ -309,6 +309,10 @@ async function testPrepareConfirmPermissionsAndIdempotency() {
   const first = await prepareProductImage(fixture.db, fixture.user, input, {
     createPathToken: (() => { let index = 0; return () => `token${++index}`; })()
   });
+  const preparedAsset = fixture.documents.product_image_assets.get(first.assetKey);
+  assert.strictEqual(preparedAsset.cleanupState, 'pending');
+  assert.strictEqual(preparedAsset.cleanupAttemptCount, 0);
+  assert.strictEqual(preparedAsset.cleanupAfter.getTime(), preparedAsset.expiresAt.getTime());
   const retry = await prepareProductImage(fixture.db, fixture.user, input);
   assert.strictEqual(retry.assetKey, first.assetKey);
   assert.strictEqual(retry.cloudPath, first.cloudPath);
@@ -331,6 +335,8 @@ async function testPrepareConfirmPermissionsAndIdempotency() {
   assert.strictEqual(confirmRetry.idempotent, true);
   const asset = fixture.documents.product_image_assets.get(first.assetKey);
   assert.strictEqual(asset.status, 'staged');
+  assert.strictEqual(asset.cleanupState, 'pending');
+  assert.strictEqual(asset.cleanupAfter.getTime(), asset.expiresAt.getTime());
   assert.ok(asset.fileId.includes('/product-images/verified/'));
   assert.notStrictEqual(asset.fileId, fileId);
   assert.strictEqual(asset.sha256.length, 64);
@@ -382,6 +388,8 @@ async function testCreateAndUpdateBinding() {
   assert.ok(product.coverFileId.includes('/product-images/verified/'));
   assert.strictEqual(fixture.documents.product_image_assets.get(firstAssetKey).status, 'bound');
   assert.strictEqual(fixture.documents.product_image_assets.get(firstAssetKey).productId, productId);
+  assert.strictEqual(fixture.documents.product_image_assets.get(firstAssetKey).cleanupState, 'pending');
+  assert.ok(fixture.documents.product_image_assets.get(firstAssetKey).cleanupAfter instanceof Date);
   assert.strictEqual(created.warehouseProduct.cover.imageAvailable, true);
   assert.ok(created.warehouseProduct.cover.imageUrl.startsWith('https://'));
   assert.strictEqual(created.warehouseProduct.cover.fileId, undefined);
@@ -397,6 +405,7 @@ async function testCreateAndUpdateBinding() {
   assert.strictEqual(updated.product.cover.fileId, undefined);
   assert.strictEqual(fixture.documents.product_image_assets.get(replacementKey).status, 'bound');
   assert.strictEqual(fixture.documents.product_image_assets.get(firstAssetKey).status, 'orphaned');
+  assert.strictEqual(fixture.documents.product_image_assets.get(firstAssetKey).cleanupState, 'pending');
   assert.ok(fixture.documents.product_image_assets.get(firstAssetKey).cleanupAfter instanceof Date);
 
   await updateProduct(fixture.db, fixture.user, createUpdateInput(product, {
@@ -467,6 +476,17 @@ async function testTransactionFailuresLeaveAssetsStable() {
     ERROR_CODES.IMAGE_ASSET_EXPIRED
   );
   assert.strictEqual(fixture.documents.product_image_assets.get(expiredKey).status, 'staged');
+
+  const cleanupKey = await stageAsset(fixture, cloud, 'png', createPng(), 'cleanup_race');
+  fixture.documents.product_image_assets.get(cleanupKey).cleanupState = 'processing';
+  await expectAsyncCode(
+    () => createProduct(fixture.db, fixture.user, createProductInput(
+      cleanupKey,
+      'create_cleanup_race_1234'
+    )),
+    ERROR_CODES.IMAGE_ASSET_EXPIRED
+  );
+  assert.strictEqual(fixture.documents.product_image_assets.get(cleanupKey).status, 'staged');
 
   const boundElsewhereKey = await stageAsset(fixture, cloud, 'png', createPng(), 'bound_elsewhere');
   const boundElsewhere = fixture.documents.product_image_assets.get(boundElsewhereKey);
