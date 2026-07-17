@@ -52,6 +52,13 @@ const UPDATE_ERROR_MESSAGES = Object.assign({}, ERROR_MESSAGES, {
   INTERNAL_ERROR: '更新失败，请稍后重试'
 });
 
+const STAGE_ERROR_MESSAGES = {
+  prepare: '图片上传准备失败，请稍后重试',
+  upload: '图片上传失败，请检查网络后重试',
+  confirm: '图片安全校验失败，请重新选择后重试',
+  create: '产品创建失败，请稍后重试'
+};
+
 function createLocalError(code, message) {
   const error = new Error(message);
   error.code = code;
@@ -303,12 +310,34 @@ function isCreateAllowed(role) {
 
 function getCreateErrorMessage(error) {
   if (error && error.code === 'IMAGE_ASSET_NOT_READY') return CUSTOM_IMAGE_MESSAGE;
+  const genericStageCodes = [
+    'CLOUD_CALL_FAILED',
+    'CLOUD_NOT_AVAILABLE',
+    'BUSINESS_ERROR',
+    'INTERNAL_ERROR'
+  ];
+  if (error && STAGE_ERROR_MESSAGES[error.stage] &&
+      genericStageCodes.indexOf(error.code) > -1) {
+    return STAGE_ERROR_MESSAGES[error.stage];
+  }
   if (error && ERROR_MESSAGES[error.code]) {
     return ERROR_MESSAGES[error.code];
   }
   if (error && error.code === 'INVALID_CREATE_RESPONSE') {
     return error.message;
   }
+  if (error && typeof error.message === 'string') {
+    const message = error.message.trim();
+    const containsSensitiveValue = /cloud:\/\/|product_image_|requestKey|assetKey|fileID/i.test(message);
+    if (message && message.length <= 100 && !containsSensitiveValue) {
+      if (error.stage === 'prepare') return `图片上传准备失败：${message}`;
+      if (error.stage === 'upload') return `图片上传失败：${message}`;
+      if (error.stage === 'confirm') return `图片安全校验失败：${message}`;
+      if (error.stage === 'create') return `产品创建失败：${message}`;
+      return message;
+    }
+  }
+  if (error && STAGE_ERROR_MESSAGES[error.stage]) return STAGE_ERROR_MESSAGES[error.stage];
   return '创建失败，请稍后重试';
 }
 

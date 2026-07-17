@@ -50,6 +50,15 @@ function computeStockStatus(stock, minStock) {
   return { status: 'normal', label: '正常', color: 'primary' };
 }
 
+function logImageFlowError(action, stage, error) {
+  console.warn('[LightWarehouse] Product image flow failed.', {
+    action: action || '',
+    stage: stage || '',
+    code: error && error.code ? error.code : 'UNKNOWN',
+    requestId: error && error.requestId ? error.requestId : ''
+  });
+}
+
 Page({
   data: {
     mode: 'create',
@@ -110,6 +119,7 @@ Page({
     confirmRequestKey: '',
     stagedAssetKey: '',
     stagedLocalPath: '',
+    imageFlowStage: '',
     createRequestKey: '',
     updateRequestKey: '',
     submittedPayloadHash: '',
@@ -349,12 +359,14 @@ Page({
       sourceType: ['album', 'camera'],
       success: function (res) {
         if (res.tempFiles && res.tempFiles.length > 0) {
-          try {
-            var selected = productImageService.validateLocalImage({
-              filePath: res.tempFiles[0].tempFilePath,
-              sizeBytes: res.tempFiles[0].size
-            });
+          var tempFile = res.tempFiles[0];
+          productImageService.inspectLocalImage({
+            filePath: tempFile.tempFilePath,
+            sizeBytes: tempFile.size,
+            fileType: tempFile.fileType
+          }).then(function (selected) {
             self.safeSetData({
+              'form.coverMode': 'custom',
               'form.localImagePath': selected.filePath,
               'form.coverAssetKey': '',
               'fieldErrors.image': '',
@@ -363,13 +375,15 @@ Page({
               stageRequestKey: '',
               confirmRequestKey: '',
               stagedAssetKey: '',
-              stagedLocalPath: ''
+              stagedLocalPath: '',
+              imageFlowStage: ''
             });
-          } catch (error) {
+          }).catch(function (error) {
             var message = error && error.message ? error.message : '请选择有效图片';
+            logImageFlowError('product.image.select', 'select', error);
             self.safeSetData({ 'fieldErrors.image': message });
             wx.showToast({ title: message, icon: 'none', duration: 2200 });
-          }
+          });
         }
       },
       fail: function (err) {
@@ -390,7 +404,8 @@ Page({
       stageRequestKey: '',
       confirmRequestKey: '',
       stagedAssetKey: '',
-      stagedLocalPath: ''
+      stagedLocalPath: '',
+      imageFlowStage: ''
     });
   },
 
@@ -423,19 +438,30 @@ Page({
     return productImageService.stageProductImage({
       filePath: form.localImagePath,
       sizeBytes: this.data.imageSizeBytes,
+      extension: this.data.imageExtension,
       stageRequestKey: keys.stageRequestKey,
-      confirmRequestKey: keys.confirmRequestKey
+      confirmRequestKey: keys.confirmRequestKey,
+      onStageChange: function (stage) {
+        self.safeSetData({ imageFlowStage: stage });
+      }
     }).then(function (result) {
       if (!self.pageActive) return '';
       self.safeSetData({
         uploading: false,
         stagedAssetKey: result.assetKey,
         stagedLocalPath: form.localImagePath,
+        imageFlowStage: 'complete',
         'form.coverAssetKey': result.assetKey
       });
       return result.assetKey;
     }).catch(function (error) {
-      if (self.pageActive) self.safeSetData({ uploading: false });
+      logImageFlowError('product.image.stage', error && error.stage, error);
+      if (self.pageActive) {
+        self.safeSetData({
+          uploading: false,
+          imageFlowStage: error && error.stage ? error.stage : self.data.imageFlowStage
+        });
+      }
       throw error;
     });
   },
@@ -740,7 +766,8 @@ Page({
     this.safeSetData({
       saveError: '',
       createRequestKey: intent.requestKey,
-      submittedPayloadHash: intent.signature
+      submittedPayloadHash: intent.signature,
+      imageFlowStage: 'create'
     });
 
     productService.createProduct(payload)
@@ -754,6 +781,7 @@ Page({
           saveError: '',
           createRequestKey: '',
           submittedPayloadHash: '',
+          imageFlowStage: 'complete',
           createdProduct: result.product
         });
         wx.showToast({ title: '产品创建成功', icon: 'success', duration: 1500 });
@@ -761,15 +789,21 @@ Page({
       })
       .catch(function (error) {
         if (!self.pageActive) return;
-        var message = createUtils.getCreateErrorMessage(error);
+        var handledError = Object.assign({}, error, {
+          code: error && error.code,
+          message: error && error.message,
+          stage: error && error.stage ? error.stage : 'create'
+        });
+        logImageFlowError('product.create', 'create', handledError);
+        var message = createUtils.getCreateErrorMessage(handledError);
         var updates = { saving: false, saveError: message };
-        if (error && error.code === 'REQUEST_KEY_CONFLICT') {
+        if (handledError.code === 'REQUEST_KEY_CONFLICT') {
           updates.createRequestKey = '';
           updates.submittedPayloadHash = '';
         }
         self.safeSetData(updates);
         wx.showToast({ title: message, icon: 'none', duration: 2500 });
-        if (error && createUtils.shouldRestartStartup(error.code)) {
+        if (createUtils.shouldRestartStartup(handledError.code)) {
           self.restartStartup();
         }
       });

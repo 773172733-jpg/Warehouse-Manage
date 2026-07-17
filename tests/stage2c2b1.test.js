@@ -227,7 +227,7 @@ async function testPageSaveFlow() {
     assert.strictEqual(calls[0].requestKey, calls[1].requestKey);
     assert.strictEqual(retryPage.data.createRequestKey, '');
     assert.strictEqual(retryPage.data.submittedPayloadHash, '');
-    assert.ok(toasts.includes('网络连接失败，请检查网络后重试'));
+    assert.ok(toasts.includes('产品创建失败，请稍后重试'));
     assert.ok(toasts.includes('表单内容已经变化，请重新提交'));
 
     calls = [];

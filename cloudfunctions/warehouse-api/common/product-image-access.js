@@ -60,9 +60,14 @@ async function resolveProductImageAccessUrls({ cloud, db, teamId, products, now 
   if (!descriptors.length) return accessByProductId;
 
   const uniqueAssetKeys = Array.from(new Set(descriptors.map((descriptor) => descriptor.assetKey)));
-  const assets = await Promise.all(uniqueAssetKeys.map((assetKey) => {
-    return getDocument(db, COLLECTIONS.PRODUCT_IMAGE_ASSETS, assetKey);
-  }));
+  let assets;
+  try {
+    assets = await Promise.all(uniqueAssetKeys.map((assetKey) => {
+      return getDocument(db, COLLECTIONS.PRODUCT_IMAGE_ASSETS, assetKey);
+    }));
+  } catch (error) {
+    return accessByProductId;
+  }
   const assetByKey = new Map();
   uniqueAssetKeys.forEach((assetKey, index) => assetByKey.set(assetKey, assets[index]));
 

@@ -11,13 +11,20 @@ function createLocalError(code, message) {
   return { code, message };
 }
 
+function normalizeImageExtension(value) {
+  const text = typeof value === 'string'
+    ? value.trim().toLowerCase().replace(/^image\//, '').replace(/^\./, '')
+    : '';
+  return text === 'jpeg' ? 'jpg' : text;
+}
+
 function getFileExtension(filePath) {
   const path = typeof filePath === 'string' ? filePath.trim().split(/[?#]/)[0] : '';
   const match = /\.([A-Za-z0-9]+)$/.exec(path);
-  return match ? match[1].toLowerCase() : '';
+  return match ? normalizeImageExtension(match[1]) : '';
 }
 
-function validateLocalImage(input) {
+function validateLocalFileBasics(input) {
   const source = input && typeof input === 'object' ? input : {};
   const filePath = typeof source.filePath === 'string' ? source.filePath.trim() : '';
   if (!filePath) {
@@ -30,15 +37,76 @@ function validateLocalImage(input) {
   if (sizeBytes > MAX_IMAGE_BYTES) {
     throw createLocalError(ERROR_CODES.IMAGE_FILE_TOO_LARGE, '图片不能超过2 MiB。');
   }
-  const extension = getFileExtension(filePath);
+  return { source, filePath, sizeBytes };
+}
+
+function validateLocalImage(input) {
+  const file = validateLocalFileBasics(input);
+  const extension = normalizeImageExtension(file.source.extension || file.source.imageType) ||
+    getFileExtension(file.filePath);
   if (ALLOWED_EXTENSIONS.indexOf(extension) === -1) {
     throw createLocalError(ERROR_CODES.IMAGE_FILE_TYPE_INVALID, '请选择JPG、PNG或WebP图片。');
   }
   return {
-    filePath,
-    sizeBytes,
-    extension: extension === 'jpeg' ? 'jpg' : extension
+    filePath: file.filePath,
+    sizeBytes: file.sizeBytes,
+    extension
   };
+}
+
+function getImageInfo(filePath) {
+  if (!wx.getImageInfo || typeof wx.getImageInfo !== 'function') {
+    return Promise.reject(createLocalError(
+      ERROR_CODES.IMAGE_FILE_TYPE_INVALID,
+      '无法识别图片格式，请重新选择JPG、PNG或WebP图片。'
+    ));
+  }
+  return new Promise((resolve, reject) => {
+    wx.getImageInfo({
+      src: filePath,
+      success: resolve,
+      fail: reject
+    });
+  });
+}
+
+async function inspectLocalImage(input, adapters) {
+  const file = validateLocalFileBasics(input);
+  const declaredExtension = normalizeImageExtension(file.source.extension || file.source.imageType) ||
+    getFileExtension(file.filePath);
+  if (ALLOWED_EXTENSIONS.indexOf(declaredExtension) > -1) {
+    return validateLocalImage(Object.assign({}, file.source, { extension: declaredExtension }));
+  }
+  if (file.source.fileType && file.source.fileType !== 'image') {
+    throw createLocalError(ERROR_CODES.IMAGE_FILE_TYPE_INVALID, '请选择JPG、PNG或WebP图片。');
+  }
+  const steps = adapters || {};
+  const inspect = steps.getImageInfo || getImageInfo;
+  let imageInfo;
+  try {
+    imageInfo = await inspect(file.filePath);
+  } catch (error) {
+    throw normalizeError(error, ERROR_CODES.IMAGE_FILE_TYPE_INVALID);
+  }
+  return validateLocalImage(Object.assign({}, file.source, {
+    extension: imageInfo && imageInfo.type
+  }));
+}
+
+function withStage(stage, operation) {
+  return Promise.resolve()
+    .then(operation)
+    .catch((error) => {
+      const normalized = normalizeError(error, ERROR_CODES.CLOUD_CALL_FAILED);
+      normalized.stage = stage;
+      throw normalized;
+    });
+}
+
+function notifyStage(input, stage) {
+  if (input && typeof input.onStageChange === 'function') {
+    input.onStageChange(stage);
+  }
 }
 
 function prepareProductImage(input) {
@@ -87,34 +155,55 @@ function createStageRequestKeys(current) {
 }
 
 async function stageProductImage(input, adapters) {
-  const file = validateLocalImage(input);
+  let file;
+  try {
+    file = validateLocalImage(input);
+  } catch (error) {
+    const normalized = normalizeError(error, ERROR_CODES.IMAGE_FILE_TYPE_INVALID);
+    normalized.stage = 'prepare';
+    throw normalized;
+  }
   const steps = adapters || {};
   const prepare = steps.prepareProductImage || prepareProductImage;
   const upload = steps.uploadProductImage || uploadProductImage;
   const confirm = steps.confirmProductImage || confirmProductImage;
-  const prepared = await prepare({
+  notifyStage(input, 'prepare');
+  const prepared = await withStage('prepare', () => prepare({
     extension: file.extension,
     sizeBytes: file.sizeBytes,
     requestKey: input.stageRequestKey
-  });
+  }));
   if (!prepared || !prepared.assetKey) {
-    throw createLocalError(ERROR_CODES.IMAGE_ASSET_NOT_READY, '图片准备结果不完整。');
+    const error = createLocalError(ERROR_CODES.IMAGE_ASSET_NOT_READY, '图片准备结果不完整。');
+    error.stage = 'prepare';
+    throw error;
   }
   if (prepared.status === 'staged' || prepared.status === 'bound') {
+    notifyStage(input, 'complete');
     return { assetKey: prepared.assetKey, status: prepared.status, reused: true };
   }
   if (!prepared.cloudPath) {
-    throw createLocalError(ERROR_CODES.IMAGE_FILE_PATH_INVALID, '图片上传路径无效。');
+    const error = createLocalError(ERROR_CODES.IMAGE_FILE_PATH_INVALID, '图片上传路径无效。');
+    error.stage = 'prepare';
+    throw error;
   }
-  const uploaded = await upload({ cloudPath: prepared.cloudPath, filePath: file.filePath });
-  const confirmed = await confirm({
+  notifyStage(input, 'upload');
+  const uploaded = await withStage('upload', () => upload({
+    cloudPath: prepared.cloudPath,
+    filePath: file.filePath
+  }));
+  notifyStage(input, 'confirm');
+  const confirmed = await withStage('confirm', () => confirm({
     assetKey: prepared.assetKey,
     fileId: uploaded.fileId,
     requestKey: input.confirmRequestKey
-  });
+  }));
   if (!confirmed || !confirmed.assetKey || confirmed.status !== 'staged') {
-    throw createLocalError(ERROR_CODES.IMAGE_ASSET_NOT_READY, '图片安全确认结果不完整。');
+    const error = createLocalError(ERROR_CODES.IMAGE_ASSET_NOT_READY, '图片安全确认结果不完整。');
+    error.stage = 'confirm';
+    throw error;
   }
+  notifyStage(input, 'complete');
   return {
     assetKey: confirmed.assetKey,
     status: confirmed.status,
@@ -127,8 +216,10 @@ async function stageProductImage(input, adapters) {
 module.exports = {
   MAX_IMAGE_BYTES,
   ALLOWED_EXTENSIONS,
+  normalizeImageExtension,
   getFileExtension,
   validateLocalImage,
+  inspectLocalImage,
   prepareProductImage,
   uploadProductImage,
   confirmProductImage,
