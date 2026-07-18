@@ -526,7 +526,12 @@ Page({
       this.mutationRequestKey = '';
       this.mutationRequestSignature = '';
       const app = getApp();
-      if (app.globalData) app.globalData.inventoryRefreshRequired = true;
+      if (app.globalData) {
+        app.globalData.inventoryRefreshRequired = true;
+        app.globalData.stockRecordsRefreshRequired = {
+          warehouseProductId: this.warehouseProductId
+        };
+      }
       const stockStatus = computeStockStatus(result.afterStock, this.data.product.minStock);
       this.safeSetData({
         submitting: false,

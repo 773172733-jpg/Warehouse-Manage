@@ -1,5 +1,7 @@
 {
   "navigationStyle": "custom",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
   "onReachBottomDistance": 120,
   "usingComponents": {
     "app-loading": "/components/app-loading/app-loading",

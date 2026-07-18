@@ -106,6 +106,9 @@ Page({
 
   onLoad(query) {
     this.pageActive = true;
+    this.hasShown = false;
+    this.firstPagePromise = null;
+    this.pendingFirstPageRefresh = false;
     this.listVersion = 0;
     this.detailVersion = 0;
     this.calcNavStyle();
@@ -120,8 +123,32 @@ Page({
     this.loadFirstPage();
   },
 
+  onShow() {
+    const shouldRefresh = this.consumeRefreshMarker();
+    if (!this.hasShown) {
+      this.hasShown = true;
+      return;
+    }
+    if (shouldRefresh) {
+      this.loadFirstPage({
+        refreshProduct: true,
+        queueIfLoading: true
+      });
+    }
+  },
+
+  onPullDownRefresh() {
+    return this.loadFirstPage({
+      refreshProduct: true,
+      queueIfLoading: true
+    }).finally(() => {
+      if (wx.stopPullDownRefresh) wx.stopPullDownRefresh();
+    });
+  },
+
   onUnload() {
     this.pageActive = false;
+    this.pendingFirstPageRefresh = false;
     this.listVersion += 1;
     this.detailVersion += 1;
   },
@@ -132,6 +159,19 @@ Page({
 
   safeSetData(updates, callback) {
     if (this.pageActive) this.setData(updates, callback);
+  },
+
+  consumeRefreshMarker() {
+    const app = getApp();
+    const globalData = app && app.globalData;
+    const marker = globalData && globalData.stockRecordsRefreshRequired;
+    const matches = marker === true ||
+      marker === this.warehouseProductId ||
+      (marker && marker.warehouseProductId === this.warehouseProductId);
+    if (matches) {
+      globalData.stockRecordsRefreshRequired = null;
+    }
+    return Boolean(matches);
   },
 
   calcNavStyle() {
@@ -173,7 +213,15 @@ Page({
     });
   },
 
-  loadFirstPage() {
+  loadFirstPage(options) {
+    const settings = options || {};
+    if (this.firstPagePromise) {
+      if (settings.queueIfLoading) {
+        this.pendingFirstPageRefresh = true;
+      }
+      return this.firstPagePromise;
+    }
+
     const version = this.listVersion + 1;
     this.listVersion = version;
     this.safeSetData({
@@ -185,8 +233,10 @@ Page({
       hasMore: false
     });
 
-    return Promise.all([
-      this.data.product ? Promise.resolve() : this.loadProductSummary(),
+    const currentPromise = Promise.all([
+      this.data.product && !settings.refreshProduct
+        ? Promise.resolve()
+        : this.loadProductSummary(),
       this.fetchRecordPage('', version)
     ]).then((results) => {
       if (!this.pageActive || version !== this.listVersion) return;
@@ -209,7 +259,17 @@ Page({
         loadingMore: false,
         error: getListErrorMessage(error)
       });
+    }).finally(() => {
+      if (this.firstPagePromise === currentPromise) {
+        this.firstPagePromise = null;
+      }
+      if (this.pageActive && this.pendingFirstPageRefresh) {
+        this.pendingFirstPageRefresh = false;
+        this.loadFirstPage({ refreshProduct: true });
+      }
     });
+    this.firstPagePromise = currentPromise;
+    return currentPromise;
   },
 
   fetchRecordPage(cursor, version) {
