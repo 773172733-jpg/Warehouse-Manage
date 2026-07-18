@@ -21,8 +21,12 @@ const {
   computeStockStatus,
   assertProductCountWithinLimit,
   buildCoverSummary,
+  buildSearchKeywords,
   encodeProductCursor,
+  normalizeProductName,
+  normalizeProductCode,
   validateProductListInput,
+  validateSearchRebuildInput,
   validateRemovedProductListInput,
   validateDeletedCatalogListInput,
   validateProductDetailInput,
@@ -79,6 +83,37 @@ async function loadProductCoverSources(db, teamId, warehouseProducts) {
       coverAssetKey: true,
       coverFileId: true,
       coverBackground: true
+    })
+    .get();
+  return new Map((result.data || [])
+    .filter((product) => product.teamId === teamId && product.status === 'active')
+    .map((product) => [product._id, product]));
+}
+
+async function loadProductSearchSources(db, teamId, warehouseProducts) {
+  const productIds = Array.from(new Set(
+    (Array.isArray(warehouseProducts) ? warehouseProducts : [])
+      .map((warehouseProduct) => warehouseProduct && warehouseProduct.productId)
+      .filter(Boolean)
+  ));
+  if (!productIds.length) return new Map();
+  const result = await db.collection(COLLECTIONS.PRODUCTS)
+    .where({ _id: db.command.in(productIds) })
+    .limit(productIds.length)
+    .field({
+      _id: true,
+      teamId: true,
+      status: true,
+      name: true,
+      normalizedName: true,
+      productCode: true,
+      normalizedCode: true,
+      category: true,
+      unit: true,
+      brand: true,
+      specification: true,
+      searchKeywords: true,
+      version: true
     })
     .get();
   return new Map((result.data || [])
@@ -483,13 +518,18 @@ function buildProductListWhere(command, input, access, status) {
     base.stockStatus = input.stockStatus;
   }
 
-  let branches = input.keyword ? [
-    Object.assign({}, base, { normalizedCodeSnapshot: input.keyword }),
-    Object.assign({}, base, {
-      normalizedNameSnapshot: createNamePrefixCommand(command, input.keyword)
-    }),
-    Object.assign({}, base, { searchKeywordsSnapshot: input.keyword })
-  ] : [base];
+  let branches = [base];
+  if (input.keyword) {
+    branches = [
+      Object.assign({}, base, { normalizedCodeSnapshot: input.keyword }),
+      Object.assign({}, base, {
+        normalizedNameSnapshot: createNamePrefixCommand(command, input.keyword)
+      })
+    ];
+    if (input.searchToken) {
+      branches.push(Object.assign({}, base, { searchKeywordsSnapshot: input.searchToken }));
+    }
+  }
 
   if (input.cursor) {
     branches = branches.reduce((result, branch) => {
@@ -1308,7 +1348,9 @@ async function listProducts(db, user, rawInput, options) {
           product
         );
       }),
-      nextCursor: hasMore && page.length ? encodeProductCursor(page[page.length - 1]) : null,
+      nextCursor: hasMore && page.length
+        ? encodeProductCursor(page[page.length - 1], input.queryHash)
+        : null,
       hasMore,
       pageSize: input.pageSize
     };
@@ -1317,6 +1359,134 @@ async function listProducts(db, user, rawInput, options) {
       throw error;
     }
     throw new ApiError(ERROR_CODES.DATABASE_ERROR, '产品列表读取失败，请稍后重试。');
+  }
+}
+
+function arraysEqual(left, right) {
+  return Array.isArray(left) && Array.isArray(right) &&
+    left.length === right.length &&
+    left.every((value, index) => value === right[index]);
+}
+
+function buildSearchMetadata(product) {
+  return {
+    normalizedName: normalizeProductName(product.name),
+    normalizedCode: normalizeProductCode(product.productCode),
+    searchKeywords: buildSearchKeywords(product)
+  };
+}
+
+function buildSearchSnapshot(product, metadata) {
+  return {
+    productNameSnapshot: product.name || '',
+    normalizedNameSnapshot: metadata.normalizedName,
+    productCodeSnapshot: product.productCode || '',
+    normalizedCodeSnapshot: metadata.normalizedCode,
+    categorySnapshot: product.category || '',
+    unitSnapshot: product.unit || '',
+    brandSnapshot: product.brand || '',
+    specificationSnapshot: product.specification || '',
+    searchKeywordsSnapshot: metadata.searchKeywords,
+    productVersion: product.version
+  };
+}
+
+function hasSearchMetadataChanges(product, metadata) {
+  return product.normalizedName !== metadata.normalizedName ||
+    product.normalizedCode !== metadata.normalizedCode ||
+    !arraysEqual(product.searchKeywords, metadata.searchKeywords);
+}
+
+function hasSearchSnapshotChanges(warehouseProduct, snapshot) {
+  return Object.keys(snapshot).some((field) => {
+    if (field === 'searchKeywordsSnapshot') {
+      return !arraysEqual(warehouseProduct[field], snapshot[field]);
+    }
+    return warehouseProduct[field] !== snapshot[field];
+  });
+}
+
+async function rebuildProductSearch(db, user, rawInput) {
+  const input = validateSearchRebuildInput(rawInput);
+  try {
+    const access = await requireProductAccess(db, user, 'admin');
+    const where = buildProductListWhere(db.command, {
+      keyword: '',
+      searchToken: '',
+      category: '',
+      stockStatus: '',
+      cursor: input.cursor
+    }, access);
+    const result = await db.collection(COLLECTIONS.WAREHOUSE_PRODUCTS)
+      .where(where)
+      .orderBy('updatedAt', 'desc')
+      .orderBy('_id', 'desc')
+      .limit(input.pageSize + 1)
+      .field({
+        _id: true,
+        productId: true,
+        teamId: true,
+        warehouseId: true,
+        status: true,
+        productNameSnapshot: true,
+        normalizedNameSnapshot: true,
+        productCodeSnapshot: true,
+        normalizedCodeSnapshot: true,
+        categorySnapshot: true,
+        unitSnapshot: true,
+        brandSnapshot: true,
+        specificationSnapshot: true,
+        searchKeywordsSnapshot: true,
+        productVersion: true,
+        updatedAt: true
+      })
+      .get();
+    const documents = result.data || [];
+    const hasMore = documents.length > input.pageSize;
+    const page = documents.slice(0, input.pageSize);
+    const productsById = await loadProductSearchSources(db, access.team._id, page);
+    let updatedProducts = 0;
+    let updatedWarehouseProducts = 0;
+    let skipped = 0;
+
+    for (const warehouseProduct of page) {
+      const product = productsById.get(warehouseProduct.productId);
+      if (!product) {
+        skipped += 1;
+        continue;
+      }
+      const metadata = buildSearchMetadata(product);
+      const snapshot = buildSearchSnapshot(product, metadata);
+      const updates = [];
+      if (hasSearchMetadataChanges(product, metadata)) {
+        updates.push(db.collection(COLLECTIONS.PRODUCTS).doc(product._id).update({
+          data: metadata
+        }).then(() => {
+          updatedProducts += 1;
+        }));
+      }
+      if (hasSearchSnapshotChanges(warehouseProduct, snapshot)) {
+        updates.push(db.collection(COLLECTIONS.WAREHOUSE_PRODUCTS).doc(warehouseProduct._id).update({
+          data: snapshot
+        }).then(() => {
+          updatedWarehouseProducts += 1;
+        }));
+      }
+      await Promise.all(updates);
+    }
+
+    return {
+      scanned: page.length,
+      updatedProducts,
+      updatedWarehouseProducts,
+      skipped,
+      nextCursor: hasMore && page.length ? encodeProductCursor(page[page.length - 1]) : null,
+      hasMore,
+      pageSize: input.pageSize
+    };
+  } catch (error) {
+    if (isApiError(error)) throw error;
+    throw new ApiError(ERROR_CODES.DATABASE_ERROR, '搜索字段重建失败，请稍后重试。');
   }
 }
 
@@ -1372,6 +1542,7 @@ module.exports = {
   assertExistingCreate,
   buildProductListWhere,
   loadProductCoverSources,
+  loadProductSearchSources,
   buildDeletedCatalogListWhere,
   buildProductMainUpdate,
   buildProductSnapshotUpdate,
@@ -1388,5 +1559,8 @@ module.exports = {
   listDeletedCatalogProducts,
   restoreCatalogProduct,
   listProducts,
+  buildSearchMetadata,
+  buildSearchSnapshot,
+  rebuildProductSearch,
   getProductDetail
 };

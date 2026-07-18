@@ -14,6 +14,7 @@ const teamMemberRemove = require('./modules/team/member-remove.js');
 const teamLeave = require('./modules/team/leave.js');
 const productCreate = require('./modules/product/create.js');
 const productList = require('./modules/product/list.js');
+const productSearchRebuild = require('./modules/product/search-rebuild.js');
 const productDetail = require('./modules/product/detail.js');
 const productUpdate = require('./modules/product/update.js');
 const productRemoveFromWarehouse = require('./modules/product/remove-from-warehouse.js');
@@ -47,6 +48,7 @@ const ACTION_HANDLERS = {
   'team.leave': teamLeave,
   'product.create': productCreate,
   'product.list': productList,
+  'product.search.rebuild': productSearchRebuild,
   'product.detail': productDetail,
   'product.update': productUpdate,
   'product.removeFromWarehouse': productRemoveFromWarehouse,

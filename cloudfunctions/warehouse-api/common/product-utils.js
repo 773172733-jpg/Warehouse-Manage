@@ -8,6 +8,10 @@ const PRODUCT_LIMIT = 99999;
 const STOCK_MAX = 999999999;
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
+const SEARCH_SOURCE_MAX_LENGTH = 40;
+const SEARCH_FRAGMENT_MAX_LENGTH = 20;
+const SEARCH_FRAGMENT_LIMIT_PER_FIELD = 40;
+const SEARCH_KEYWORD_LIMIT = 96;
 const PRODUCT_ID_PATTERN = /^[A-Za-z0-9_-]{8,80}$/;
 const STOCK_STATUSES = ['normal', 'low', 'out'];
 const COVER_TYPES = ['none', 'text', 'emoji', 'image'];
@@ -91,6 +95,13 @@ function normalizeProductCode(value) {
   return normalizeWhitespace(value).toLowerCase();
 }
 
+function normalizeSearchText(value) {
+  return normalizeWhitespace(value)
+    .toLowerCase()
+    .replace(/[\s\-_/\\.\u00b7]+/g, '')
+    .replace(/[^a-z0-9\u3400-\u9fff]/g, '');
+}
+
 function getCharacterLength(value) {
   return Array.from(value || '').length;
 }
@@ -123,9 +134,9 @@ function buildSearchKeywords(source) {
   const result = [];
   const seen = new Set();
 
-  function append(value) {
-    const keyword = Array.from(value || '').slice(0, 20).join('');
-    if (!keyword || seen.has(keyword) || result.length >= 10) {
+  function append(value, maxLength) {
+    const keyword = Array.from(value || '').slice(0, maxLength || 20).join('');
+    if (!keyword || seen.has(keyword) || result.length >= SEARCH_KEYWORD_LIMIT) {
       return;
     }
     seen.add(keyword);
@@ -135,9 +146,29 @@ function buildSearchKeywords(source) {
   candidates.forEach((value) => {
     const normalized = normalizeProductName(value);
     append(normalized);
+    append(normalizeSearchText(value), SEARCH_SOURCE_MAX_LENGTH);
   });
   candidates.forEach((value) => {
-    normalizeProductName(value).split(/[\s,，/|;；]+/).forEach(append);
+    normalizeProductName(value).split(/[\s,，/|;；]+/).forEach((part) => append(part));
+  });
+
+  [source.productCode, source.specification].forEach((value) => {
+    const characters = Array.from(normalizeSearchText(value))
+      .slice(0, SEARCH_SOURCE_MAX_LENGTH);
+    if (characters.length < 2) return;
+
+    let fragmentCount = 0;
+    const maxLength = Math.min(SEARCH_FRAGMENT_MAX_LENGTH, characters.length);
+    for (let length = 2; length <= maxLength; length += 1) {
+      for (let start = 0; start + length <= characters.length; start += 1) {
+        if (fragmentCount >= SEARCH_FRAGMENT_LIMIT_PER_FIELD ||
+            result.length >= SEARCH_KEYWORD_LIMIT) {
+          return;
+        }
+        append(characters.slice(start, start + length).join(''), SEARCH_FRAGMENT_MAX_LENGTH);
+        fragmentCount += 1;
+      }
+    }
   });
 
   return result;
@@ -523,13 +554,15 @@ function getDateMillis(value) {
   return Number.isFinite(millis) ? millis : NaN;
 }
 
-function encodeProductCursor(document) {
+function encodeProductCursor(document, queryHash) {
   const updatedAt = getDateMillis(document && document.updatedAt);
   const id = document && document._id;
   if (!Number.isFinite(updatedAt) || !PRODUCT_ID_PATTERN.test(id || '')) {
     return null;
   }
-  return encodeBase64Url(JSON.stringify({ v: 1, u: updatedAt, i: id, s: 'updated_desc' }));
+  const cursor = { v: 1, u: updatedAt, i: id, s: 'updated_desc' };
+  if (queryHash) cursor.q = queryHash;
+  return encodeBase64Url(JSON.stringify(cursor));
 }
 
 function decodeProductCursor(value) {
@@ -543,10 +576,15 @@ function decodeProductCursor(value) {
     const cursor = JSON.parse(decodeBase64Url(value));
     if (cursor.v !== 1 || cursor.s !== 'updated_desc' ||
         !Number.isSafeInteger(cursor.u) || cursor.u < 0 ||
-        !PRODUCT_ID_PATTERN.test(cursor.i || '')) {
+        !PRODUCT_ID_PATTERN.test(cursor.i || '') ||
+        (cursor.q !== undefined && !/^[a-f0-9]{16}$/.test(cursor.q))) {
       throw new Error('invalid cursor');
     }
-    return { updatedAt: new Date(cursor.u), id: cursor.i };
+    return {
+      updatedAt: new Date(cursor.u),
+      id: cursor.i,
+      queryHash: cursor.q || ''
+    };
   } catch (error) {
     throw new ApiError(ERROR_CODES.INVALID_CURSOR, '分页游标无效，请重新加载。');
   }
@@ -564,7 +602,7 @@ function validateProductListInput(rawInput) {
     throw new ApiError(ERROR_CODES.INVALID_PAGE_SIZE, '每页数量需要在1至50之间。');
   }
   const keyword = normalizeProductName(source.keyword);
-  if (getCharacterLength(keyword) > 40) {
+  if (getCharacterLength(keyword) > SEARCH_SOURCE_MAX_LENGTH) {
     throw new ApiError(ERROR_CODES.INVALID_INPUT, '搜索关键词不能超过40个字符。');
   }
   const category = normalizeWhitespace(source.category);
@@ -579,13 +617,41 @@ function validateProductListInput(rawInput) {
   if (sort !== 'updated_desc') {
     throw new ApiError(ERROR_CODES.INVALID_INPUT, '当前仅支持按更新时间倒序。');
   }
+  const searchToken = normalizeSearchText(source.keyword);
+  const queryHash = crypto.createHash('sha256')
+    .update(stableSerialize({ keyword, searchToken, category, stockStatus, sort }))
+    .digest('hex')
+    .slice(0, 16);
+  const cursor = decodeProductCursor(source.cursor);
+  if (cursor && cursor.queryHash && cursor.queryHash !== queryHash) {
+    throw new ApiError(ERROR_CODES.INVALID_CURSOR, '分页游标与当前搜索或筛选条件不一致。');
+  }
   return {
     keyword,
+    searchToken,
     category,
     stockStatus,
-    cursor: decodeProductCursor(source.cursor),
+    cursor,
+    queryHash,
     pageSize,
     sort
+  };
+}
+
+function validateSearchRebuildInput(rawInput) {
+  const source = rawInput && typeof rawInput === 'object' ? rawInput : {};
+  const allowed = ['cursor', 'pageSize'];
+  const unknown = Object.keys(source).find((field) => !allowed.includes(field));
+  if (unknown) {
+    throw new ApiError(ERROR_CODES.FORBIDDEN, '搜索字段重建请求包含不允许的字段。');
+  }
+  const pageSize = source.pageSize === undefined ? DEFAULT_PAGE_SIZE : Number(source.pageSize);
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
+    throw new ApiError(ERROR_CODES.INVALID_PAGE_SIZE, '每批数量需要在1至50之间。');
+  }
+  return {
+    cursor: decodeProductCursor(source.cursor),
+    pageSize
   };
 }
 
@@ -762,9 +828,14 @@ module.exports = {
   STOCK_MAX,
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
+  SEARCH_SOURCE_MAX_LENGTH,
+  SEARCH_FRAGMENT_MAX_LENGTH,
+  SEARCH_FRAGMENT_LIMIT_PER_FIELD,
+  SEARCH_KEYWORD_LIMIT,
   normalizeWhitespace,
   normalizeProductName,
   normalizeProductCode,
+  normalizeSearchText,
   buildSearchKeywords,
   sanitizeProductMainFields,
   sanitizeProductInput,
@@ -781,6 +852,7 @@ module.exports = {
   encodeProductCursor,
   decodeProductCursor,
   validateProductListInput,
+  validateSearchRebuildInput,
   validateRemovedProductListInput,
   validateDeletedCatalogListInput,
   validateProductDetailInput,

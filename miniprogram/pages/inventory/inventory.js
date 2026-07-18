@@ -27,7 +27,7 @@ Page({
     stockFilters: STOCK_FILTERS,
     summary: { total: 0, lowCount: 0, outCount: 0 },
     warehouseName: '当前仓库',
-    placeholder: '搜索名称前缀、编号或关键词',
+    placeholder: '搜索产品名称、型号或编号',
     searchFocused: false,
     canCreateProduct: false
   },
