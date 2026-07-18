@@ -29,6 +29,7 @@ const stockInbound = require('./modules/stock/inbound.js');
 const stockOutbound = require('./modules/stock/outbound.js');
 const stockAdjust = require('./modules/stock/adjust.js');
 const stockRecordsList = require('./modules/stock/records-list.js');
+const stockRecordsListWarehouse = require('./modules/stock/records-list-warehouse.js');
 const { ok, fail } = require('./common/response.js');
 const { ApiError, ERROR_CODES, isApiError } = require('./common/errors.js');
 const { buildContext } = require('./common/context.js');
@@ -63,7 +64,8 @@ const ACTION_HANDLERS = {
   'stock.inbound': stockInbound,
   'stock.outbound': stockOutbound,
   'stock.adjust': stockAdjust,
-  'stock.records.list': stockRecordsList
+  'stock.records.list': stockRecordsList,
+  'stock.records.listWarehouse': stockRecordsListWarehouse
 };
 
 function createRequestId(candidate) {
