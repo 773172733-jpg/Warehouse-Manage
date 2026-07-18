@@ -36,6 +36,10 @@ function createStockRecordId(teamId, warehouseId, action, requestKey) {
   return createDocumentId('stock_record', [teamId, warehouseId, action, requestKey]);
 }
 
+function createStockMutationRecordId(teamId, warehouseId, requestKey) {
+  return createDocumentId('stock_record', [teamId, warehouseId, 'stock.mutation', requestKey]);
+}
+
 module.exports = {
   createUserId,
   createTeamId,
@@ -45,5 +49,6 @@ module.exports = {
   createProductId,
   createProductImageAssetId,
   createWarehouseProductId,
-  createStockRecordId
+  createStockRecordId,
+  createStockMutationRecordId
 };
