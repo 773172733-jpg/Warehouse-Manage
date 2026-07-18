@@ -28,6 +28,7 @@ const productImageStageConfirm = require('./modules/product/image-stage-confirm.
 const stockInbound = require('./modules/stock/inbound.js');
 const stockOutbound = require('./modules/stock/outbound.js');
 const stockAdjust = require('./modules/stock/adjust.js');
+const stockRecordsList = require('./modules/stock/records-list.js');
 const { ok, fail } = require('./common/response.js');
 const { ApiError, ERROR_CODES, isApiError } = require('./common/errors.js');
 const { buildContext } = require('./common/context.js');
@@ -61,7 +62,8 @@ const ACTION_HANDLERS = {
   'product.image.stage.confirm': productImageStageConfirm,
   'stock.inbound': stockInbound,
   'stock.outbound': stockOutbound,
-  'stock.adjust': stockAdjust
+  'stock.adjust': stockAdjust,
+  'stock.records.list': stockRecordsList
 };
 
 function createRequestId(candidate) {
