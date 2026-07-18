@@ -154,7 +154,7 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.INVALID_TARGET_STOCK]: '请输入有效的目标库存。',
   [ERROR_CODES.INSUFFICIENT_STOCK]: '当前库存不足，请核对数量。',
   [ERROR_CODES.STOCK_LIMIT_EXCEEDED]: '库存数量将超过上限。',
-  [ERROR_CODES.STOCK_VERSION_CONFLICT]: '库存已被其他操作修改，请刷新后重试。',
+  [ERROR_CODES.STOCK_VERSION_CONFLICT]: '库存已被其他操作更新，请刷新后重试。',
   [ERROR_CODES.NO_STOCK_CHANGE]: '目标库存与当前库存相同。',
   [ERROR_CODES.STOCK_OPERATION_FORBIDDEN]: '当前账号无权操作库存。',
   [ERROR_CODES.STOCK_RECORD_CONFLICT]: '库存流水状态异常，请联系管理员。',

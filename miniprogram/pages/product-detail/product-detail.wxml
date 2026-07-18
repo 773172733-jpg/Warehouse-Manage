@@ -102,7 +102,13 @@
 
     <view class="pd-section">
       <text class="pd-section-title">库存记录</text>
-      <view class="pd-records-empty">真实库存流水将在后续阶段接入</view>
+      <view class="pd-records-entry" catchtap="openStockRecords">
+        <view>
+          <text class="pd-records-entry-title">查看永久库存流水</text>
+          <text class="pd-records-entry-sub">入库、出库、盘点与初始库存记录</text>
+        </view>
+        <text class="pd-records-entry-arrow">›</text>
+      </view>
     </view>
 
     <view class="pd-bottom-spacer"></view>
@@ -119,5 +125,6 @@
 <view wx:if="{{loaded && product && !error && (permissions.canOperateStock||permissions.canEdit||permissions.canRemove)}}" class="pd-action-bar">
   <view wx:if="{{permissions.canOperateStock}}" class="pd-action-btn pd-action-btn--primary" catchtap="onInbound">入库</view>
   <view wx:if="{{permissions.canOperateStock}}" class="pd-action-btn pd-action-btn--outline" catchtap="onOutbound">出库</view>
+  <view wx:if="{{permissions.canOperateStock}}" class="pd-action-btn pd-action-btn--outline" catchtap="onAdjust">盘点</view>
   <view wx:if="{{permissions.canEdit||permissions.canRemove}}" class="pd-action-btn pd-action-btn--outline {{removing?'pd-action-btn--disabled':''}}" catchtap="onMore">{{removing?'处理中':'更多'}}</view>
 </view>

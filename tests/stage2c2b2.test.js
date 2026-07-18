@@ -511,7 +511,8 @@ function testStaticBoundaries() {
   assert.strictEqual(source.includes('setStorage'), false);
   assert.strictEqual(source.includes('setStorageSync'), false);
   assert.strictEqual(source.includes('console.log'), false);
-  assert.strictEqual(source.includes('真实库存流水将在后续阶段接入'), true);
+  assert.strictEqual(source.includes('真实库存流水将在后续阶段接入'), false);
+  assert.strictEqual(source.includes('ROUTES.STOCK_RECORDS'), true);
   assert.strictEqual(source.includes('已加载产品'), true);
   assert.strictEqual(source.includes('productService.listProducts'), true);
   assert.strictEqual(source.includes('productService.getProductDetail'), true);

@@ -1,0 +1,91 @@
+<view class="sr-nav" style="{{navStyle}}">
+  <view class="sr-nav-back" style="{{navSideStyle}}" catchtap="onBack">
+    <view class="sr-nav-back-arrow"></view>
+  </view>
+  <text class="sr-nav-title">库存记录</text>
+  <view class="sr-nav-placeholder" style="{{navSideStyle}}"></view>
+</view>
+
+<view class="sr-page">
+  <app-loading wx:if="{{loading}}" text="正在读取库存流水"></app-loading>
+
+  <error-state
+    wx:elif="{{error}}"
+    title="库存流水加载失败"
+    message="{{error}}"
+    showRetry="{{true}}"
+    bind:retry="handleRetry"
+  ></error-state>
+
+  <block wx:else>
+    <view wx:if="{{product}}" class="sr-product">
+      <view class="sr-product-main">
+        <text class="sr-product-name">{{product.name}}</text>
+        <text class="sr-product-code">{{product.code||'无编号'}}</text>
+      </view>
+      <view class="sr-product-stock">
+        <text class="sr-product-stock-label">当前库存</text>
+        <view>
+          <text class="sr-product-stock-value">{{product.stock}}</text>
+          <text class="sr-product-stock-unit">{{product.unit}}</text>
+        </view>
+      </view>
+    </view>
+
+    <scroll-view class="sr-filters" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="sr-filter-row">
+        <view
+          wx:for="{{typeOptions}}"
+          wx:key="value"
+          class="sr-filter {{activeType===item.value?'sr-filter--active':''}}"
+          data-value="{{item.value}}"
+          catchtap="onTypeTap"
+        >{{item.label}}</view>
+      </view>
+    </scroll-view>
+
+    <view wx:if="{{records.length}}" class="sr-list">
+      <view wx:for="{{records}}" wx:key="id" class="sr-record sr-record--{{item.tone}}">
+        <view class="sr-record-head">
+          <view>
+            <text class="sr-record-type">{{item.typeLabel}}</text>
+            <text class="sr-record-time">{{item.createdAtText}}</text>
+          </view>
+          <view class="sr-record-change">
+            <text class="sr-record-delta">{{item.deltaText}}</text>
+            <text class="sr-record-unit">{{item.unit}}</text>
+          </view>
+        </view>
+        <view class="sr-stock-path">
+          <text>{{item.beforeStock}}{{item.unit}}</text>
+          <text class="sr-stock-arrow">→</text>
+          <text class="sr-stock-after">{{item.afterStock}}{{item.unit}}</text>
+          <text wx:if="{{item.stockVersionText}}" class="sr-version">{{item.stockVersionText}}</text>
+        </view>
+        <view wx:if="{{item.reason}}" class="sr-detail-row">
+          <text class="sr-detail-label">原因</text>
+          <text class="sr-detail-value">{{item.reason}}</text>
+        </view>
+        <view wx:if="{{item.referenceNo}}" class="sr-detail-row">
+          <text class="sr-detail-label">单据号</text>
+          <text class="sr-detail-value">{{item.referenceNo}}</text>
+        </view>
+        <view class="sr-record-foot">
+          <text wx:if="{{item.showOperatorName}}">{{item.operatorDisplayName}}</text>
+          <text>{{item.operatorRoleLabel}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:elif="{{!hasMore}}" class="sr-empty">
+      <view class="sr-empty-mark">录</view>
+      <text class="sr-empty-title">暂无库存流水</text>
+      <text class="sr-empty-desc">当前筛选条件下还没有记录</text>
+    </view>
+
+    <view wx:if="{{hasMore}}" class="sr-load-more {{loadingMore?'sr-load-more--disabled':''}}" catchtap="loadMore">
+      {{loadingMore?'正在加载':'加载更多'}}
+    </view>
+    <view wx:elif="{{records.length}}" class="sr-list-end">已显示全部流水</view>
+  </block>
+</view>

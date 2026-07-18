@@ -1,4 +1,4 @@
-/* 库存操作页 WXSS — 入库/出库/库存调整统一页面，苹果绿简约风 */
+/* 库存操作页 WXSS - 入库/出库/库存调整统一页面，苹果绿简约风 */
 
 /* ===== 自定义导航栏 ===== */
 .so-nav {
@@ -127,6 +127,15 @@
   font-weight: 700;
   color: #078B4B;
   text-align: center;
+}
+.so-prod-cover-emoji {
+  font-size: 46rpx;
+  line-height: 1;
+}
+.so-prod-cover-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 18rpx;
 }
 .so-prod-info {
   flex: 1;
@@ -425,6 +434,13 @@
   background: #F2F4F2;
   margin: 6rpx 0;
 }
+.so-preview-arrow {
+  padding: 0 4rpx;
+  font-size: 24rpx;
+  line-height: 1;
+  color: #B6BAB7;
+  text-align: right;
+}
 .so-preview-label {
   font-size: 26rpx;
   color: #747A76;
@@ -437,6 +453,11 @@
   font-size: 32rpx;
   font-weight: 700;
   line-height: 1;
+}
+.so-preview-before {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #747A76;
 }
 .so-preview-value--primary { color: #078B4B; }
 .so-preview-value--warning { color: #E59A23; }

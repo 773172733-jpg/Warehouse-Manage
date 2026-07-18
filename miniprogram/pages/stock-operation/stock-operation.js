@@ -9,29 +9,20 @@ const STOCK_MAX = 999999999;
 const REMARK_MAX = 100;
 
 const MODE_CONFIG = {
-  inbound: { title: '产品入库', btnText: '确认入库', qtyLabel: '入库数量', srcLabel: '入库来源', srcPlaceholder: '供应商补货、退货入库、盘点补录', remarkPlaceholder: '填写供应商、入库批次或其他说明' },
-  outbound: { title: '产品出库', btnText: '确认出库', qtyLabel: '出库数量', srcLabel: '去向/领用人', srcPlaceholder: '施工一组、张三领用、客户订单', remarkPlaceholder: '填写领用人、去向或其他说明' },
-  adjustment: { title: '调整库存', btnText: '确认调整', qtyLabel: '', srcLabel: '', srcPlaceholder: '', remarkPlaceholder: '填写本次盘点或调整的补充说明' }
+  inbound: { title: '产品入库', btnText: '确认入库', qtyLabel: '入库数量', reasonPlaceholder: '填写本次入库原因' },
+  outbound: { title: '产品出库', btnText: '确认出库', qtyLabel: '出库数量', reasonPlaceholder: '填写本次出库原因' },
+  adjustment: { title: '盘点调整', btnText: '确认调整', qtyLabel: '', reasonPlaceholder: '' }
 };
 
 const ADJUST_REASONS = ['盘点修正', '损耗报废', '登记错误', '退货修正', '其他'];
 
-function sanitizePosInt(value, fallback) {
-  if (fallback === undefined) fallback = 0;
-  if (value === '' || value === undefined || value === null) return fallback;
-  const num = parseInt(value, 10);
-  if (Number.isNaN(num) || num < 1) return fallback;
-  if (num > STOCK_MAX) return STOCK_MAX;
-  return num;
-}
-
-function sanitizeNonNegInt(value, fallback) {
-  if (fallback === undefined) fallback = 0;
-  if (value === '' || value === undefined || value === null) return fallback;
-  const num = parseInt(value, 10);
-  if (Number.isNaN(num) || num < 0) return fallback;
-  if (num > STOCK_MAX) return STOCK_MAX;
-  return num;
+function sanitizeIntegerInput(value, fallback) {
+  if (value === '' || value === undefined || value === null) return '';
+  const text = String(value);
+  if (!/^\d+$/.test(text)) return fallback;
+  const num = Number(text);
+  if (!Number.isSafeInteger(num)) return fallback;
+  return Math.min(num, STOCK_MAX);
 }
 
 function trimText(value) {
@@ -66,6 +57,7 @@ function createOperationProduct(detail) {
     stock: warehouseProduct.stock || 0,
     stockVersion: warehouseProduct.stockVersion || 1,
     status: warehouseProduct.stockStatus,
+    cover: product.cover,
     displayText: getDisplayText(product)
   };
 }
@@ -95,7 +87,7 @@ Page({
     stockVersion: 1,
 
     quantity: '',
-    sourceOrDestination: '',
+    referenceNo: '',
 
     targetStock: '',
     quantityDelta: 0,
@@ -103,10 +95,11 @@ Page({
     customReason: '',
     adjustReasons: ADJUST_REASONS,
 
-    remark: '',
-    remarkLength: 0,
+    operationReason: '',
+    operationReasonLength: 0,
 
     submitting: false,
+    operationCompleted: false,
     confirmDisabled: false,
     validationErrors: {},
 
@@ -121,7 +114,8 @@ Page({
     this.mutationRequestSignature = '';
     this.calcNavStyle();
 
-    const mode = query && query.mode;
+    const requestedMode = query && query.mode;
+    const mode = requestedMode === 'adjust' ? 'adjustment' : requestedMode;
     const warehouseProductId = productView.getWarehouseProductId(query);
 
     if (!mode || !MODE_CONFIG[mode]) {
@@ -153,7 +147,7 @@ Page({
       invalidPage: false,
       invalidDesc: ''
     });
-    this.loadProduct();
+    this.loadProduct({ preserveInput: false });
   },
 
   onUnload() {
@@ -165,7 +159,8 @@ Page({
     if (this.pageActive) this.setData(updates, callback);
   },
 
-  loadProduct() {
+  loadProduct(options) {
+    const preserveInput = Boolean(options && options.preserveInput);
     const version = this.loadingVersion + 1;
     this.loadingVersion = version;
     return productService.getProductDetail({
@@ -174,6 +169,18 @@ Page({
       if (!this.pageActive || version !== this.loadingVersion) return;
       const detail = productView.mapProductDetail(response);
       const product = createOperationProduct(detail);
+      if (!detail.permissions.canOperateStock) {
+        this.safeSetData({
+          product: null,
+          loading: false,
+          invalidPage: true,
+          invalidDesc: ERROR_MESSAGES[ERROR_CODES.FORBIDDEN]
+        });
+        return;
+      }
+      const targetStock = preserveInput && this.data.mode === 'adjustment'
+        ? this.data.targetStock
+        : (this.data.mode === 'adjustment' ? product.stock : '');
       this.safeSetData({
         product,
         loading: false,
@@ -181,12 +188,14 @@ Page({
         stockBefore: product.stock,
         stockAfter: product.stock,
         stockVersion: product.stockVersion,
-        targetStock: this.data.mode === 'adjustment' ? product.stock : '',
-        quantityDelta: 0,
+        targetStock,
         stockStatus: computeStockStatus(product.stock, product.minStock),
         confirmDisabled: this.data.mode === 'outbound' && product.stock <= 0
+      }, () => {
+        this.computeStockAfter();
+        this.computeStockStatus();
+        this.updateConfirmState();
       });
-      this.updateConfirmState();
     }).catch((error) => {
       if (!this.pageActive || version !== this.loadingVersion) return;
       if (productView.isContextInvalid(error)) {
@@ -221,7 +230,7 @@ Page({
 
   onQuantityInput(e) {
     const raw = e.detail.value;
-    const val = sanitizePosInt(raw, raw === '' ? '' : this.data.quantity);
+    const val = sanitizeIntegerInput(raw, this.data.quantity);
     this.resetMutationKey();
     this.setData({ quantity: val, 'validationErrors.quantity': '' });
     this.computeStockAfter();
@@ -255,12 +264,15 @@ Page({
 
   onSourceInput(e) {
     this.resetMutationKey();
-    this.setData({ sourceOrDestination: e.detail.value });
+    this.setData({
+      referenceNo: e.detail.value,
+      'validationErrors.referenceNo': ''
+    });
   },
 
   onTargetStockInput(e) {
     const raw = e.detail.value;
-    const val = sanitizeNonNegInt(raw, raw === '' ? '' : this.data.targetStock);
+    const val = sanitizeIntegerInput(raw, this.data.targetStock);
     this.resetMutationKey();
     this.setData({ targetStock: val, 'validationErrors.targetStock': '' });
     this.computeStockAfter();
@@ -304,8 +316,14 @@ Page({
 
   onRemarkInput(e) {
     this.resetMutationKey();
-    const value = String(e.detail.value || '').slice(0, REMARK_MAX);
-    this.setData({ remark: value, remarkLength: value.length });
+    const value = Array.from(String(e.detail.value || ''))
+      .slice(0, REMARK_MAX)
+      .join('');
+    this.setData({
+      operationReason: value,
+      operationReasonLength: value.length,
+      'validationErrors.operationReason': ''
+    });
   },
 
   computeStockAfter() {
@@ -315,7 +333,9 @@ Page({
 
     if (mode === 'inbound' || mode === 'outbound') {
       const qty = Number(this.data.quantity) || 0;
-      stockAfter = mode === 'inbound' ? stockBefore + qty : stockBefore - qty;
+      stockAfter = mode === 'inbound'
+        ? Math.min(STOCK_MAX, stockBefore + qty)
+        : Math.max(0, stockBefore - qty);
       this.setData({ stockAfter });
     } else if (mode === 'adjustment') {
       const target = this.data.targetStock;
@@ -340,6 +360,7 @@ Page({
     let disabled = false;
 
     if (this.data.loading || !this.data.product) disabled = true;
+    if (this.data.operationCompleted) disabled = true;
     if (mode === 'outbound' && this.data.stockBefore <= 0) disabled = true;
     if (mode === 'adjustment') {
       const targetStock = Number(this.data.targetStock);
@@ -366,8 +387,12 @@ Page({
 
     if (mode === 'inbound' || mode === 'outbound') {
       const qty = this.data.quantity;
-      if (qty === '' || qty === null || qty === undefined || Number(qty) < 1) {
+      if (!Number.isSafeInteger(Number(qty)) || Number(qty) < 1) {
         errors.quantity = '请输入有效的' + (mode === 'inbound' ? '入库' : '出库') + '数量';
+        valid = false;
+      }
+      if (mode === 'inbound' && Number(qty) + this.data.stockBefore > STOCK_MAX) {
+        errors.quantity = '入库后库存不能超过999999999';
         valid = false;
       }
       if (mode === 'outbound' && Number(qty) > this.data.stockBefore) {
@@ -378,24 +403,33 @@ Page({
 
     if (mode === 'adjustment') {
       const target = this.data.targetStock;
-      if (target === '' || target === null || target === undefined || Number.isNaN(Number(target)) || Number(target) < 0) {
+      if (!Number.isSafeInteger(Number(target)) || target === '' ||
+          Number(target) < 0 || Number(target) > STOCK_MAX) {
         errors.targetStock = '请输入有效的实际库存';
         valid = false;
       }
-
-      const reason = this.data.reason;
-      if (!reason) {
-        errors.reason = '请选择调整原因';
+      if (Number(target) === this.data.stockBefore) {
+        errors.targetStock = '盘点库存与当前库存相同，无需调整';
         valid = false;
       }
-      if (reason === '其他' && (!this.data.customReason || !this.data.customReason.trim())) {
-        errors.reason = '请输入自定义调整原因';
+
+      const reason = this.data.reason === '其他'
+        ? trimText(this.data.customReason)
+        : trimText(this.data.reason);
+      if (!reason) {
+        errors.reason = this.data.reason === '其他'
+          ? '请输入自定义调整原因'
+          : '请选择调整原因';
+        valid = false;
+      }
+      if (Array.from(reason).length > REMARK_MAX) {
+        errors.reason = '调整原因不能超过100字';
         valid = false;
       }
     }
 
-    if (trimText(this.data.sourceOrDestination).length > 50) {
-      errors.sourceOrDestination = '来源或去向不能超过50字';
+    if (Array.from(trimText(this.data.referenceNo)).length > 50) {
+      errors.referenceNo = '单据号不能超过50字';
       valid = false;
     }
 
@@ -408,12 +442,12 @@ Page({
     const payload = {
       warehouseProductId: this.warehouseProductId,
       expectedStockVersion: this.data.stockVersion,
-      referenceNo: trimText(this.data.sourceOrDestination)
+      referenceNo: trimText(this.data.referenceNo)
     };
 
     if (mode === 'inbound' || mode === 'outbound') {
       payload.quantity = Number(this.data.quantity);
-      payload.reason = trimText(this.data.remark);
+      payload.reason = trimText(this.data.operationReason);
     } else {
       payload.targetStock = Number(this.data.targetStock);
       payload.reason = this.data.reason === '其他'
@@ -439,7 +473,8 @@ Page({
   },
 
   onConfirm() {
-    if (this.data.submitting || this.data.confirmDisabled) return;
+    if (this.data.submitting || this.data.operationCompleted ||
+        this.data.confirmDisabled) return;
     if (!this.validate()) return;
 
     this.setData({ submitting: true });
@@ -492,15 +527,20 @@ Page({
       this.mutationRequestSignature = '';
       const app = getApp();
       if (app.globalData) app.globalData.inventoryRefreshRequired = true;
-      this.safeSetData({ submitting: false });
-      wx.showToast({
-        title: result && result.idempotent ? '库存已同步' : '库存已更新',
-        icon: 'success',
-        duration: 1400
+      const stockStatus = computeStockStatus(result.afterStock, this.data.product.minStock);
+      this.safeSetData({
+        submitting: false,
+        operationCompleted: true,
+        confirmDisabled: true,
+        stockBefore: result.afterStock,
+        stockAfter: result.afterStock,
+        stockVersion: result.stockVersion,
+        stockStatus,
+        'product.stock': result.afterStock,
+        'product.stockVersion': result.stockVersion,
+        'product.status': stockStatus.status
       });
-      setTimeout(() => {
-        this.onBack();
-      }, 900);
+      this.showSuccessResult(result);
     }).catch((error) => {
       if (!this.pageActive) return;
       if (error && error.code === ERROR_CODES.REQUEST_KEY_CONFLICT) {
@@ -509,13 +549,45 @@ Page({
       }
       this.safeSetData({ submitting: false });
       wx.showToast({
-        title: getStockErrorMessage(error),
+        title: error && error.code === ERROR_CODES.STOCK_VERSION_CONFLICT
+          ? '库存已被其他操作更新，请刷新后重试'
+          : getStockErrorMessage(error),
         icon: 'none',
         duration: 2600
       });
       if (error && error.code === ERROR_CODES.STOCK_VERSION_CONFLICT) {
-        this.loadProduct();
+        this.loadProduct({ preserveInput: true });
       }
+    });
+  },
+
+  showSuccessResult(result) {
+    const unit = this.data.product ? (this.data.product.unit || '') : '';
+    const delta = Number(result.delta) || 0;
+    const deltaText = delta > 0 ? '+' + delta : String(delta);
+    const status = computeStockStatus(result.afterStock, this.data.product.minStock);
+    wx.showModal({
+      title: result.idempotent ? '库存已同步' : '库存操作成功',
+      content: '操作前：' + result.beforeStock + unit +
+        '\n操作后：' + result.afterStock + unit +
+        '\n变化量：' + deltaText + unit +
+        '\n库存状态：' + status.label +
+        '\n库存版本：' + result.stockVersion,
+      showCancel: false,
+      confirmText: '完成',
+      success: () => {
+        if (this.pageActive) this.onBack();
+      },
+      fail: () => {
+        if (this.pageActive) this.onBack();
+      }
+    });
+  },
+
+  onCoverImageError() {
+    if (!this.data.product) return;
+    this.safeSetData({
+      'product.cover': productView.getCoverView(null, this.data.product.name)
     });
   },
 

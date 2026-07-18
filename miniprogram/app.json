@@ -9,6 +9,7 @@
     "pages/product-recycle-bin/product-recycle-bin",
     "pages/catalog-recycle-bin/catalog-recycle-bin",
     "pages/stock-operation/stock-operation",
+    "pages/stock-records/stock-records",
     "pages/records/records",
     "pages/team/team",
     "pages/profile/profile"

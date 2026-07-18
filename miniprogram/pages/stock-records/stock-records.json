@@ -1,0 +1,8 @@
+{
+  "navigationStyle": "custom",
+  "onReachBottomDistance": 120,
+  "usingComponents": {
+    "app-loading": "/components/app-loading/app-loading",
+    "error-state": "/components/error-state/error-state"
+  }
+}

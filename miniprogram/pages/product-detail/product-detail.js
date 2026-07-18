@@ -151,11 +151,27 @@ Page({
     this.openStockOperation('outbound');
   },
 
+  onAdjust() {
+    if (!this.data.permissions.canOperateStock) return;
+    this.openStockOperation('adjustment');
+  },
+
+  openStockRecords() {
+    if (!this.warehouseProductId) {
+      wx.showToast({ title: '产品标识无效，请刷新后重试', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({
+      url: ROUTES.STOCK_RECORDS + '?warehouseProductId=' +
+        encodeURIComponent(this.warehouseProductId)
+    });
+  },
+
   onMore() {
     if (this.data.removing) return;
     const actions = [];
     if (this.data.permissions.canEdit) actions.push({ label: '编辑产品', type: 'edit' });
-    if (this.data.permissions.canOperateStock) actions.push({ label: '调整库存', type: 'stock' });
+    if (this.data.permissions.canOperateStock) actions.push({ label: '盘点调整', type: 'stock' });
     if (this.data.permissions.canRemove) actions.push({ label: '移出当前仓库', type: 'remove' });
     if (!actions.length) return;
     wx.showActionSheet({

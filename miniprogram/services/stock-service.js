@@ -32,6 +32,15 @@ function buildAdjustmentPayload(input) {
   ]);
 }
 
+function buildRecordListPayload(input) {
+  return copyDefined(input, [
+    'warehouseProductId',
+    'type',
+    'cursor',
+    'pageSize'
+  ]);
+}
+
 function inboundStock(input) {
   return cloudService.callApi('stock.inbound', buildQuantityPayload(input));
 }
@@ -44,10 +53,16 @@ function adjustStock(input) {
   return cloudService.callApi('stock.adjust', buildAdjustmentPayload(input));
 }
 
+function listStockRecords(input) {
+  return cloudService.callApi('stock.records.list', buildRecordListPayload(input));
+}
+
 module.exports = {
   buildQuantityPayload,
   buildAdjustmentPayload,
+  buildRecordListPayload,
   inboundStock,
   outboundStock,
-  adjustStock
+  adjustStock,
+  listStockRecords
 };

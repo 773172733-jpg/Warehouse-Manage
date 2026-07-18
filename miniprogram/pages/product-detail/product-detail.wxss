@@ -354,6 +354,35 @@
   color: #747A76;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
 }
+.pd-records-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 26rpx 24rpx;
+  border-radius: 20rpx;
+  background: #FFFFFF;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+.pd-records-entry:active {
+  background: #F2F7F4;
+}
+.pd-records-entry-title {
+  display: block;
+  color: #171917;
+  font-size: 27rpx;
+  font-weight: 600;
+}
+.pd-records-entry-sub {
+  display: block;
+  margin-top: 6rpx;
+  color: #747A76;
+  font-size: 22rpx;
+}
+.pd-records-entry-arrow {
+  color: #078B4B;
+  font-size: 46rpx;
+  line-height: 1;
+}
 
 /* ===== 底部安全区占位 ===== */
 .pd-bottom-spacer {

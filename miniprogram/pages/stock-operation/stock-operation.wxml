@@ -1,4 +1,4 @@
-<!-- 库存操作页 WXML — 入库/出库/库存调整统一页面 -->
+<!-- 库存操作页 WXML - 入库/出库/库存调整统一页面 -->
 
 <!-- 自定义导航栏 -->
 <view class="so-nav" style="{{navStyle}}">
@@ -31,7 +31,8 @@
   <!-- 产品摘要卡片 -->
   <view class="so-product-card" wx:if="{{product}}">
     <view class="so-prod-cover {{product.status==='out'?'so-prod-cover--out':''}} {{product.status==='low'?'so-prod-cover--low':''}}">
-      <text class="so-prod-cover-text">{{product.displayText||'—'}}</text>
+      <image wx:if="{{product.cover.type==='image'&&product.cover.imageUrl}}" class="so-prod-cover-image" src="{{product.cover.imageUrl}}" mode="aspectFill" binderror="onCoverImageError"></image>
+      <text wx:else class="{{product.cover.type==='emoji'?'so-prod-cover-emoji':'so-prod-cover-text'}}">{{product.displayText||'—'}}</text>
     </view>
     <view class="so-prod-info">
       <text class="so-prod-name">{{product.name||'—'}}</text>
@@ -67,10 +68,10 @@
         <text wx:if="{{validationErrors.quantity}}" class="so-field-error">{{validationErrors.quantity}}</text>
       </view>
 
-      <view class="so-field">
-        <text class="so-field-label">{{modeConfig.srcLabel}}</text>
-        <input class="so-input" placeholder="{{modeConfig.srcPlaceholder}}" value="{{sourceOrDestination}}" maxlength="50" bindinput="onSourceInput"/>
-        <text wx:if="{{validationErrors.sourceOrDestination}}" class="so-field-error">{{validationErrors.sourceOrDestination}}</text>
+      <view class="so-field so-field--last">
+        <text class="so-field-label">原因</text>
+        <textarea class="so-textarea" placeholder="{{modeConfig.reasonPlaceholder}}" value="{{operationReason}}" maxlength="{{remarkMax}}" bindinput="onRemarkInput" auto-height/>
+        <text class="so-char-count">{{operationReasonLength}}/{{remarkMax}}</text>
       </view>
     </view>
   </block>
@@ -118,19 +119,35 @@
           </block>
         </view>
         <block wx:if="{{reason==='其他'}}">
-          <input class="so-input so-input--mt" placeholder="请输入调整原因" value="{{customReason}}" maxlength="40" bindinput="onCustomReasonInput"/>
+          <input class="so-input so-input--mt" placeholder="请输入调整原因" value="{{customReason}}" maxlength="100" bindinput="onCustomReasonInput"/>
         </block>
         <text wx:if="{{validationErrors.reason}}" class="so-field-error">{{validationErrors.reason}}</text>
       </view>
     </view>
   </block>
 
+  <view class="so-section">
+    <view class="so-field so-field--last">
+      <text class="so-field-label">单据号</text>
+      <input class="so-input" placeholder="采购单、领用单或盘点单编号（可选）" value="{{referenceNo}}" maxlength="50" bindinput="onSourceInput"/>
+      <text wx:if="{{validationErrors.referenceNo}}" class="so-field-error">{{validationErrors.referenceNo}}</text>
+    </view>
+  </view>
+
   <!-- ====== 操作后库存预览 ====== -->
   <view class="so-section">
     <text class="so-section-title">操作后库存预览</text>
     <view class="so-preview-card {{stockStatus.color==='danger'?'so-preview-card--danger':''}} {{stockStatus.color==='warning'?'so-preview-card--warning':''}}">
       <view class="so-preview-row">
-        <text class="so-preview-label">{{mode==='adjustment'?'操作后库存':'操作后库存'}}</text>
+        <text class="so-preview-label">当前库存</text>
+        <view class="so-preview-value-row">
+          <text class="so-preview-before">{{stockBefore}}</text>
+          <text class="so-preview-unit">{{product.unit||''}}</text>
+        </view>
+      </view>
+      <view class="so-preview-arrow">↓</view>
+      <view class="so-preview-row">
+        <text class="so-preview-label">操作后库存</text>
         <view class="so-preview-value-row">
           <text class="so-preview-value so-preview-value--{{stockStatus.color}}">{{stockAfter}}</text>
           <text class="so-preview-unit">{{product.unit||''}}</text>
@@ -141,15 +158,6 @@
         <text class="so-preview-label">库存状态</text>
         <text class="so-preview-status so-preview-status--{{stockStatus.color}}">{{stockStatus.label}}</text>
       </view>
-    </view>
-  </view>
-
-  <!-- ====== 备注 ====== -->
-  <view class="so-section">
-    <view class="so-field so-field--last">
-      <text class="so-field-label">备注</text>
-      <textarea class="so-textarea" placeholder="{{modeConfig.remarkPlaceholder}}" value="{{remark}}" maxlength="{{remarkMax}}" bindinput="onRemarkInput" auto-height/>
-      <text class="so-char-count">{{remarkLength}}/{{remarkMax}}</text>
     </view>
   </view>
 
