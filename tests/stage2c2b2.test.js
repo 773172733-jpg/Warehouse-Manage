@@ -43,6 +43,7 @@ function createDetailResponse(overrides = {}) {
       stock: 2,
       minStock: 2,
       stockStatus: 'low',
+      stockVersion: 1,
       updatedAt: '2026-07-16T12:00:00.000Z'
     },
     permissions: { canEdit: true, canOperateStock: true, canRemove: true }
@@ -399,6 +400,7 @@ async function testDetailPage() {
   let detailConfig;
   const toasts = [];
   const navigation = [];
+  let actionSheetTapIndex = 0;
   const app = {
     globalData: {},
     clearTeamContext: () => {},
@@ -410,7 +412,7 @@ async function testDetailPage() {
     getWindowInfo: () => ({ statusBarHeight: 20, windowWidth: 390 }),
     getMenuButtonBoundingClientRect: () => ({ width: 0, height: 0, left: 0 }),
     showToast: (options) => toasts.push(options.title),
-    showActionSheet: (options) => options.success({ tapIndex: 0 }),
+    showActionSheet: (options) => options.success({ tapIndex: actionSheetTapIndex }),
     navigateTo: (options) => navigation.push(options.url),
     reLaunch: (options) => navigation.push(options.url),
     navigateBack: () => {},
@@ -435,15 +437,19 @@ async function testDetailPage() {
     await page.detailPromise;
     assert.strictEqual(page.data.product.name, '工业扳手');
     assert.strictEqual(page.data.warehouseProduct.stock, 2);
+    assert.strictEqual(page.data.warehouseProduct.stockVersion, 1);
     assert.strictEqual(page.data.permissions.canOperateStock, true);
     assert.strictEqual(page.data.loaded, true);
 
     page.onInbound();
     page.onOutbound();
     page.onMore();
-    assert.ok(toasts.filter((item) => item === '真实库存操作将在阶段2C4接入').length >= 2);
+    actionSheetTapIndex = 1;
+    page.onMore();
+    assert.ok(navigation.includes('/pages/stock-operation/stock-operation?mode=inbound&warehouseProductId=warehouse_product_12345678'));
+    assert.ok(navigation.includes('/pages/stock-operation/stock-operation?mode=outbound&warehouseProductId=warehouse_product_12345678'));
+    assert.ok(navigation.includes('/pages/stock-operation/stock-operation?mode=adjustment&warehouseProductId=warehouse_product_12345678'));
     assert.ok(navigation.includes('/pages/product-edit/product-edit?mode=edit&warehouseProductId=warehouse_product_12345678'));
-    assert.strictEqual(navigation.some((url) => url.includes('stock-operation')), false);
 
     calls = [];
     productService.getProductDetail = (params) => {
@@ -498,7 +504,7 @@ function testStaticBoundaries() {
   ];
   const source = files.map((file) => fs.readFileSync(path.join(root, file), 'utf8')).join('\n');
   assert.strictEqual(source.includes('mock-data'), false);
-  assert.strictEqual(source.includes('stock-operation'), false);
+  assert.strictEqual(source.includes('stock-operation'), true);
   assert.strictEqual(source.includes('stockRecords'), false);
   assert.strictEqual(source.includes('wx.cloud'), false);
   assert.strictEqual(source.includes('.database('), false);

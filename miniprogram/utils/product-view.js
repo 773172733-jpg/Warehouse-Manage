@@ -153,6 +153,9 @@ function mapInventoryItem(item) {
     stockText: stock === null ? '—' : String(stock),
     minStock,
     stockStatus: normalizeStockStatus(item.stockStatus),
+    stockVersion: Number.isSafeInteger(item.stockVersion) && item.stockVersion > 0
+      ? item.stockVersion
+      : null,
     updatedAt: item.updatedAt || null,
     updatedAtText: formatDateTime(item.updatedAt)
   };
@@ -263,6 +266,9 @@ function mapProductDetail(response) {
       minStock,
       minStockText: minStock === null ? '—' : String(minStock),
       stockStatus: normalizeStockStatus(warehouseProduct.stockStatus),
+      stockVersion: Number.isSafeInteger(warehouseProduct.stockVersion) && warehouseProduct.stockVersion > 0
+        ? warehouseProduct.stockVersion
+        : null,
       updatedAtText: formatDateTime(warehouseProduct.updatedAt)
     },
     permissions: {

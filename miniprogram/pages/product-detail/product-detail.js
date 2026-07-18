@@ -50,8 +50,9 @@ Page({
   },
 
   onShow() {
-    if (this.awaitingEditReturn) {
+    if (this.awaitingEditReturn || this.awaitingStockReturn) {
       this.awaitingEditReturn = false;
+      this.awaitingStockReturn = false;
       this.loadDetail();
     }
   },
@@ -142,12 +143,12 @@ Page({
 
   onInbound() {
     if (!this.data.permissions.canOperateStock) return;
-    wx.showToast({ title: '真实库存操作将在阶段2C4接入', icon: 'none', duration: 2200 });
+    this.openStockOperation('inbound');
   },
 
   onOutbound() {
     if (!this.data.permissions.canOperateStock) return;
-    wx.showToast({ title: '真实库存操作将在阶段2C4接入', icon: 'none', duration: 2200 });
+    this.openStockOperation('outbound');
   },
 
   onMore() {
@@ -167,8 +168,23 @@ Page({
         } else if (action.type === 'remove') {
           this.confirmRemove();
         } else {
-          wx.showToast({ title: '真实库存操作将在阶段2C4接入', icon: 'none', duration: 2200 });
+          this.openStockOperation('adjustment');
         }
+      }
+    });
+  },
+
+  openStockOperation(mode) {
+    if (!this.warehouseProductId) {
+      wx.showToast({ title: '产品标识无效，请刷新后重试', icon: 'none' });
+      return;
+    }
+    this.awaitingStockReturn = true;
+    wx.navigateTo({
+      url: '/pages/stock-operation/stock-operation?mode=' + encodeURIComponent(mode) +
+        '&warehouseProductId=' + encodeURIComponent(this.warehouseProductId),
+      fail: () => {
+        this.awaitingStockReturn = false;
       }
     });
   },

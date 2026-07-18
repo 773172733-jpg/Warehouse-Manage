@@ -319,9 +319,21 @@ Page({
         if (result.tapIndex === 0) {
           this.openProduct(warehouseProductId);
         } else {
-          wx.showToast({ title: '真实库存操作将在阶段2C4接入', icon: 'none', duration: 2200 });
+          this.openStockOperation(warehouseProductId, result.tapIndex === 1 ? 'inbound' : 'outbound');
         }
       }
+    });
+  },
+
+  openStockOperation(warehouseProductId, mode) {
+    const id = String(warehouseProductId || '').trim();
+    if (!id) {
+      wx.showToast({ title: '产品标识无效，请刷新后重试', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({
+      url: '/pages/stock-operation/stock-operation?mode=' + encodeURIComponent(mode) +
+        '&warehouseProductId=' + encodeURIComponent(id)
     });
   },
 

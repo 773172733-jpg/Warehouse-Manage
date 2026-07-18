@@ -1,4 +1,6 @@
 {
   "navigationStyle": "custom",
-  "usingComponents": {}
+  "usingComponents": {
+    "app-loading": "/components/app-loading/app-loading"
+  }
 }

@@ -650,6 +650,26 @@ async function testClientServiceAndStaticBoundaries() {
   assert.strictEqual(/STOCK_RECORDS\)[\s\S]*?\.update\(/.test(stockBackend), false);
   assert.strictEqual(/STOCK_RECORDS\)[\s\S]*?\.remove\(/.test(stockBackend), false);
 
+  const stockOperationPage = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/pages/stock-operation/stock-operation.js'),
+    'utf8'
+  );
+  assert.ok(stockOperationPage.includes("../../services/stock-service.js"));
+  assert.ok(stockOperationPage.includes('stockService.inboundStock'));
+  assert.ok(stockOperationPage.includes('stockService.outboundStock'));
+  assert.ok(stockOperationPage.includes('stockService.adjustStock'));
+  assert.strictEqual(stockOperationPage.includes('../inventory/mock-data'), false);
+  assert.strictEqual(stockOperationPage.includes('本次未真实修改库存'), false);
+
+  [
+    'miniprogram/pages/inventory/inventory.js',
+    'miniprogram/pages/product-detail/product-detail.js'
+  ].forEach((relativePath) => {
+    const source = fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+    assert.strictEqual(source.includes('真实库存操作将在阶段2C4接入'), false);
+    assert.ok(source.includes('/pages/stock-operation/stock-operation'));
+  });
+
   const cleanupWorker = fs.readFileSync(
     path.join(ROOT, 'cloudfunctions/product-image-cleanup-worker/index.js'),
     'utf8'

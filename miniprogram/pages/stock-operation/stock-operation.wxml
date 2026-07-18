@@ -14,11 +14,15 @@
   <view class="so-error-card">
     <view class="so-error-mark">!</view>
     <text class="so-error-title">无法进行库存操作</text>
-    <text class="so-error-desc">产品或操作类型不存在</text>
+    <text class="so-error-desc">{{invalidDesc||'产品或操作类型不存在'}}</text>
     <view class="so-error-btn" catchtap="goHome">
       <text>返回库存首页</text>
     </view>
   </view>
+</view>
+
+<view wx:elif="{{loading}}" class="so-page">
+  <app-loading text="正在读取真实库存"></app-loading>
 </view>
 
 <!-- ===== 正常页面 ===== -->
@@ -65,7 +69,8 @@
 
       <view class="so-field">
         <text class="so-field-label">{{modeConfig.srcLabel}}</text>
-        <input class="so-input" placeholder="{{modeConfig.srcPlaceholder}}" value="{{sourceOrDestination}}" bindinput="onSourceInput"/>
+        <input class="so-input" placeholder="{{modeConfig.srcPlaceholder}}" value="{{sourceOrDestination}}" maxlength="50" bindinput="onSourceInput"/>
+        <text wx:if="{{validationErrors.sourceOrDestination}}" class="so-field-error">{{validationErrors.sourceOrDestination}}</text>
       </view>
     </view>
   </block>
@@ -143,8 +148,8 @@
   <view class="so-section">
     <view class="so-field so-field--last">
       <text class="so-field-label">备注</text>
-      <textarea class="so-textarea" placeholder="{{modeConfig.remarkPlaceholder}}" value="{{remark}}" maxlength="200" bindinput="onRemarkInput" auto-height/>
-      <text class="so-char-count">{{remarkLength}}/200</text>
+      <textarea class="so-textarea" placeholder="{{modeConfig.remarkPlaceholder}}" value="{{remark}}" maxlength="{{remarkMax}}" bindinput="onRemarkInput" auto-height/>
+      <text class="so-char-count">{{remarkLength}}/{{remarkMax}}</text>
     </view>
   </view>
 
@@ -153,8 +158,8 @@
 
   <!-- ====== 底部确认按钮 ====== -->
   <view class="so-action-bar">
-    <view class="so-action-btn so-action-btn--primary {{confirmDisabled?'so-action-btn--disabled':''}}" catchtap="onConfirm">
-      <text>{{modeConfig.btnText}}</text>
+    <view class="so-action-btn so-action-btn--primary {{confirmDisabled||submitting?'so-action-btn--disabled':''}}" catchtap="onConfirm">
+      <text>{{submitting?'提交中':modeConfig.btnText}}</text>
     </view>
   </view>
 
