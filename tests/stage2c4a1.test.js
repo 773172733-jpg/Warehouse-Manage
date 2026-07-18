@@ -133,11 +133,19 @@ function createFixture(role = 'owner') {
     specification: 'RA-180-9010',
     searchKeywords: ['规格型号产品', 'ra-180-9010']
   });
+  const namedModel = createProduct('product_search_name_01', {
+    name: 'RA1809100',
+    normalizedName: 'ra1809100',
+    productCode: '',
+    normalizedCode: '',
+    specification: '',
+    searchKeywords: ['ra1809100']
+  });
   const foreign = createProduct('product_search_foreign', {
     teamId: OTHER_TEAM_ID,
     name: '其他团队产品'
   });
-  const allProducts = [first, second, chinese, specification, foreign];
+  const allProducts = [first, second, chinese, specification, namedModel, foreign];
   const now = Date.UTC(2026, 6, 18, 10, 0, 0);
   const warehouseProducts = [
     createWarehouseProduct('warehouse_product_ra_001', first, new Date(now + 5000)),
@@ -151,6 +159,7 @@ function createFixture(role = 'owner') {
       stockStatus: 'out'
     }),
     createWarehouseProduct('warehouse_product_spec_1', specification, new Date(now + 2000)),
+    createWarehouseProduct('warehouse_product_name_1', namedModel, new Date(now + 1500)),
     createWarehouseProduct('warehouse_product_other_wh', first, new Date(now + 1000), {
       warehouseId: OTHER_WAREHOUSE_ID
     }),
@@ -290,6 +299,7 @@ function testNormalizationAndTokens() {
   assert.strictEqual(keywords.includes('r901'), false);
   assert.ok(keywords.includes('工业 扳手'));
   assert.ok(keywords.includes('工业扳手'));
+  assert.ok(keywords.includes('业扳'));
   assert.ok(keywords.includes('spec1809010'));
   assert.ok(keywords.length <= SEARCH_KEYWORD_LIMIT);
   assert.strictEqual(SEARCH_FRAGMENT_MAX_LENGTH, 20);
@@ -376,6 +386,14 @@ async function testHistoricalRebuildAndSearch() {
   );
   assert.ok(specification.items.some((item) => item.name === '规格型号产品'));
 
+  const namedModel = await listProducts(
+    fixture.db,
+    fixture.user,
+    { keyword: '180', pageSize: 20 },
+    {}
+  );
+  assert.ok(namedModel.items.some((item) => item.name === 'RA1809100'));
+
   const chinese = await listProducts(fixture.db, fixture.user, { keyword: '工业', pageSize: 20 }, {});
   assert.strictEqual(chinese.items.length, 1);
   assert.strictEqual(chinese.items[0].name, '工业扳手');
@@ -426,7 +444,7 @@ async function testHistoricalRebuildAndSearch() {
     keyword: '   ',
     pageSize: 20
   }, {});
-  assert.strictEqual(emptySearch.items.length, 4);
+  assert.strictEqual(emptySearch.items.length, 5);
 
   const productQueries = fixture.queryCalls.filter((item) => item.collection === 'products');
   assert.ok(productQueries.length > 0);

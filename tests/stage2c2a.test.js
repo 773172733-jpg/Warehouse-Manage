@@ -87,8 +87,8 @@ function testNormalizationAndValidation() {
   assert.strictEqual(input.normalizedCode, 'tool 001');
   assert.strictEqual(input.searchKeywords.includes('forged'), false);
   assert.ok(input.searchKeywords.includes('工具'));
-  assert.ok(input.searchKeywords.length <= 96);
-  assert.ok(input.searchKeywords.every((keyword) => Array.from(keyword).length <= 20));
+  assert.ok(input.searchKeywords.length <= 136);
+  assert.ok(input.searchKeywords.every((keyword) => Array.from(keyword).length <= 40));
 
   expectCode(() => sanitizeProductInput(createInput({ name: '' })), ERROR_CODES.INVALID_PRODUCT_NAME);
   expectCode(() => sanitizeProductInput(createInput({ productCode: 'x'.repeat(41) })), ERROR_CODES.INVALID_PRODUCT_CODE);
@@ -116,7 +116,7 @@ function testKeywordsAndStockStatus() {
   assert.ok(keywords.includes('abc'));
   assert.ok(keywords.includes('工具'));
   assert.ok(keywords.includes('12 mm'));
-  assert.ok(keywords.length <= 96);
+  assert.ok(keywords.length <= 136);
   assert.strictEqual(computeStockStatus(0, 0), 'out');
   assert.strictEqual(computeStockStatus(1, 1), 'low');
   assert.strictEqual(computeStockStatus(2, 1), 'normal');

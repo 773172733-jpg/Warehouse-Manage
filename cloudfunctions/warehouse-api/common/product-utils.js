@@ -11,7 +11,7 @@ const MAX_PAGE_SIZE = 50;
 const SEARCH_SOURCE_MAX_LENGTH = 40;
 const SEARCH_FRAGMENT_MAX_LENGTH = 20;
 const SEARCH_FRAGMENT_LIMIT_PER_FIELD = 40;
-const SEARCH_KEYWORD_LIMIT = 96;
+const SEARCH_KEYWORD_LIMIT = 136;
 const PRODUCT_ID_PATTERN = /^[A-Za-z0-9_-]{8,80}$/;
 const STOCK_STATUSES = ['normal', 'low', 'out'];
 const COVER_TYPES = ['none', 'text', 'emoji', 'image'];
@@ -152,7 +152,7 @@ function buildSearchKeywords(source) {
     normalizeProductName(value).split(/[\s,，/|;；]+/).forEach((part) => append(part));
   });
 
-  [source.productCode, source.specification].forEach((value) => {
+  [source.productCode, source.specification, source.name].forEach((value) => {
     const characters = Array.from(normalizeSearchText(value))
       .slice(0, SEARCH_SOURCE_MAX_LENGTH);
     if (characters.length < 2) return;
