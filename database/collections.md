@@ -116,7 +116,7 @@ products不得保存 `warehouseId`、`stock`、`minStock`、`stockStatus`或 `st
 
 - `_id`、`teamId`、`warehouseId`、`productId`、`warehouseProductId`
 - `productNameSnapshot`、`productCodeSnapshot`、`unitSnapshot`
-- `type`：`initial`、`inbound`、`outbound`、`adjust`
+- `type`：`initial`、`inbound`、`outbound`、`adjustment`
 - `changeQuantity`：有符号整数
 - `beforeStock`、`afterStock`
 - `reason`、`sourceOrDestination`、`remark`
@@ -127,6 +127,16 @@ products不得保存 `warehouseId`、`stock`、`minStock`、`stockStatus`或 `st
 流水永久保留，用户不能修改或删除。产品、仓库实例或成员变化后，历史仍通过快照正常显示；未来只允许不可变冷归档。
 
 共享目录删除、共享目录恢复、仓库移除和仓库恢复都不会修改或删除既有stock_records；只有真实库存写接口可在余额事务中新增流水。
+
+阶段2C4A启用 `stock.inbound`、`stock.outbound` 和 `stock.adjust`。新流水的 `type`
+使用 `inbound`、`outbound`、`adjustment`，并补齐 `delta`、`quantity`、
+`referenceNo`、`operatorUserId`、`operatorRole`、`stockVersionBefore`、
+`stockVersionAfter`；兼容字段 `changeQuantity` 继续保存带符号变化量，
+`requestAction` 继续保存action。历史 `initial` 流水不迁移、不重写。
+
+库存写入的确定性流水ID由可信 `teamId`、`warehouseId` 和 `requestKey` 生成。
+`requestHash` 覆盖action、仓库产品、变化数量或目标库存、原因、参考号和预期库存版本。
+该实现不新增集合或索引。
 
 ## categories（当前不创建）
 
