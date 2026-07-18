@@ -296,6 +296,7 @@ async function testOwnerAdminViewerAndResponses() {
     assert.strictEqual(result.stockVersion, 2);
     assert.strictEqual(result.stockStatus, 'normal');
     assert.strictEqual(result.idempotent, false);
+    assert.ok(result.createdAt instanceof Date);
     assert.strictEqual(fixture.documents.warehouse_products.get(WAREHOUSE_PRODUCT_ID).stock, 14);
     assert.strictEqual(fixture.documents.stock_records.size, 1);
     ['operatorUserId', 'operatorRole', 'requestHash', 'requestKey', 'teamId', 'warehouseId']

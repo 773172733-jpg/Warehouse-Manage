@@ -149,7 +149,7 @@ async function mutateStock(db, user, action, rawInput) {
     access.warehouse._id,
     input.requestKey
   );
-  let result;
+  let idempotent = false;
 
   try {
     await db.runTransaction(async (transaction) => {
@@ -165,13 +165,14 @@ async function mutateStock(db, user, action, rawInput) {
         recordId
       );
       if (existingRecord) {
-        result = presentStockMutation(assertIdempotentRecord(existingRecord, {
+        assertIdempotentRecord(existingRecord, {
           action,
           requestHash,
           teamId: locked.team._id,
           warehouseId: locked.warehouse._id,
           warehouseProductId: input.warehouseProductId
-        }), true);
+        });
+        idempotent = true;
         return;
       }
 
@@ -214,8 +215,6 @@ async function mutateStock(db, user, action, rawInput) {
         stockVersionAfter,
         now
       });
-      const record = Object.assign({ _id: recordId }, recordData);
-
       await transaction.collection(COLLECTIONS.WAREHOUSE_PRODUCTS)
         .doc(input.warehouseProductId)
         .update({
@@ -233,9 +232,20 @@ async function mutateStock(db, user, action, rawInput) {
       await transaction.collection(COLLECTIONS.STOCK_RECORDS)
         .doc(recordId)
         .set({ data: recordData });
-      result = presentStockMutation(record, false);
-    });
-    return result;
+      idempotent = false;
+    }, 5);
+
+    const committedRecord = await getDocument(db, COLLECTIONS.STOCK_RECORDS, recordId);
+    if (!committedRecord) {
+      throw new ApiError(ERROR_CODES.DATABASE_ERROR, 'Stock transaction result could not be read.');
+    }
+    return presentStockMutation(assertIdempotentRecord(committedRecord, {
+      action,
+      requestHash,
+      teamId: access.team._id,
+      warehouseId: access.warehouse._id,
+      warehouseProductId: input.warehouseProductId
+    }), idempotent);
   } catch (error) {
     if (error && error.code === ERROR_CODES.MEMBERSHIP_NOT_ACTIVE) {
       throw new ApiError(ERROR_CODES.FORBIDDEN, 'Current membership cannot operate stock.');
