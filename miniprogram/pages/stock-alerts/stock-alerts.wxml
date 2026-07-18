@@ -1,0 +1,129 @@
+<view class="alerts-page">
+  <view class="alerts-hero">
+    <view>
+      <text class="alerts-eyebrow">{{warehouseName}}</text>
+      <text class="alerts-title">库存预警中心</text>
+      <text class="alerts-subtitle">提前发现缺口，把补货安排在断货之前</text>
+    </view>
+    <view class="alerts-overview">
+      <text class="alerts-overview-value">{{overviewCount}}</text>
+      <text class="alerts-overview-label">全仓当前状态</text>
+    </view>
+  </view>
+
+  <view class="alerts-filter-panel">
+    <view class="alerts-status-tabs">
+      <view
+        wx:for="{{alertFilters}}"
+        wx:key="value"
+        class="alerts-status-tab {{alertType===item.value?'alerts-status-tab--active-'+item.value:''}}"
+        data-alert-type="{{item.value}}"
+        catchtap="onAlertTypeTap"
+      >{{item.label}}</view>
+    </view>
+
+    <view class="alerts-search {{searchFocused?'alerts-search--focused':''}}">
+      <view class="alerts-search-icon"></view>
+      <input
+        class="alerts-search-input"
+        value="{{keyword}}"
+        placeholder="搜索商品名称、型号或编号"
+        maxlength="40"
+        confirm-type="search"
+        bindinput="onSearchInput"
+        bindfocus="onSearchFocus"
+        bindblur="onSearchBlur"
+      />
+      <view wx:if="{{keyword}}" class="alerts-search-clear" catchtap="onSearchClear">×</view>
+    </view>
+
+    <scroll-view class="alerts-categories" scroll-x enhanced show-scrollbar="{{false}}">
+      <view
+        wx:for="{{categories}}"
+        wx:key="*this"
+        class="alerts-category {{selectedCategory===item?'alerts-category--active':''}}"
+        data-category="{{item}}"
+        catchtap="onCategoryTap"
+      >{{item}}</view>
+    </scroll-view>
+  </view>
+
+  <app-loading wx:if="{{loading || refreshing}}" text="正在核对库存预警"></app-loading>
+
+  <error-state
+    wx:elif="{{error && !items.length}}"
+    title="预警加载失败"
+    message="{{error}}"
+    bind:retry="handleRetry"
+  ></error-state>
+
+  <empty-state
+    wx:elif="{{initialized && !loading && !items.length}}"
+    title="{{keyword||selectedCategory!=='全部'?'没有找到匹配的预警商品':(alertType==='out'?'暂无缺货商品':'暂无低库存商品')}}"
+    description="{{keyword||selectedCategory!=='全部'?'请调整搜索词或分类筛选':'当前仓库没有符合此状态的商品'}}"
+  ></empty-state>
+
+  <view wx:else class="alerts-list">
+    <view
+      wx:for="{{items}}"
+      wx:key="warehouseProductId"
+      class="alert-card alert-card--{{item.stockStatus}}"
+      data-warehouse-product-id="{{item.warehouseProductId}}"
+      bindtap="onCardTap"
+    >
+      <view class="alert-card-head">
+        <view class="alert-cover" style="background:{{item.cover.background}}">
+          <image
+            wx:if="{{item.cover.type==='image' && item.cover.imageAvailable && item.cover.imageUrl && !item.cover.imageFailed}}"
+            class="alert-cover-image"
+            src="{{item.cover.imageUrl}}"
+            mode="aspectFill"
+            data-warehouse-product-id="{{item.warehouseProductId}}"
+            binderror="onCoverImageError"
+          ></image>
+          <text wx:elif="{{item.cover.type==='emoji' && item.cover.emoji}}" class="alert-cover-emoji">{{item.cover.emoji}}</text>
+          <text wx:elif="{{item.cover.type==='text' && item.cover.text}}" class="alert-cover-text">{{item.cover.text}}</text>
+          <text wx:else class="alert-cover-text">{{item.cover.fallback}}</text>
+        </view>
+        <view class="alert-card-info">
+          <view class="alert-title-row">
+            <text class="alert-name">{{item.name}}</text>
+            <text class="alert-badge alert-badge--{{item.stockStatus}}">{{item.stockStatus==='out'?'已缺货':'低库存'}}</text>
+          </view>
+          <text class="alert-code">{{item.productCode||'无型号或编号'}}</text>
+          <view class="alert-meta-row">
+            <text class="alert-category">{{item.category}}</text>
+            <text class="alert-updated">更新 {{item.updatedAtText}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="alert-stock-grid">
+        <view class="alert-stock-cell">
+          <text class="alert-stock-label">当前库存</text>
+          <view><text class="alert-stock-value alert-stock-value--{{item.stockStatus}}">{{item.stockText}}</text><text class="alert-stock-unit">{{item.unit}}</text></view>
+        </view>
+        <view class="alert-stock-divider"></view>
+        <view class="alert-stock-cell">
+          <text class="alert-stock-label">最低库存</text>
+          <view><text class="alert-stock-value">{{item.minStock}}</text><text class="alert-stock-unit">{{item.unit}}</text></view>
+        </view>
+      </view>
+
+      <view class="alert-card-foot">
+        <text class="alert-replenishment">{{item.replenishmentText}}</text>
+        <view
+          wx:if="{{canOperateStock}}"
+          class="alert-inbound"
+          data-warehouse-product-id="{{item.warehouseProductId}}"
+          catchtap="onInboundTap"
+        >入库</view>
+        <text wx:else class="alert-readonly">仅查看</text>
+      </view>
+    </view>
+
+    <view wx:if="{{loadingMore}}" class="alerts-footer">正在加载更多…</view>
+    <view wx:elif="{{error}}" class="alerts-footer alerts-footer--error" catchtap="handleRetry">{{error}}，点击重试</view>
+    <view wx:elif="{{items.length && !hasMore}}" class="alerts-footer">已加载当前筛选下的全部预警商品</view>
+  </view>
+</view>

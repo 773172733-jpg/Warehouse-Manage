@@ -528,6 +528,7 @@ Page({
       const app = getApp();
       if (app.globalData) {
         app.globalData.inventoryRefreshRequired = true;
+        app.globalData.stockAlertsRefreshRequired = true;
         app.globalData.stockRecordsRefreshRequired = {
           warehouseProductId: this.warehouseProductId
         };

@@ -4,6 +4,7 @@
     "pages/team-setup/team-setup",
     "pages/team-join/team-join",
     "pages/inventory/inventory",
+    "pages/stock-alerts/stock-alerts",
     "pages/product-detail/product-detail",
     "pages/product-edit/product-edit",
     "pages/product-recycle-bin/product-recycle-bin",

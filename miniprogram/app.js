@@ -9,7 +9,8 @@ App({
     currentTeam: null,
     currentRole: null,
     currentWarehouse: null,
-    bootstrapStatus: 'idle'
+    bootstrapStatus: 'idle',
+    stockAlertsRefreshRequired: false
   },
 
   bootstrapPromise: null,
@@ -69,6 +70,7 @@ App({
     this.globalData.currentTeam = null;
     this.globalData.currentRole = null;
     this.globalData.currentWarehouse = null;
+    this.globalData.stockAlertsRefreshRequired = false;
     this.globalData.bootstrapStatus = options.bootstrapStatus || 'idle';
   },
 

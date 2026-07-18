@@ -692,9 +692,8 @@ Page({
   },
 
   validateStep2: function () {
-    if (this.data.mode === 'edit') return true;
     var form = this.data.form;
-    if (getValidQuantity(form.stock) === null) {
+    if (this.data.mode !== 'edit' && getValidQuantity(form.stock) === null) {
       this.setData({ 'fieldErrors.stock': '请输入有效的初始库存' });
       wx.showToast({ title: '请输入有效的初始库存', icon: 'none', duration: 2000 });
       return false;
@@ -777,6 +776,7 @@ Page({
         self.createCompleted = true;
         if (app.globalData) {
           app.globalData.inventoryRefreshRequired = true;
+          app.globalData.stockAlertsRefreshRequired = true;
           if (result.initialRecord) {
             app.globalData.warehouseStockRecordsRefreshRequired = true;
           }
@@ -824,6 +824,10 @@ Page({
     }
     if (!this.validateStep1()) {
       this.safeSetData({ currentStep: 1 });
+      return;
+    }
+    if (!this.validateStep2()) {
+      this.safeSetData({ currentStep: 2 });
       return;
     }
     this.safeSetData({ saving: true, saveError: '' });
@@ -878,7 +882,10 @@ Page({
           updateRequestKey: '',
           submittedPayloadHash: ''
         });
-        if (app.globalData) app.globalData.inventoryRefreshRequired = true;
+        if (app.globalData) {
+          app.globalData.inventoryRefreshRequired = true;
+          app.globalData.stockAlertsRefreshRequired = true;
+        }
         wx.showToast({ title: '产品信息已更新', icon: 'success', duration: 1400 });
         wx.navigateBack({ delta: 1 });
       })

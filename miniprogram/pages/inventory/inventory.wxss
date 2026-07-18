@@ -184,6 +184,9 @@
 .inv-summary-item--active {
   background: #EAF6EF;
 }
+.inv-summary-item--link:active {
+  background: #F2F7F4;
+}
 .inv-summary-divider {
   width: 1rpx;
   background: #E7EBE8;

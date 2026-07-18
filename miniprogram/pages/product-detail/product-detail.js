@@ -253,7 +253,10 @@ Page({
       if (!this.pageActive) return;
       this.removeRequestKey = '';
       this.safeSetData({ removing: false });
-      if (app.globalData) app.globalData.inventoryRefreshRequired = true;
+      if (app.globalData) {
+        app.globalData.inventoryRefreshRequired = true;
+        app.globalData.stockAlertsRefreshRequired = true;
+      }
       wx.showToast({ title: '已从当前仓库移除', icon: 'success', duration: 1500 });
       wx.switchTab({ url: ROUTES.INVENTORY });
     }).catch((error) => {
@@ -262,7 +265,10 @@ Page({
       if (error && error.code === 'REQUEST_KEY_CONFLICT') this.removeRequestKey = '';
       if (error && error.code === 'PRODUCT_ALREADY_REMOVED') {
         this.removeRequestKey = '';
-        if (app.globalData) app.globalData.inventoryRefreshRequired = true;
+        if (app.globalData) {
+          app.globalData.inventoryRefreshRequired = true;
+          app.globalData.stockAlertsRefreshRequired = true;
+        }
         wx.showToast({ title: '该产品已经从当前仓库移除', icon: 'none' });
         wx.switchTab({ url: ROUTES.INVENTORY });
         return;

@@ -37,17 +37,17 @@
   <view class="inv-summary">
     <view class="inv-summary-item">
       <text class="inv-summary-value inv-summary-value--primary">{{summary.total}}种</text>
-      <text class="inv-summary-label">已加载产品</text>
+      <text class="inv-summary-label">全部产品</text>
     </view>
     <view class="inv-summary-divider"></view>
-    <view class="inv-summary-item">
+    <view class="inv-summary-item inv-summary-item--link" data-alert-type="low" catchtap="onAlertSummaryTap">
       <text class="inv-summary-value inv-summary-value--warning">{{summary.lowCount}}种</text>
-      <text class="inv-summary-label">已加载低库存</text>
+      <text class="inv-summary-label">低库存 ›</text>
     </view>
     <view class="inv-summary-divider"></view>
-    <view class="inv-summary-item">
+    <view class="inv-summary-item inv-summary-item--link" data-alert-type="out" catchtap="onAlertSummaryTap">
       <text class="inv-summary-value inv-summary-value--danger">{{summary.outCount}}种</text>
-      <text class="inv-summary-label">已加载缺货</text>
+      <text class="inv-summary-label">已缺货 ›</text>
     </view>
   </view>
 

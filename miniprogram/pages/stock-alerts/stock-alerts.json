@@ -1,0 +1,13 @@
+{
+  "navigationBarTitleText": "库存预警",
+  "navigationBarBackgroundColor": "#F5F8F5",
+  "navigationBarTextStyle": "black",
+  "enablePullDownRefresh": true,
+  "backgroundColor": "#F5F8F5",
+  "onReachBottomDistance": 120,
+  "usingComponents": {
+    "empty-state": "/components/empty-state/empty-state",
+    "app-loading": "/components/app-loading/app-loading",
+    "error-state": "/components/error-state/error-state"
+  }
+}

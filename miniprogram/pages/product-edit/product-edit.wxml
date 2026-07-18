@@ -224,13 +224,27 @@
 </view>
  </block>
 
-<view wx:else class="pe-stock-preview-card">
-  <text class="pe-section-subtitle">库存信息不可在编辑资料时修改</text>
+<block wx:else>
+<view class="pe-stock-preview-card">
+  <text class="pe-section-subtitle">当前库存保持不变</text>
   <view class="pe-stock-preview-row"><text class="pe-sp-label">当前库存</text><text class="pe-sp-value">{{form.stock}}</text></view>
-  <view class="pe-stock-preview-row"><text class="pe-sp-label">最低库存</text><text class="pe-sp-value">{{form.minStock}}</text></view>
   <view class="pe-stock-preview-divider"></view>
-  <text class="pe-toggle-text">库存和预警值需要通过库存操作功能修改</text>
+  <text class="pe-toggle-text">修改最低库存不会产生库存流水，也不会改变当前库存。</text>
 </view>
+<view class="pe-field">
+  <text class="pe-field-label">最低库存</text>
+  <view class="pe-number-row">
+    <view class="pe-number-btn {{form.minStock<=0?'pe-number-btn--disabled':''}}" catchtap="onMinStockDecrease">−</view>
+    <input class="pe-number-input" type="number" value="{{form.minStock}}" bindinput="onMinStockInput"/>
+    <view class="pe-number-btn {{form.minStock>=999999999?'pe-number-btn--disabled':''}}" catchtap="onMinStockIncrease">+</view>
+  </view>
+</view>
+<view class="pe-stock-preview-card">
+  <text class="pe-section-subtitle">更新后预警状态</text>
+  <view class="pe-stock-preview-row"><text class="pe-sp-label">最低库存</text><text class="pe-sp-value">{{form.minStock}}</text></view>
+  <view class="pe-stock-preview-row"><text class="pe-sp-label">库存状态</text><text class="pe-sp-status pe-sp-status--{{stockStatus.color}}">{{stockStatus.label}}</text></view>
+</view>
+</block>
 
 </view><!-- /第二步 -->
 

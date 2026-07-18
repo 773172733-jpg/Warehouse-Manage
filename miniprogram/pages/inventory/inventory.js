@@ -169,7 +169,7 @@ Page({
           hasMore: normalized.hasMore && Boolean(normalized.nextCursor),
           nextCursor: normalized.nextCursor,
           initialized: true,
-          summary: productView.getLoadedSummary(items)
+          summary: normalized.summary || productView.getLoadedSummary(items)
         });
       })
       .catch((error) => {
@@ -209,8 +209,7 @@ Page({
           loadingMore: false,
           error: '',
           hasMore: normalized.hasMore && Boolean(normalized.nextCursor),
-          nextCursor: normalized.nextCursor,
-          summary: productView.getLoadedSummary(items)
+          nextCursor: normalized.nextCursor
         });
       })
       .catch((error) => {
@@ -275,6 +274,14 @@ Page({
     const allowed = STOCK_FILTERS.some((item) => item.value === stockStatus);
     if (!allowed || stockStatus === this.data.selectedStockStatus) return;
     this.safeSetData({ selectedStockStatus: stockStatus }, () => this.reloadInventory());
+  },
+
+  onAlertSummaryTap(event) {
+    const alertType = String(event.currentTarget.dataset.alertType || '').trim();
+    if (alertType !== 'low' && alertType !== 'out') return;
+    wx.navigateTo({
+      url: ROUTES.STOCK_ALERTS + '?alertType=' + encodeURIComponent(alertType)
+    });
   },
 
   onAddTap() {

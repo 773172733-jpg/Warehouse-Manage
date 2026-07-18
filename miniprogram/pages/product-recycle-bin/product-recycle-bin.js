@@ -210,7 +210,10 @@ Page({
         delete this.restoreIntents[warehouseProductId];
         delete this.restoringProducts[warehouseProductId];
         const app = getApp();
-        if (app.globalData) app.globalData.inventoryRefreshRequired = true;
+        if (app.globalData) {
+          app.globalData.inventoryRefreshRequired = true;
+          app.globalData.stockAlertsRefreshRequired = true;
+        }
         this.safeSetData({
           items: this.data.items.filter((item) => item.warehouseProductId !== warehouseProductId)
         });
@@ -228,7 +231,10 @@ Page({
         if (error && error.code === 'PRODUCT_ALREADY_ACTIVE') {
           delete this.restoreIntents[warehouseProductId];
           const app = getApp();
-          if (app.globalData) app.globalData.inventoryRefreshRequired = true;
+          if (app.globalData) {
+            app.globalData.inventoryRefreshRequired = true;
+            app.globalData.stockAlertsRefreshRequired = true;
+          }
           wx.showToast({ title: '该产品已经恢复到当前仓库', icon: 'none' });
           this.reload();
           return;
