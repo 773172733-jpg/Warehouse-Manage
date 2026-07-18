@@ -14,7 +14,7 @@ const LOAD_ERROR_MESSAGES = {
   [ERROR_CODES.INVALID_CURSOR]: '列表状态已失效，请重新刷新',
   [ERROR_CODES.INVALID_PAGE_SIZE]: '加载参数不正确，请刷新页面',
   [ERROR_CODES.INVALID_CATEGORY]: '分类筛选条件不正确',
-  INVALID_STOCK_STATUS: '库存状态筛选不正确',
+  [ERROR_CODES.INVALID_ALERT_TYPE]: '库存预警类型不正确',
   [ERROR_CODES.WAREHOUSE_NOT_FOUND]: '当前仓库不存在，请重新进入小程序',
   [ERROR_CODES.WAREHOUSE_NOT_ACTIVE]: '当前仓库暂不可用',
   [ERROR_CODES.NO_ACTIVE_TEAM]: '你当前没有可用团队',
@@ -167,10 +167,25 @@ function normalizeListResponse(response) {
     ? source.items.map(mapInventoryItem).filter(Boolean)
     : [];
   const hasMore = Boolean(source.hasMore);
+  const summarySource = source.summary && typeof source.summary === 'object'
+    ? source.summary
+    : null;
+  const summary = summarySource && [
+    summarySource.total,
+    summarySource.lowCount,
+    summarySource.outCount
+  ].every((value) => Number.isSafeInteger(value) && value >= 0)
+    ? {
+      total: summarySource.total,
+      lowCount: summarySource.lowCount,
+      outCount: summarySource.outCount
+    }
+    : null;
   return {
     items,
     hasMore,
-    nextCursor: hasMore && typeof source.nextCursor === 'string' ? source.nextCursor : null
+    nextCursor: hasMore && typeof source.nextCursor === 'string' ? source.nextCursor : null,
+    summary
   };
 }
 
@@ -214,7 +229,11 @@ function buildListParams(state, cursor) {
   if (keyword) params.keyword = keyword;
   if (category && category !== '全部') params.category = category;
   if (STOCK_STATUSES.includes(stockStatus)) params.stockStatus = stockStatus;
-  if (typeof cursor === 'string' && cursor) params.cursor = cursor;
+  if (typeof cursor === 'string' && cursor) {
+    params.cursor = cursor;
+  } else {
+    params.includeSummary = true;
+  }
   return params;
 }
 

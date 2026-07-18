@@ -255,9 +255,18 @@ function buildUpdateProductPayload(form, context) {
   if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) {
     throw createLocalError('INVALID_PRODUCT_VERSION', UPDATE_ERROR_MESSAGES.INVALID_PRODUCT_VERSION);
   }
-  return Object.assign({ productId, expectedVersion }, buildProductMainPayload(form, {
+  const source = form && typeof form === 'object' ? form : {};
+  const payload = Object.assign({ productId, expectedVersion }, buildProductMainPayload(form, {
     originalCover: state.originalCover
   }));
+  if (source.minStock !== undefined) {
+    payload.minStock = source.lowStockEnabled === false ? 0 : parseQuantity(
+      source.minStock,
+      'INVALID_MIN_STOCK',
+      ERROR_MESSAGES.INVALID_MIN_STOCK
+    );
+  }
+  return payload;
 }
 
 function createPayloadSignature(payload) {

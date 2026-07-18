@@ -139,6 +139,23 @@ async function requireProductAccess(db, user, requiredRole) {
   return Object.assign({}, access, { warehouse });
 }
 
+async function assertProductListMembershipState(db, user) {
+  if (!user.currentTeamId) return;
+  try {
+    const membership = await getDocument(
+      db,
+      COLLECTIONS.TEAM_MEMBERS,
+      createMembershipId(user.currentTeamId, user._id)
+    );
+    if (membership && membership.status !== 'active') {
+      throw new ApiError(ERROR_CODES.FORBIDDEN, '当前成员状态不可查看库存预警。');
+    }
+  } catch (error) {
+    if (isApiError(error)) throw error;
+    throw new ApiError(ERROR_CODES.DATABASE_ERROR, '成员状态读取失败，请稍后重试。');
+  }
+}
+
 async function requireProductAccessInTransaction(transaction, user, access, requiredRole) {
   const lockedUser = await getDocument(transaction, COLLECTIONS.USERS, user._id);
   const team = await getDocument(transaction, COLLECTIONS.TEAMS, access.team._id);
@@ -546,6 +563,30 @@ function buildProductListWhere(command, input, access, status) {
   return branches.length === 1 ? branches[0] : command.or(branches);
 }
 
+async function countWarehouseProducts(db, access, stockStatus) {
+  const where = {
+    teamId: access.team._id,
+    warehouseId: access.warehouse._id,
+    status: 'active'
+  };
+  if (stockStatus) where.stockStatus = stockStatus;
+  const result = await db.collection(COLLECTIONS.WAREHOUSE_PRODUCTS).where(where).count();
+  return Number.isSafeInteger(result && result.total) && result.total >= 0 ? result.total : 0;
+}
+
+async function loadInventorySummary(db, access) {
+  const counts = await Promise.all([
+    countWarehouseProducts(db, access, ''),
+    countWarehouseProducts(db, access, 'low'),
+    countWarehouseProducts(db, access, 'out')
+  ]);
+  return {
+    total: counts[0],
+    lowCount: counts[1],
+    outCount: counts[2]
+  };
+}
+
 function buildDeletedCatalogListWhere(command, input, teamId) {
   const base = { teamId, status: 'deleted' };
   if (input.category) base.category = input.category;
@@ -639,6 +680,7 @@ async function updateProduct(db, user, rawInput, options) {
   );
   const requestHash = createMutationRequestHash(PRODUCT_UPDATE_ACTION, {
     teamId: access.team._id,
+    warehouseId: access.warehouse._id,
     productId: input.productId
   }, input);
   let idempotent = false;
@@ -669,6 +711,9 @@ async function updateProduct(db, user, rawInput, options) {
       const now = db.serverDate();
       const lifecycleNow = new Date();
       const nextVersion = product.version + 1;
+      const nextMinStock = input.minStock === undefined
+        ? warehouseProduct.minStock
+        : input.minStock;
       const imageContext = {
         teamId: locked.team._id,
         userId: locked.user._id
@@ -703,6 +748,8 @@ async function updateProduct(db, user, rawInput, options) {
           userId: locked.user._id,
           now
         }), {
+          minStock: nextMinStock,
+          stockStatus: computeStockStatus(warehouseProduct.stock, nextMinStock),
           lastMutationAction: PRODUCT_UPDATE_ACTION,
           lastMutationRequestKey: input.requestKey,
           lastMutationInputHash: requestHash
@@ -1306,9 +1353,10 @@ function assertProductAccess(product, teamId) {
 async function listProducts(db, user, rawInput, options) {
   const input = validateProductListInput(rawInput);
   try {
+    await assertProductListMembershipState(db, user);
     const access = await requireProductAccess(db, user);
     const where = buildProductListWhere(db.command, input, access);
-    const result = await db.collection(COLLECTIONS.WAREHOUSE_PRODUCTS)
+    const listQuery = db.collection(COLLECTIONS.WAREHOUSE_PRODUCTS)
       .where(where)
       .orderBy('updatedAt', 'desc')
       .orderBy('_id', 'desc')
@@ -1329,18 +1377,26 @@ async function listProducts(db, user, rawInput, options) {
         productVersion: true,
         stockVersion: true,
         updatedAt: true
-      })
-      .get();
+      });
+    const results = await Promise.all([
+      listQuery.get(),
+      input.includeSummary ? loadInventorySummary(db, access) : Promise.resolve(null)
+    ]);
+    const result = results[0];
+    const summary = results[1];
     const documents = result.data || [];
     const hasMore = documents.length > input.pageSize;
     const page = documents.slice(0, input.pageSize);
     const productsById = await loadProductCoverSources(db, access.team._id, page);
-    const coverSources = page.map((warehouseProduct) => {
+    const displayPage = page.filter((warehouseProduct) => {
+      return productsById.has(warehouseProduct.productId);
+    });
+    const coverSources = displayPage.map((warehouseProduct) => {
       return productsById.get(warehouseProduct.productId) || warehouseProduct;
     });
     const imageAccess = await resolveImageAccess(db, options, access.team._id, coverSources);
-    return {
-      items: page.map((warehouseProduct) => {
+    const response = {
+      items: displayPage.map((warehouseProduct) => {
         const product = productsById.get(warehouseProduct.productId);
         return presentWarehouseProduct(
           warehouseProduct,
@@ -1354,6 +1410,8 @@ async function listProducts(db, user, rawInput, options) {
       hasMore,
       pageSize: input.pageSize
     };
+    if (summary) response.summary = summary;
+    return response;
   } catch (error) {
     if (isApiError(error)) {
       throw error;
@@ -1533,6 +1591,7 @@ module.exports = {
   PRODUCT_CATALOG_DELETE_ACTION,
   PRODUCT_CATALOG_RESTORE_ACTION,
   requireProductAccess,
+  assertProductListMembershipState,
   requireProductAccessInTransaction,
   requireCatalogAccess,
   requireCatalogAccessInTransaction,

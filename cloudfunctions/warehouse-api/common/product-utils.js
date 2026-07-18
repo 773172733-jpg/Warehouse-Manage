@@ -74,7 +74,12 @@ const PRODUCT_MAIN_FIELDS = [
   'coverAssetKey',
   'coverBackground'
 ];
-const UPDATE_FIELDS = PRODUCT_MAIN_FIELDS.concat(['productId', 'expectedVersion', 'requestKey']);
+const UPDATE_FIELDS = PRODUCT_MAIN_FIELDS.concat([
+  'productId',
+  'expectedVersion',
+  'minStock',
+  'requestKey'
+]);
 const CATALOG_DELETE_FIELDS = ['productId', 'expectedVersion', 'reason', 'requestKey'];
 const CATALOG_RESTORE_FIELDS = ['productId', 'expectedVersion', 'requestKey'];
 
@@ -364,11 +369,19 @@ function sanitizeProductUpdateInput(rawInput) {
   if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) {
     throw new ApiError(ERROR_CODES.INVALID_PRODUCT_VERSION, '产品版本必须为正整数。');
   }
-  return Object.assign(sanitizeProductMainFields(source, { allowPreserveCover: true }), {
+  const input = Object.assign(sanitizeProductMainFields(source, { allowPreserveCover: true }), {
     productId: validateProductId(source.productId, ERROR_CODES.PRODUCT_NOT_FOUND, '产品不存在。'),
     expectedVersion,
     requestKey: validateRequestKey(source.requestKey)
   });
+  if (hasOwn(source, 'minStock')) {
+    input.minStock = validateSafeQuantity(
+      source.minStock,
+      ERROR_CODES.INVALID_MIN_STOCK,
+      '最低库存必须是非负安全整数。'
+    );
+  }
+  return input;
 }
 
 function sanitizeWarehouseMutationInput(rawInput, allowReason) {
@@ -592,7 +605,15 @@ function decodeProductCursor(value) {
 
 function validateProductListInput(rawInput) {
   const source = rawInput && typeof rawInput === 'object' ? rawInput : {};
-  const allowed = ['keyword', 'category', 'stockStatus', 'cursor', 'pageSize', 'sort'];
+  const allowed = [
+    'keyword',
+    'category',
+    'stockStatus',
+    'cursor',
+    'pageSize',
+    'sort',
+    'includeSummary'
+  ];
   const unknown = Object.keys(source).find((field) => !allowed.includes(field));
   if (unknown) {
     throw new ApiError(ERROR_CODES.FORBIDDEN, '产品列表请求包含不允许的字段。');
@@ -611,11 +632,14 @@ function validateProductListInput(rawInput) {
   }
   const stockStatus = normalizeWhitespace(source.stockStatus).toLowerCase();
   if (stockStatus && !STOCK_STATUSES.includes(stockStatus)) {
-    throw new ApiError(ERROR_CODES.INVALID_INPUT, '库存状态筛选值无效。');
+    throw new ApiError(ERROR_CODES.INVALID_ALERT_TYPE, '库存预警类型无效。');
   }
   const sort = normalizeWhitespace(source.sort || 'updated_desc');
   if (sort !== 'updated_desc') {
     throw new ApiError(ERROR_CODES.INVALID_INPUT, '当前仅支持按更新时间倒序。');
+  }
+  if (source.includeSummary !== undefined && typeof source.includeSummary !== 'boolean') {
+    throw new ApiError(ERROR_CODES.INVALID_INPUT, '库存统计参数无效。');
   }
   const searchToken = normalizeSearchText(source.keyword);
   const queryHash = crypto.createHash('sha256')
@@ -634,7 +658,8 @@ function validateProductListInput(rawInput) {
     cursor,
     queryHash,
     pageSize,
-    sort
+    sort,
+    includeSummary: source.includeSummary === true
   };
 }
 

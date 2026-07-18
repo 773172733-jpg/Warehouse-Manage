@@ -19,12 +19,12 @@ function buildCreateProductPayload(input = {}) {
     'brand',
     'specification',
     'description',
+    'minStock',
     'coverType',
     'coverText',
     'coverEmoji',
     'coverAssetKey',
     'coverBackground',
-    'minStock',
     'initialStock',
     'requestKey'
   ]);
@@ -37,7 +37,8 @@ function buildListProductsPayload(input = {}) {
     'stockStatus',
     'cursor',
     'pageSize',
-    'sort'
+    'sort',
+    'includeSummary'
   ]);
 }
 
@@ -56,6 +57,7 @@ function buildUpdateProductPayload(input = {}) {
     'brand',
     'specification',
     'description',
+    'minStock',
     'coverType',
     'coverText',
     'coverEmoji',

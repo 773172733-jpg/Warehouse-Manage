@@ -208,7 +208,13 @@ function testValidatorsAndHashes() {
   assert.strictEqual(input.normalizedName, 'abc 扳手');
   assert.strictEqual(input.normalizedCode, 'code 01');
   assert.deepStrictEqual(input.searchKeywords, buildSearchKeywords(input));
-  ['stock', 'initialStock', 'minStock', 'stockVersion', 'teamId', 'warehouseId', 'role',
+  assert.strictEqual(sanitizeProductUpdateInput(updateInput('product_12345678', {
+    minStock: 5
+  })).minStock, 5);
+  expectCode(() => sanitizeProductUpdateInput(updateInput('product_12345678', {
+    minStock: 'forged'
+  })), ERROR_CODES.INVALID_MIN_STOCK);
+  ['stock', 'initialStock', 'stockVersion', 'teamId', 'warehouseId', 'role',
     'version', 'searchKeywords', 'normalizedName', 'normalizedCode', 'coverFileId']
     .forEach((field) => {
       expectCode(() => sanitizeProductUpdateInput(Object.assign({}, updateInput('product_12345678'), {
@@ -237,9 +243,10 @@ function testClientWhitelistsAndEditHelpers() {
     openId: 'forged'
   });
   const payload = clientService.buildUpdateProductPayload(forged);
-  ['stock', 'minStock', 'teamId', 'warehouseId', 'openId'].forEach((field) => {
+  ['stock', 'teamId', 'warehouseId', 'openId'].forEach((field) => {
     assert.strictEqual(Object.prototype.hasOwnProperty.call(payload, field), false);
   });
+  assert.strictEqual(payload.minStock, 3);
   assert.deepStrictEqual(clientService.buildRemoveProductPayload(Object.assign({}, forged, {
     warehouseProductId: 'warehouse_product_12345678', reason: '停用'
   })), {
@@ -262,7 +269,7 @@ function testClientWhitelistsAndEditHelpers() {
     productId: 'product_12345678', expectedVersion: 2
   });
   assert.strictEqual(update.initialStock, undefined);
-  assert.strictEqual(update.minStock, undefined);
+  assert.strictEqual(update.minStock, 66);
   const image = editUtils.buildUpdateProductPayload(Object.assign({}, form, {
     coverMode: 'existing-image', localImagePath: 'cloud://existing'
   }), { productId: 'product_12345678', expectedVersion: 2 });

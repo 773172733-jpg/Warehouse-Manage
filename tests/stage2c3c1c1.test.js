@@ -227,7 +227,8 @@ function testListInteractionsPreserveCovers() {
     sort: 'updated_desc',
     keyword: '瓷砖',
     category: '建材',
-    stockStatus: 'low'
+    stockStatus: 'low',
+    includeSummary: true
   });
   assert.deepStrictEqual(productView.buildListParams({
     keyword: 'CODE-001',
@@ -236,7 +237,8 @@ function testListInteractionsPreserveCovers() {
   }), {
     pageSize: 20,
     sort: 'updated_desc',
-    keyword: 'CODE-001'
+    keyword: 'CODE-001',
+    includeSummary: true
   });
   assert.strictEqual(
     Object.prototype.hasOwnProperty.call(productView.buildListParams({}, null), 'cursor'),

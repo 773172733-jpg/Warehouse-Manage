@@ -232,7 +232,11 @@ async function testInventoryPage() {
     await flushPromises();
     assert.strictEqual(page.data.loading, true);
     assert.strictEqual(listCalls.length, 1);
-    assert.deepStrictEqual(listCalls[0], { pageSize: 20, sort: 'updated_desc' });
+    assert.deepStrictEqual(listCalls[0], {
+      pageSize: 20,
+      sort: 'updated_desc',
+      includeSummary: true
+    });
     firstRequest.resolve({ items: [], hasMore: false, nextCursor: null });
     await page.preparingPromise;
     assert.strictEqual(page.data.initialized, true);
@@ -513,7 +517,7 @@ function testStaticBoundaries() {
   assert.strictEqual(source.includes('console.log'), false);
   assert.strictEqual(source.includes('真实库存流水将在后续阶段接入'), false);
   assert.strictEqual(source.includes('ROUTES.STOCK_RECORDS'), true);
-  assert.strictEqual(source.includes('已加载产品'), true);
+  assert.strictEqual(source.includes('全部产品'), true);
   assert.strictEqual(source.includes('productService.listProducts'), true);
   assert.strictEqual(source.includes('productService.getProductDetail'), true);
 }
