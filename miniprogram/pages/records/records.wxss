@@ -16,10 +16,12 @@
 .search-clear, .sheet-close { display: flex; align-items: center; justify-content: center; color: #747A76; }
 .search-clear { width: 44rpx; height: 44rpx; font-size: 36rpx; }
 .records-tools { display: flex; align-items: center; margin-top: 20rpx; gap: 16rpx; }
+.records-tools--date { margin-top: 14rpx; }
 .type-scroll { flex: 1; min-width: 0; white-space: nowrap; }
 .type-row { display: inline-flex; gap: 12rpx; }
 .type-chip { display: flex; align-items: center; justify-content: center; height: 58rpx; min-width: 88rpx; padding: 0 18rpx; border-radius: 12rpx; background: #FFFFFF; border: 1rpx solid #E7EBE8; color: #747A76; font-size: 24rpx; box-sizing: border-box; }
 .type-chip--active { border-color: #078B4B; background: #EAF6EF; color: #06713E; font-weight: 600; }
+.date-chip { min-width: 112rpx; }
 .filter-button { flex-shrink: 0; display: flex; align-items: center; justify-content: center; height: 58rpx; padding: 0 18rpx; gap: 9rpx; border-radius: 12rpx; background: #FFFFFF; border: 1rpx solid #E7EBE8; color: #171917; font-size: 24rpx; }
 .filter-button--active { border-color: #078B4B; color: #078B4B; }
 .filter-icon { width: 24rpx; }
@@ -53,7 +55,15 @@
 .record-delta--adjustment, .record-delta--adjustment-down, .record-delta--adjustment-zero { color: #E59A23; }
 .record-delta--unknown { color: #D94A45; }
 .record-unit { font-size: 20rpx; font-weight: 400; color: #747A76; white-space: nowrap; }
-.record-main { margin-top: 17rpx; align-items: flex-end; }
+.record-main { margin-top: 17rpx; align-items: center; }
+.record-cover { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 72rpx; height: 72rpx; margin-right: 16rpx; border-radius: 14rpx; background: #EAF6EF; color: #078B4B; font-size: 28rpx; font-weight: 700; overflow: hidden; }
+.record-cover-image { width: 100%; height: 100%; }
+.cover-bg-GREEN { background: #EAF6EF; color: #078B4B; }
+.cover-bg-YELLOW { background: #F7F2E8; color: #A96D1B; }
+.cover-bg-BLUE { background: #E9EDF5; color: #516A96; }
+.cover-bg-PINK { background: #F7EAEE; color: #B25B72; }
+.cover-bg-PURPLE { background: #EDE8F2; color: #765B8F; }
+.cover-bg-GRAY { background: #EFEDE8; color: #6B6E69; }
 .record-product { flex: 1; min-width: 0; }
 .record-name, .record-code { display: block; }
 .record-name { overflow: hidden; color: #171917; font-size: 28rpx; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
@@ -65,6 +75,14 @@
 .meta-dot { margin: 0 9rpx; }
 .record-remark { display: -webkit-box; margin-top: 12rpx; padding-top: 12rpx; border-top: 1rpx solid #F1F3F1; overflow: hidden; color: #59615C; font-size: 22rpx; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .records-empty { padding-top: 46rpx; text-align: center; }
+.records-loading, .records-error { padding-top: 70rpx; text-align: center; color: #747A76; font-size: 24rpx; }
+.records-loading { display: flex; flex-direction: column; align-items: center; gap: 18rpx; }
+.loading-spinner { width: 38rpx; height: 38rpx; border: 4rpx solid #DDE8E1; border-top-color: #078B4B; border-radius: 50%; animation: records-spin 0.8s linear infinite; box-sizing: border-box; }
+.loading-spinner--small { width: 28rpx; height: 28rpx; border-width: 3rpx; }
+.load-more { display: flex; align-items: center; justify-content: center; gap: 10rpx; min-height: 78rpx; color: #747A76; font-size: 23rpx; }
+.load-more--button { margin: 12rpx 0 6rpx; border: 1rpx solid #E7EBE8; border-radius: 14rpx; background: #FFFFFF; color: #078B4B; font-weight: 600; }
+.load-more--end { color: #A3AAA5; }
+@keyframes records-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .empty-action { display: inline-flex; align-items: center; justify-content: center; height: 72rpx; margin-top: -42rpx; padding: 0 32rpx; border: 2rpx solid #078B4B; border-radius: 14rpx; color: #078B4B; font-size: 25rpx; }
 .sheet-mask { position: fixed; z-index: 200; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: flex-end; background: rgba(23, 25, 23, 0.46); }
 .bottom-sheet { width: 100%; max-height: 86vh; padding-bottom: env(safe-area-inset-bottom); border-radius: 24rpx 24rpx 0 0; background: #FFFFFF; box-sizing: border-box; overflow: hidden; }

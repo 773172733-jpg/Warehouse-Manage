@@ -531,6 +531,7 @@ Page({
         app.globalData.stockRecordsRefreshRequired = {
           warehouseProductId: this.warehouseProductId
         };
+        app.globalData.warehouseStockRecordsRefreshRequired = true;
       }
       const stockStatus = computeStockStatus(result.afterStock, this.data.product.minStock);
       this.safeSetData({

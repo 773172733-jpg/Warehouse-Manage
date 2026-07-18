@@ -775,7 +775,12 @@ Page({
         createUtils.validateCreateResult(result, basePayload.initialStock);
         if (!self.pageActive) return;
         self.createCompleted = true;
-        if (app.globalData) app.globalData.inventoryRefreshRequired = true;
+        if (app.globalData) {
+          app.globalData.inventoryRefreshRequired = true;
+          if (result.initialRecord) {
+            app.globalData.warehouseStockRecordsRefreshRequired = true;
+          }
+        }
         self.safeSetData({
           saving: false,
           saveError: '',

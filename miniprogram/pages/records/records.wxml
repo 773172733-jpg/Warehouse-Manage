@@ -1,20 +1,14 @@
 <view class="records-page">
   <view class="records-header">
     <view>
-      <text class="records-title">库存记录</text>
-      <text class="records-subtitle">查看团队的入库、出库与库存调整</text>
+      <text class="records-title">库存流水</text>
+      <text class="records-subtitle">查看当前仓库全部商品的真实库存记录</text>
     </view>
     <view class="records-summary">
       <view class="summary-item"><text class="summary-value">{{summary.today}}</text><text class="summary-label">今日</text></view>
       <view class="summary-divider"></view>
-      <view class="summary-item"><text class="summary-value">{{summary.week}}</text><text class="summary-label">本周</text></view>
+      <view class="summary-item"><text class="summary-value">{{summary.loaded}}</text><text class="summary-label">已载入</text></view>
     </view>
-  </view>
-
-  <view class="records-search">
-    <view class="search-icon"></view>
-    <input class="search-input" value="{{searchText}}" placeholder="搜索产品名称、编号或操作人" bindinput="onSearchInput" confirm-type="search"/>
-    <view wx:if="{{searchText}}" class="search-clear" catchtap="onSearchClear">×</view>
   </view>
 
   <view class="records-tools">
@@ -23,85 +17,58 @@
         <view wx:for="{{typeOptions}}" wx:key="value" class="type-chip {{activeType===item.value?'type-chip--active':''}}" data-value="{{item.value}}" catchtap="onTypeTap">{{item.label}}</view>
       </view>
     </scroll-view>
-    <view class="filter-button {{filterTags.length?'filter-button--active':''}}" catchtap="openFilter">
-      <view class="filter-icon"><view></view><view></view><view></view></view>
-      <text>筛选</text>
-      <view wx:if="{{filterTags.length}}" class="filter-count">{{filterTags.length}}</view>
-    </view>
   </view>
 
-  <view wx:if="{{filterTags.length}}" class="filter-tags">
-    <view wx:for="{{filterTags}}" wx:key="key" class="filter-tag" data-key="{{item.key}}" catchtap="removeFilterTag">
-      <text>{{item.label}}</text><text class="filter-tag-close">×</text>
-    </view>
+  <view class="records-tools records-tools--date">
+    <scroll-view class="type-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="type-row">
+        <view wx:for="{{dateOptions}}" wx:key="value" class="type-chip date-chip {{activeDateRange===item.value?'type-chip--active':''}}" data-value="{{item.value}}" catchtap="onDateTap">{{item.label}}</view>
+      </view>
+    </scroll-view>
   </view>
 
-  <view wx:if="{{resultCount}}" class="records-result">{{resultCount}} 条记录</view>
+  <view wx:if="{{loading}}" class="records-loading">
+    <view class="loading-spinner"></view>
+    <text>正在加载库存流水</text>
+  </view>
 
-  <view wx:if="{{resultCount}}" class="record-groups">
+  <view wx:elif="{{error}}" class="records-error">
+    <empty-state title="库存流水加载失败" description="{{error}}"></empty-state>
+    <view class="empty-action" catchtap="handleRetry">重新加载</view>
+  </view>
+
+  <view wx:elif="{{records.length}}" class="record-groups">
     <view wx:for="{{groups}}" wx:key="key" class="record-group">
       <view class="group-heading"><view class="group-dot"></view><text>{{item.title}}</text><view class="group-line"></view></view>
-      <view wx:for="{{item.records}}" wx:for-item="record" wx:key="id" class="record-card" data-id="{{record.id}}" bindtap="openDetail">
+      <view wx:for="{{item.records}}" wx:for-item="record" wx:key="id" class="record-card" data-id="{{record.id}}" bindtap="onRecordTap">
         <view class="record-card-head">
           <view class="record-type record-type--{{record.typeClass}}"><view class="record-type-mark"></view><text>{{record.typeLabel}}</text></view>
           <view class="record-delta record-delta--{{record.typeClass}}"><text>{{record.deltaText}}</text><text class="record-unit"> {{record.unit}}</text></view>
         </view>
         <view class="record-main">
-          <view class="record-product"><text class="record-name">{{record.productName}}</text><text class="record-code">{{record.productCode}}</text></view>
-          <view class="record-stock"><text>{{record.stockBeforeText}}</text><text class="stock-arrow">→</text><text class="stock-after">{{record.stockAfterText}}</text><text class="record-unit"> {{record.unit}}</text></view>
+          <view class="record-cover cover-{{record.cover.type}}" style="background: {{record.cover.background}}">
+            <image wx:if="{{record.cover.showImage}}" class="record-cover-image" src="{{record.cover.imageUrl}}" mode="aspectFill" data-id="{{record.id}}" binderror="onCoverImageError"></image>
+            <text wx:else>{{record.cover.content}}</text>
+          </view>
+          <view class="record-product">
+            <text class="record-name">{{record.productName}}</text>
+            <text class="record-code">{{record.productCodeText}}</text>
+          </view>
+          <view class="record-stock"><text>{{record.beforeStock}}</text><text class="stock-arrow">→</text><text class="stock-after">{{record.afterStock}}</text><text class="record-unit"> {{record.unit}}</text></view>
         </view>
-        <view class="record-meta"><text>{{record.operatorName}}</text><text class="meta-dot">·</text><text>{{record.timeText}}</text></view>
-        <text wx:if="{{record.hasRemark}}" class="record-remark">{{record.remarkText}}</text>
+        <view class="record-meta"><text>{{record.createdAtText}}</text><text class="meta-dot">·</text><text>{{record.operatorText}}</text></view>
+        <view class="record-remark">
+          <text>原因：{{record.reasonText}}</text>
+          <text>单据：{{record.referenceText}}</text>
+        </view>
       </view>
     </view>
+    <view wx:if="{{loadingMore}}" class="load-more"><view class="loading-spinner loading-spinner--small"></view><text>加载更多</text></view>
+    <view wx:elif="{{hasMore}}" class="load-more load-more--button" catchtap="loadMore">加载更多</view>
+    <view wx:else class="load-more load-more--end">没有更多流水</view>
   </view>
 
   <view wx:else class="records-empty">
-    <empty-state title="{{hasAnyRecords?'没有符合条件的记录':'暂无库存记录'}}" description="{{hasAnyRecords?'尝试修改搜索关键词或筛选条件':'完成第一次入库、出库或库存调整后，记录会显示在这里'}}"></empty-state>
-    <view wx:if="{{hasAnyRecords}}" class="empty-action" catchtap="clearAllFilters">清除筛选</view>
-  </view>
-</view>
-
-<view wx:if="{{filterOpen}}" class="sheet-mask" catchtap="closeFilter" catchtouchmove="stopPropagation">
-  <view class="bottom-sheet filter-sheet" catchtap="stopPropagation">
-    <view class="sheet-handle"></view>
-    <view class="sheet-header"><text class="sheet-title">筛选记录</text><view class="sheet-close" catchtap="closeFilter">×</view></view>
-    <scroll-view class="filter-content" scroll-y>
-      <view class="filter-section">
-        <text class="filter-section-title">产品</text>
-        <view class="option-list">
-          <view class="option-chip {{tempProductId===''?'option-chip--active':''}}" data-value="" catchtap="onTempProductTap">全部产品</view>
-          <view wx:for="{{productOptions}}" wx:key="value" class="option-chip option-chip--product {{tempProductId===item.value?'option-chip--active':''}}" data-value="{{item.value}}" catchtap="onTempProductTap"><text>{{item.label}}</text><text class="option-sub">{{item.subLabel}}</text></view>
-        </view>
-      </view>
-      <view class="filter-section">
-        <text class="filter-section-title">操作人</text>
-        <view class="option-list">
-          <view class="option-chip {{tempOperatorId===''?'option-chip--active':''}}" data-value="" catchtap="onTempOperatorTap">全部操作人</view>
-          <view wx:for="{{operatorOptions}}" wx:key="value" class="option-chip {{tempOperatorId===item.value?'option-chip--active':''}}" data-value="{{item.value}}" catchtap="onTempOperatorTap">{{item.label}}</view>
-        </view>
-      </view>
-      <view class="filter-section">
-        <text class="filter-section-title">时间范围</text>
-        <view class="option-list">
-          <view wx:for="{{dateOptions}}" wx:key="value" class="option-chip {{tempDateRange===item.value?'option-chip--active':''}}" data-value="{{item.value}}" catchtap="onTempDateTap">{{item.label}}</view>
-        </view>
-      </view>
-    </scroll-view>
-    <view class="sheet-actions"><view class="sheet-action sheet-action--secondary" catchtap="resetTempFilters">重置</view><view class="sheet-action sheet-action--primary" catchtap="applyFilters">确定</view></view>
-  </view>
-</view>
-
-<view wx:if="{{detailOpen}}" class="sheet-mask" catchtap="closeDetail" catchtouchmove="stopPropagation">
-  <view class="bottom-sheet detail-sheet" catchtap="stopPropagation">
-    <view class="sheet-handle"></view>
-    <view class="sheet-header"><text class="sheet-title">记录详情</text><view class="sheet-close" catchtap="closeDetail">×</view></view>
-    <scroll-view class="detail-content" scroll-y>
-      <view class="detail-hero record-type--{{selectedRecord.typeClass}}"><view class="detail-type-mark"></view><view><text class="detail-type">{{selectedRecord.typeLabel}}</text><text class="detail-product">{{selectedRecord.productName}}</text></view><text class="detail-delta">{{selectedRecord.deltaText}} {{selectedRecord.unit}}</text></view>
-      <view class="detail-rows">
-        <view wx:for="{{detailRows}}" wx:key="label" class="detail-row"><text class="detail-label">{{item.label}}</text><text class="detail-value {{item.accent?'detail-value--accent':''}}">{{item.value}}</text></view>
-      </view>
-    </scroll-view>
-    <view class="sheet-actions detail-actions"><view wx:if="{{selectedHasProduct}}" class="sheet-action sheet-action--primary" catchtap="viewProduct">查看产品</view><view wx:else class="sheet-action sheet-action--secondary" catchtap="closeDetail">关闭</view></view>
+    <empty-state title="暂无库存流水" description="完成新增商品、入库、出库或盘点后，记录会显示在这里"></empty-state>
   </view>
 </view>

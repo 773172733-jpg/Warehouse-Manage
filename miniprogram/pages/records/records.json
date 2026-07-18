@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "记录",
+  "navigationBarTitleText": "库存流水",
   "usingComponents": {
     "empty-state": "/components/empty-state/empty-state"
   }
