@@ -96,7 +96,7 @@
         <text class="editor-label editor-label--avatars">选择像素头像</text>
         <view class="avatar-grid">
           <view wx:for="{{avatarOptions}}" wx:key="key" class="avatar-option {{draftAvatarKey === item.key ? 'avatar-option--selected' : ''}}" data-key="{{item.key}}" catchtap="onAvatarSelect">
-            <image class="avatar-option-image pixel-image" src="{{item.src}}" mode="aspectFill"></image>
+            <image class="avatar-option-image pixel-image" src="{{item.src}}" mode="aspectFit"></image>
             <text wx:if="{{draftAvatarKey === item.key}}" class="avatar-check">✓</text>
           </view>
         </view>

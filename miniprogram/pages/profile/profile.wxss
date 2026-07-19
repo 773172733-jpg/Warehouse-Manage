@@ -531,10 +531,13 @@
 
 .avatar-option {
   position: relative;
+  box-sizing: border-box;
+  aspect-ratio: 1;
   padding: 6rpx;
   border: 3rpx solid transparent;
   border-radius: 15rpx;
   background: #F2F5F2;
+  overflow: hidden;
 }
 
 .avatar-option--selected {
@@ -545,7 +548,7 @@
 .avatar-option-image {
   display: block;
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
   border-radius: 10rpx;
 }
 
