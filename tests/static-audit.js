@@ -9,20 +9,7 @@ const trackedFiles = childProcess.execFileSync('git', ['ls-files', '-z'], {
   encoding: 'utf8'
 }).split('\0').filter(Boolean);
 const errors = [];
-const legacyExtensionWarnings = [];
 const dependencyGraph = new Map();
-
-function isStage2AStrictRequireFile(file) {
-  return file === 'miniprogram/app.js' ||
-    file.startsWith('cloudfunctions/warehouse-api/') ||
-    file.startsWith('miniprogram/pages/startup/') ||
-    file.startsWith('miniprogram/pages/team-setup/') ||
-    file.startsWith('miniprogram/pages/team-join/') ||
-    file.startsWith('miniprogram/pages/team/') ||
-    file.startsWith('miniprogram/services/') ||
-    file.startsWith('miniprogram/utils/') ||
-    file.startsWith('tests/');
-}
 
 function resolveRelativeRequire(file, modulePath) {
   const base = path.resolve(root, path.dirname(file), modulePath);
@@ -83,12 +70,7 @@ for (const file of trackedFiles) {
     }
 
     if (!modulePath.endsWith('.js')) {
-      const warning = `${file}: relative require omits .js (${modulePath})`;
-      if (isStage2AStrictRequireFile(file)) {
-        errors.push(warning);
-      } else {
-        legacyExtensionWarnings.push(warning);
-      }
+      errors.push(`${file}: relative require omits .js (${modulePath})`);
     }
 
     const target = resolveRelativeRequire(file, modulePath);
@@ -128,5 +110,5 @@ if (errors.length) {
   process.exitCode = 1;
 } else {
   console.log(`static audit passed: ${trackedFiles.length} tracked files`);
-  console.log(`legacy omitted .js warnings: ${legacyExtensionWarnings.length}`);
+  console.log('relative require omissions: 0');
 }

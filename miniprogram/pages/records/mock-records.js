@@ -1,4 +1,4 @@
-var products = require('../inventory/mock-data').MOCK_PRODUCTS;
+var products = require('../inventory/mock-data.js').MOCK_PRODUCTS;
 
 function pad(value) {
   return value < 10 ? '0' + value : String(value);

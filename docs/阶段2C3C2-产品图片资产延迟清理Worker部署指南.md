@@ -16,8 +16,7 @@
 - 业务云函数：`warehouse-api`
 - 清理云函数：`product-image-cleanup-worker`
 
-严禁部署到事件管理器的AppID `wx662868060656c41a` 或环境
-`cloud1-d4g6xf04d9d84b08a`。
+严禁部署到任何事件管理器项目或其 CloudBase 环境。
 
 ## 2. 数据库与云存储
 
