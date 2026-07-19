@@ -7,7 +7,9 @@ const {
   validateMemberReviewInput,
   validateMemberRoleInput,
   validateMemberRemoveInput,
-  validateLeaveInput
+  validateLeaveInput,
+  validateMemberProfileUpdateInput,
+  validateMemberAdminNoteInput
 } = require('../../common/validators.js');
 const {
   canViewMemberStatus,
@@ -68,13 +70,21 @@ async function listMembers(db, user, rawInput) {
       statuses.map((status) => queryMembers(db, access.team._id, status, input.role))
     );
     const memberships = groups.flat();
+    const canViewAdminNotes = ['owner', 'admin'].includes(access.membership.role);
     const members = (await Promise.all(memberships.map(async (membership) => {
       const memberUser = await getDocument(db, COLLECTIONS.USERS, membership.userId);
-      return presentMember(membership, memberUser, user._id);
+      return presentMember(membership, memberUser, user._id, {
+        includeAdminNote: canViewAdminNotes
+      });
     }))).filter(Boolean);
     const keyword = input.keyword.toLowerCase();
     const filtered = keyword
-      ? members.filter((member) => `${member.displayName} ${member.memberRemark}`.toLowerCase().includes(keyword))
+      ? members.filter((member) => {
+        const searchable = canViewAdminNotes
+          ? `${member.displayName} ${member.adminNote || ''}`
+          : member.displayName;
+        return searchable.toLowerCase().includes(keyword);
+      })
       : members;
     return { members: filtered, total: filtered.length };
   } catch (error) {
@@ -82,6 +92,101 @@ async function listMembers(db, user, rawInput) {
       throw error;
     }
     throw new ApiError(ERROR_CODES.DATABASE_ERROR, '团队成员读取失败，请稍后重试。');
+  }
+}
+
+async function updateSelfProfile(db, user, rawInput) {
+  const input = validateMemberProfileUpdateInput(rawInput);
+  const access = await requireCurrentTeamAccess(db, user);
+  try {
+    await db.runTransaction(async (transaction) => {
+      const lockedUser = await getDocument(transaction, COLLECTIONS.USERS, user._id);
+      const lockedTeam = await getDocument(transaction, COLLECTIONS.TEAMS, access.team._id);
+      const membership = await getDocument(
+        transaction,
+        COLLECTIONS.TEAM_MEMBERS,
+        access.membership._id
+      );
+      if (!lockedUser || lockedUser.status !== 'active') {
+        throw new ApiError(ERROR_CODES.USER_DISABLED, '当前用户不可用。');
+      }
+      if (!lockedTeam || lockedTeam.status !== 'active') {
+        throw new ApiError(ERROR_CODES.TEAM_NOT_ACTIVE, '当前团队不可用。');
+      }
+      if (!membership || membership.userId !== user._id || membership.teamId !== lockedTeam._id ||
+          membership.status !== 'active') {
+        throw new ApiError(ERROR_CODES.MEMBERSHIP_NOT_ACTIVE, '当前团队成员关系无效。');
+      }
+      const update = { updatedAt: db.serverDate() };
+      if (Object.prototype.hasOwnProperty.call(input, 'teamNickname')) {
+        update.teamNickname = input.teamNickname;
+      }
+      if (Object.prototype.hasOwnProperty.call(input, 'avatarKey')) {
+        update.avatarKey = input.avatarKey;
+      }
+      await transaction.collection(COLLECTIONS.TEAM_MEMBERS).doc(membership._id).update({
+        data: update
+      });
+    }, 5);
+    const membership = await getDocument(db, COLLECTIONS.TEAM_MEMBERS, access.membership._id);
+    return { member: presentMember(membership, user, user._id) };
+  } catch (error) {
+    if (isApiError(error)) {
+      throw error;
+    }
+    throw new ApiError(ERROR_CODES.DATABASE_ERROR, '成员资料更新失败，请稍后重试。');
+  }
+}
+
+async function updateAdminNote(db, user, rawInput) {
+  const input = validateMemberAdminNoteInput(rawInput);
+  const access = await requireCurrentTeamAccess(db, user);
+  requireRole(access.membership, 'admin');
+  try {
+    await db.runTransaction(async (transaction) => {
+      const actor = await getDocument(
+        transaction,
+        COLLECTIONS.TEAM_MEMBERS,
+        access.membership._id
+      );
+      const target = await getDocument(
+        transaction,
+        COLLECTIONS.TEAM_MEMBERS,
+        input.targetMemberId
+      );
+      if (!actor || actor.userId !== user._id || actor.teamId !== access.team._id) {
+        throw new ApiError(ERROR_CODES.MEMBERSHIP_NOT_ACTIVE, '当前团队成员关系无效。');
+      }
+      requireRole(actor, 'admin');
+      if (!target || target.teamId !== actor.teamId) {
+        throw new ApiError(ERROR_CODES.MEMBER_NOT_FOUND, '成员不存在。');
+      }
+      if (target.userId === user._id) {
+        throw new ApiError(ERROR_CODES.FORBIDDEN, '不能为自己填写管理备注。');
+      }
+      if (target.status !== 'active') {
+        throw new ApiError(ERROR_CODES.MEMBERSHIP_NOT_ACTIVE, '目标成员关系无效。');
+      }
+      const now = db.serverDate();
+      await transaction.collection(COLLECTIONS.TEAM_MEMBERS).doc(target._id).update({
+        data: {
+          adminNote: input.adminNote,
+          adminNoteUpdatedAt: now,
+          adminNoteUpdatedBy: user._id,
+          updatedAt: now
+        }
+      });
+    }, 5);
+    const membership = await getDocument(db, COLLECTIONS.TEAM_MEMBERS, input.targetMemberId);
+    const memberUser = await getDocument(db, COLLECTIONS.USERS, membership.userId);
+    return {
+      member: presentMember(membership, memberUser, user._id, { includeAdminNote: true })
+    };
+  } catch (error) {
+    if (isApiError(error)) {
+      throw error;
+    }
+    throw new ApiError(ERROR_CODES.DATABASE_ERROR, '管理备注更新失败，请稍后重试。');
   }
 }
 
@@ -351,6 +456,8 @@ async function leaveTeam(db, user, rawInput) {
 module.exports = {
   requireOwnerInTransaction,
   listMembers,
+  updateSelfProfile,
+  updateAdminNote,
   reviewMember,
   updateMemberRole,
   removeMember,

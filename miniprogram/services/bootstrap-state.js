@@ -9,7 +9,6 @@ function cleanUser(user) {
   return {
     id: String(user.id),
     displayName: user.displayName || '微信用户',
-    avatarUrl: user.avatarUrl || '',
     status: user.status || 'active'
   };
 }
@@ -19,9 +18,14 @@ function cleanMembership(membership) {
     return null;
   }
   return {
+    id: membership.id ? String(membership.id) : '',
     teamId: String(membership.teamId),
     role: membership.role,
-    status: membership.status || 'active'
+    status: membership.status || 'active',
+    teamNickname: membership.teamNickname || '',
+    displayName: membership.displayName || '微信用户',
+    avatarKey: membership.avatarKey || '',
+    joinedAt: membership.joinedAt || null
   };
 }
 

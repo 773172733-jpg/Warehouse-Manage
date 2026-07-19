@@ -1,19 +1,27 @@
 const { getRemainingUses } = require('./invite-utils.js');
+const {
+  getMemberAvatarKey,
+  getMemberDisplayName
+} = require('./member-profile.js');
 
 function presentUser(user) {
   return user ? {
     id: user._id,
     displayName: user.displayName || '微信用户',
-    avatarUrl: user.avatarUrl || '',
     status: user.status || 'active'
   } : null;
 }
 
-function presentMembership(membership) {
+function presentMembership(membership, user) {
   return membership ? {
+    id: membership._id,
     teamId: membership.teamId,
     role: membership.role,
-    status: membership.status
+    status: membership.status,
+    teamNickname: membership.teamNickname || '',
+    displayName: getMemberDisplayName(membership, user),
+    avatarKey: getMemberAvatarKey(membership),
+    joinedAt: membership.joinedAt || null
   } : null;
 }
 
@@ -44,7 +52,7 @@ function buildBootstrapResponse(state) {
 
   return {
     user: presentUser(source.user),
-    membership: hasActiveTeam ? presentMembership(source.membership) : null,
+    membership: hasActiveTeam ? presentMembership(source.membership, source.user) : null,
     team: hasActiveTeam ? presentTeam(source.team) : null,
     warehouse: hasActiveTeam ? presentWarehouse(source.warehouse) : null,
     onboardingRequired: !hasActiveTeam
@@ -78,20 +86,24 @@ function presentJoinApplication(membership, team) {
   };
 }
 
-function presentMember(membership, user, currentUserId) {
+function presentMember(membership, user, currentUserId, options) {
   if (!membership || !user) {
     return null;
   }
+  const settings = options || {};
   const result = {
     id: membership._id,
-    displayName: user.displayName || '微信用户',
-    avatarUrl: user.avatarUrl || '',
+    displayName: getMemberDisplayName(membership, user),
+    teamNickname: membership.teamNickname || '',
+    avatarKey: getMemberAvatarKey(membership),
     role: membership.role,
     status: membership.status,
     joinedAt: membership.joinedAt || null,
-    memberRemark: membership.memberRemark || '',
     isCurrentUser: membership.userId === currentUserId
   };
+  if (settings.includeAdminNote) {
+    result.adminNote = membership.adminNote || '';
+  }
   if (membership.status === 'pending') {
     result.appliedAt = membership.appliedAt || null;
   }

@@ -8,6 +8,12 @@ const REQUEST_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$/;
 const INVITE_CODE_PATTERN = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6,8}$/;
 const MEMBER_ID_PATTERN = /^[A-Za-z0-9_-]{8,80}$/;
 const FORBIDDEN_IDENTITY_FIELDS = ['openId', 'userId', 'teamId', 'warehouseId', 'createdBy', 'invitedBy'];
+const {
+  normalizeTeamNickname,
+  normalizeAdminNote,
+  normalizeTeamDisplayName,
+  validateAvatarKey
+} = require('./member-profile.js');
 
 function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -168,6 +174,38 @@ function validateLeaveInput(data) {
   return { requestKey: validateRequestKey(source.requestKey) };
 }
 
+function validateMemberProfileUpdateInput(data) {
+  const source = data && typeof data === 'object' ? data : {};
+  rejectUnknownFields(source, ['teamNickname', 'avatarKey']);
+  if (!Object.prototype.hasOwnProperty.call(source, 'teamNickname') &&
+      !Object.prototype.hasOwnProperty.call(source, 'avatarKey')) {
+    throw new ApiError(ERROR_CODES.INVALID_INPUT, '请至少提交一项成员资料。');
+  }
+  const result = {};
+  if (Object.prototype.hasOwnProperty.call(source, 'teamNickname')) {
+    result.teamNickname = normalizeTeamNickname(source.teamNickname);
+  }
+  if (Object.prototype.hasOwnProperty.call(source, 'avatarKey')) {
+    result.avatarKey = validateAvatarKey(source.avatarKey);
+  }
+  return result;
+}
+
+function validateMemberAdminNoteInput(data) {
+  const source = data && typeof data === 'object' ? data : {};
+  rejectUnknownFields(source, ['targetMemberId', 'adminNote']);
+  return {
+    targetMemberId: validateMemberId(source.targetMemberId),
+    adminNote: normalizeAdminNote(source.adminNote)
+  };
+}
+
+function validateTeamDisplayNameInput(data) {
+  const source = data && typeof data === 'object' ? data : {};
+  rejectUnknownFields(source, ['displayName']);
+  return { displayName: normalizeTeamDisplayName(source.displayName) };
+}
+
 function sanitizeTeamCreateInput(data) {
   const source = data && typeof data === 'object' ? data : {};
   return {
@@ -211,6 +249,9 @@ module.exports = {
   validateMemberRoleInput,
   validateMemberRemoveInput,
   validateLeaveInput,
+  validateMemberProfileUpdateInput,
+  validateMemberAdminNoteInput,
+  validateTeamDisplayNameInput,
   FORBIDDEN_IDENTITY_FIELDS,
   sanitizeTeamCreateInput,
   validateTeamCreateInput

@@ -110,6 +110,40 @@ function leaveTeam(input) {
   return cloudService.callApi('team.leave', buildLeavePayload(input));
 }
 
+function buildSelfProfilePayload(input = {}) {
+  const payload = {};
+  if (Object.prototype.hasOwnProperty.call(input, 'teamNickname')) {
+    payload.teamNickname = input.teamNickname;
+  }
+  if (Object.prototype.hasOwnProperty.call(input, 'avatarKey')) {
+    payload.avatarKey = input.avatarKey;
+  }
+  return payload;
+}
+
+function updateSelfProfile(input) {
+  return cloudService.callApi('team.member.profile.update', buildSelfProfilePayload(input));
+}
+
+function buildAdminNotePayload(input = {}) {
+  return {
+    targetMemberId: input.targetMemberId,
+    adminNote: input.adminNote
+  };
+}
+
+function updateAdminNote(input) {
+  return cloudService.callApi('team.member.adminNote.update', buildAdminNotePayload(input));
+}
+
+function buildDisplayNamePayload(input = {}) {
+  return { displayName: input.displayName };
+}
+
+function updateDisplayName(input) {
+  return cloudService.callApi('team.displayName.update', buildDisplayNamePayload(input));
+}
+
 module.exports = {
   createTeam,
   getCurrentTeam,
@@ -127,5 +161,11 @@ module.exports = {
   buildMemberRemovePayload,
   removeMember,
   buildLeavePayload,
-  leaveTeam
+  leaveTeam,
+  buildSelfProfilePayload,
+  updateSelfProfile,
+  buildAdminNotePayload,
+  updateAdminNote,
+  buildDisplayNamePayload,
+  updateDisplayName
 };

@@ -11,6 +11,9 @@ const teamMemberList = require('./modules/team/member-list.js');
 const teamMemberReview = require('./modules/team/member-review.js');
 const teamMemberRoleUpdate = require('./modules/team/member-role-update.js');
 const teamMemberRemove = require('./modules/team/member-remove.js');
+const teamMemberProfileUpdate = require('./modules/team/member-profile-update.js');
+const teamMemberAdminNoteUpdate = require('./modules/team/member-admin-note-update.js');
+const teamDisplayNameUpdate = require('./modules/team/display-name-update.js');
 const teamLeave = require('./modules/team/leave.js');
 const productCreate = require('./modules/product/create.js');
 const productList = require('./modules/product/list.js');
@@ -47,6 +50,9 @@ const ACTION_HANDLERS = {
   'team.member.review': teamMemberReview,
   'team.member.role.update': teamMemberRoleUpdate,
   'team.member.remove': teamMemberRemove,
+  'team.member.profile.update': teamMemberProfileUpdate,
+  'team.member.adminNote.update': teamMemberAdminNoteUpdate,
+  'team.displayName.update': teamDisplayNameUpdate,
   'team.leave': teamLeave,
   'product.create': productCreate,
   'product.list': productList,

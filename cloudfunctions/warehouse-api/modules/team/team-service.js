@@ -8,9 +8,13 @@ const {
   createWarehouseId,
   createMembershipId
 } = require('../../common/idempotency.js');
-const { validateTeamCreateInput } = require('../../common/validators.js');
+const {
+  validateTeamCreateInput,
+  validateTeamDisplayNameInput
+} = require('../../common/validators.js');
+const { requireCurrentTeamAccess, requireRole } = require('../../common/permissions.js');
 const { getCurrentTeamState } = require('../user/user-service.js');
-const { buildBootstrapResponse } = require('../../common/presenters.js');
+const { buildBootstrapResponse, presentTeam } = require('../../common/presenters.js');
 
 function isCompleteExistingTeam(team, warehouse, membership, user) {
   return Boolean(
@@ -148,8 +152,47 @@ async function getCurrentTeam(db, user) {
   return buildBootstrapResponse(state);
 }
 
+async function updateDisplayName(db, user, rawInput) {
+  const input = validateTeamDisplayNameInput(rawInput);
+  const access = await requireCurrentTeamAccess(db, user);
+  requireRole(access.membership, 'owner');
+  try {
+    await db.runTransaction(async (transaction) => {
+      const lockedUser = await getDocument(transaction, COLLECTIONS.USERS, user._id);
+      const team = await getDocument(transaction, COLLECTIONS.TEAMS, access.team._id);
+      const membership = await getDocument(
+        transaction,
+        COLLECTIONS.TEAM_MEMBERS,
+        access.membership._id
+      );
+      if (!lockedUser || lockedUser.status !== 'active') {
+        throw new ApiError(ERROR_CODES.USER_DISABLED, '当前用户不可用。');
+      }
+      if (!team || team.status !== 'active' || team.ownerId !== user._id) {
+        throw new ApiError(ERROR_CODES.TEAM_NOT_ACTIVE, '当前团队不可用。');
+      }
+      requireRole(membership, 'owner');
+      await transaction.collection(COLLECTIONS.TEAMS).doc(team._id).update({
+        data: {
+          name: input.displayName,
+          updatedAt: db.serverDate()
+        }
+      });
+    }, 5);
+    return {
+      team: presentTeam(await getDocument(db, COLLECTIONS.TEAMS, access.team._id))
+    };
+  } catch (error) {
+    if (isApiError(error)) {
+      throw error;
+    }
+    throw new ApiError(ERROR_CODES.DATABASE_ERROR, '团队名称更新失败，请稍后重试。');
+  }
+}
+
 module.exports = {
   createTeam,
   getCurrentTeam,
+  updateDisplayName,
   isCompleteExistingTeam
 };

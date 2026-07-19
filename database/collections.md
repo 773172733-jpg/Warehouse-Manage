@@ -37,7 +37,11 @@
 - `invitedBy`：创建者成员关系为 `null`
 - `joinedAt`、`createdAt`、`updatedAt`：服务端时间
 - `removedAt`：移除预留，本阶段为 `null`
-- `memberRemark`：团队内成员备注，可为空
+- `memberRemark`：历史公开备注字段，可为空；新成员资料不再写入
+- `teamNickname`：成员在当前团队内的公开昵称，最多20个Unicode字符；空值回退到用户默认显示名
+- `avatarKey`：内置像素头像白名单标识；旧成员缺失时按成员ID稳定映射默认头像
+- `adminNote`：owner/admin可见的私密管理备注，最多40个Unicode字符；普通成员响应不包含该键
+- `adminNoteUpdatedAt`、`adminNoteUpdatedBy`：管理备注最近更新时间和可信操作者
 - `applyRequestKey`、`appliedAt`、`inviteId`：加入申请幂等键、申请时间和来源邀请码
 - `reviewedAt`、`reviewedBy`、`reviewResult`、`reviewRemark`：审核时间、审核人、结果和备注
 - `removalReason`、`removedBy`：移除原因和操作者，可为空
