@@ -173,7 +173,7 @@ const ERROR_MESSAGES = {
   [ERROR_CODES.DATABASE_ERROR]: '云端数据处理失败，请稍后重试。',
   [ERROR_CODES.INTERNAL_ERROR]: '云服务处理异常，请稍后重试。',
   [ERROR_CODES.UNKNOWN_ACTION]: '当前功能暂不可用。',
-  [ERROR_CODES.CLOUD_ENV_NOT_CONFIGURED]: '仓库管理器云环境尚未配置。',
+  [ERROR_CODES.CLOUD_ENV_NOT_CONFIGURED]: '口袋仓库Go服务环境尚未配置。',
   [ERROR_CODES.CLOUD_NOT_AVAILABLE]: '当前运行环境暂不支持云开发。',
   [ERROR_CODES.CLOUD_CALL_FAILED]: '云服务暂时不可用，请稍后重试。',
   [ERROR_CODES.BUSINESS_ERROR]: '请求处理失败，请稍后重试。',

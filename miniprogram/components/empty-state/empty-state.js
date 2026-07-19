@@ -6,7 +6,7 @@ Component({
     },
     description: {
       type: String,
-      value: '当前阶段仅提供基础占位。'
+      value: '暂时没有可显示的内容。'
     }
   }
 });

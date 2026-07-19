@@ -9,7 +9,6 @@
       <text class="user-remark">团队备注：{{user.memberRemark}}</text>
       <view class="user-meta">
         <text class="role-badge role-badge--{{user.roleClass}}">{{user.roleLabel}}</text>
-        <text class="active-text">最近活跃：{{user.lastActiveAt}}</text>
       </view>
     </view>
     <view class="arrow">›</view>
@@ -32,22 +31,11 @@
         <text class="team-value">{{team.warehouseName}}</text>
       </view>
       <view class="team-item">
-        <text class="team-label">团队成员</text>
-        <text class="team-value">{{team.memberCount}}人</text>
-      </view>
-      <view class="team-item">
         <text class="team-label">我的角色</text>
         <text class="team-value">{{user.roleLabel}}</text>
       </view>
     </view>
     <view wx:if="{{!hasTeam}}" class="empty-team-entry" data-action="joinTeam" catchtap="onQuickEntryTap">创建或加入团队</view>
-  </view>
-
-  <view class="summary-grid">
-    <view wx:for="{{summaryItems}}" wx:key="key" class="summary-card" data-target="{{item.target}}" catchtap="onSummaryTap">
-      <text class="summary-value summary-value--{{item.tone}}">{{item.value}}</text>
-      <text class="summary-label">{{item.label}}</text>
-    </view>
   </view>
 
   <view class="section-block">
@@ -64,39 +52,18 @@
   </view>
 
   <view class="section-block">
-    <view class="block-head">
-      <text class="block-title">本地设置</text>
-      <text class="link-text" data-modal="notice" catchtap="openModalFromTap">通知说明</text>
-    </view>
-    <view class="settings-card">
-      <view wx:for="{{settingItems}}" wx:key="key" class="setting-row">
-        <view class="setting-copy">
-          <text class="setting-title">{{item.title}}</text>
-          <text class="setting-desc">{{item.desc}}</text>
-        </view>
-        <switch class="setting-switch" color="#078B4B" checked="{{item.checked}}" data-key="{{item.key}}" bindchange="onSettingChange" />
-      </view>
-    </view>
-    <text class="setting-note">以上开关仅用于当前页面UI预览，不会写入本地缓存或云端。</text>
-  </view>
-
-  <view class="section-block">
     <view class="block-title">帮助与关于</view>
     <view class="entry-list">
       <view class="entry-row" data-modal="help" catchtap="openModalFromTap">
-        <view><text class="entry-title">使用帮助</text><text class="entry-desc">查看轻仓基础使用说明</text></view>
-        <text class="entry-arrow">›</text>
-      </view>
-      <view class="entry-row" catchtap="onFeedbackTap">
-        <view><text class="entry-title">意见反馈</text><text class="entry-desc">后续版本接入</text></view>
+        <view><text class="entry-title">使用帮助</text><text class="entry-desc">查看口袋仓库Go基础使用说明</text></view>
         <text class="entry-arrow">›</text>
       </view>
       <view class="entry-row" data-modal="about" catchtap="openModalFromTap">
-        <view><text class="entry-title">关于轻仓</text><text class="entry-desc">{{appInfo.version}}</text></view>
+        <view><text class="entry-title">关于口袋仓库Go</text><text class="entry-desc">{{appInfo.version}}</text></view>
         <text class="entry-arrow">›</text>
       </view>
       <view class="entry-row" data-modal="privacy" catchtap="openModalFromTap">
-        <view><text class="entry-title">隐私说明</text><text class="entry-desc">本地原型说明</text></view>
+        <view><text class="entry-title">隐私说明</text><text class="entry-desc">数据与图片使用说明</text></view>
         <text class="entry-arrow">›</text>
       </view>
       <view class="version-row">
@@ -106,12 +73,6 @@
     </view>
   </view>
 
-  <view class="section-block danger-block">
-    <view class="block-title block-title--danger">危险操作</view>
-    <view class="danger-list">
-      <view wx:for="{{dangerActions}}" wx:key="key" class="danger-row" data-action="{{item.key}}" catchtap="onDangerTap">{{item.title}}</view>
-    </view>
-  </view>
 </view>
 
 <view wx:if="{{modalOpen}}" class="sheet-mask" catchtap="closeModal" catchtouchmove="stopPropagation">
@@ -135,10 +96,7 @@
           <view class="detail-row"><text>团队备注</text><text>{{user.memberRemark}}</text></view>
           <view class="detail-row"><text>当前角色</text><text>{{user.roleLabel}}</text></view>
           <view class="detail-row"><text>加入时间</text><text>{{user.joinedAt}}</text></view>
-          <view class="detail-row"><text>最近活跃</text><text>{{user.lastActiveAt}}</text></view>
-          <view class="detail-row"><text>成员编号</text><text>{{user.id}}</text></view>
         </view>
-        <view class="sheet-primary" catchtap="editProfilePlaceholder">编辑个人显示信息</view>
       </view>
 
       <view wx:elif="{{activeModal === 'about'}}" class="about-panel">
@@ -146,7 +104,7 @@
         <text class="about-desc">团队共享库存管理工具</text>
         <view class="detail-rows">
           <view class="detail-row"><text>版本</text><text>{{appInfo.version}}</text></view>
-          <view class="detail-row"><text>当前阶段</text><text>{{appInfo.buildLabel}}</text></view>
+          <view class="detail-row"><text>用途</text><text>{{appInfo.buildLabel}}</text></view>
         </view>
       </view>
 

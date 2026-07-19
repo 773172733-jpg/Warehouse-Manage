@@ -4,7 +4,7 @@ function formatArgs(args) {
 
 module.exports = {
   info(...args) {
-    console.info.apply(console, formatArgs(args));
+    void args;
   },
 
   warn(...args) {

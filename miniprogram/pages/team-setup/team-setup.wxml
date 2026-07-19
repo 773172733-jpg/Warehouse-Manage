@@ -1,7 +1,7 @@
 <view class="setup-page">
   <view class="setup-header">
     <text class="setup-title">创建团队</text>
-    <text class="setup-subtitle">建立团队和默认仓库后即可开始使用轻仓</text>
+    <text class="setup-subtitle">建立团队和默认仓库后即可开始使用口袋仓库Go</text>
   </view>
 
   <view class="setup-form">
@@ -12,7 +12,7 @@
         data-field="teamName"
         value="{{teamName}}"
         maxlength="30"
-        placeholder="例如：轻仓设计团队"
+        placeholder="例如：门店库存团队"
         bindinput="handleInput"
       />
     </view>
@@ -41,7 +41,7 @@
       loading="{{submitting}}"
       disabled="{{submitting || accessChecking || accessError}}"
       bindtap="handleCreate"
-    >{{submitting ? '正在创建' : '创建并进入轻仓'}}</button>
+    >{{submitting ? '正在创建' : '创建并进入口袋仓库Go'}}</button>
   </view>
 
   <view class="join-entry" bindtap="handleJoinTeam">

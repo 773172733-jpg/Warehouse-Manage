@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "轻仓",
+  "navigationBarTitleText": "口袋仓库Go",
   "usingComponents": {
     "app-loading": "/components/app-loading/app-loading",
     "error-state": "/components/error-state/error-state"

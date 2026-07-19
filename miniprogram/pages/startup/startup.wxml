@@ -1,5 +1,5 @@
 <view class="page startup-page">
-  <app-loading wx:if="{{status === 'loading'}}" text="正在启动轻仓"></app-loading>
+  <app-loading wx:if="{{status === 'loading'}}" text="正在启动口袋仓库Go"></app-loading>
   <error-state
     wx:elif="{{status === 'failed'}}"
     title="启动失败"

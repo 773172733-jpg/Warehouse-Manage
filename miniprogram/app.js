@@ -26,7 +26,7 @@ App({
     logger.info('CloudBase init started.');
 
     if (!env.WAREHOUSE_CLOUD_ENV) {
-      logger.warn('仓库管理器云环境尚未配置，云端初始化不可用。');
+      logger.warn('口袋仓库Go服务环境尚未配置，云端初始化不可用。');
       logger.info('CloudBase init finished.');
       return;
     }
