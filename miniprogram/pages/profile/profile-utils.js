@@ -1,3 +1,5 @@
+var avatarCatalog = require('../../constants/member-avatars.js');
+
 var ROLE_MAP = {
   owner: { label: '创建者', className: 'owner' },
   admin: { label: '管理员', className: 'admin' },
@@ -25,6 +27,7 @@ function getPermissionFlags(role, hasTeam) {
 
   return {
     canManageTeam: inTeam && (normalizedRole === 'owner' || normalizedRole === 'admin'),
+    canEditTeamName: inTeam && normalizedRole === 'owner',
     canViewRecycleBin: inTeam && (normalizedRole === 'owner' || normalizedRole === 'admin'),
     canViewCatalogRecycleBin: inTeam && normalizedRole === 'owner',
     canOpenTeam: inTeam,
@@ -56,12 +59,12 @@ function normalizeProfile(profile, roleOverride) {
     currentUser: {
       id: safeText(rawUser.id, ''),
       name: safeText(rawUser.name, '微信用户'),
-      avatarText: safeText(rawUser.avatarText, '微').slice(0, 2),
-      avatarColor: safeText(rawUser.avatarColor, '#078B4B'),
+      teamNickname: rawUser.teamNickname || '',
+      avatarKey: avatarCatalog.normalizeAvatarKey(rawUser.avatarKey, rawUser.id),
+      avatarPath: avatarCatalog.getAvatarPath(rawUser.avatarKey, rawUser.id),
       role: ROLE_MAP[role] ? role : 'unknown',
       roleLabel: roleInfo.label,
       roleClass: roleInfo.className,
-      memberRemark: safeText(rawUser.memberRemark, '—'),
       joinedAt: safeText(rawUser.joinedAt, '—'),
       lastActiveAt: safeText(rawUser.lastActiveAt, '')
     },

@@ -38,15 +38,17 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: #FFFFFF;
-  font-weight: 700;
+  overflow: hidden;
 }
 
 .avatar {
   width: 96rpx;
   height: 96rpx;
   border-radius: 22rpx;
-  font-size: 36rpx;
+}
+
+.pixel-image {
+  image-rendering: pixelated;
 }
 
 .user-main {
@@ -249,6 +251,25 @@
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.team-item--editable {
+  border: 1rpx solid #CFE6D8;
+  background: #F1F8F4;
+}
+
+.team-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10rpx;
+}
+
+.edit-hint {
+  flex-shrink: 0;
+  color: #078B4B;
+  font-size: 20rpx;
+  font-weight: 600;
 }
 
 .empty-team-entry {
@@ -458,7 +479,104 @@
   width: 88rpx;
   height: 88rpx;
   border-radius: 20rpx;
-  font-size: 34rpx;
+}
+
+.profile-editor {
+  padding-top: 22rpx;
+}
+
+.current-avatar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+}
+
+.editor-label {
+  display: block;
+  margin-top: 26rpx;
+  color: #171917;
+  font-size: 25rpx;
+  font-weight: 700;
+}
+
+.editor-label--avatars {
+  margin-top: 30rpx;
+}
+
+.nickname-input {
+  height: 82rpx;
+  margin-top: 12rpx;
+  padding: 0 20rpx;
+  border: 1rpx solid #DDE4DF;
+  border-radius: 13rpx;
+  background: #F7F8F7;
+  color: #171917;
+  font-size: 26rpx;
+  box-sizing: border-box;
+}
+
+.editor-help {
+  display: block;
+  margin-top: 10rpx;
+  color: #747A76;
+  font-size: 21rpx;
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14rpx;
+  margin-top: 14rpx;
+}
+
+.avatar-option {
+  position: relative;
+  padding: 6rpx;
+  border: 3rpx solid transparent;
+  border-radius: 15rpx;
+  background: #F2F5F2;
+}
+
+.avatar-option--selected {
+  border-color: #078B4B;
+  background: #EAF6EF;
+}
+
+.avatar-option-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 10rpx;
+}
+
+.avatar-check {
+  position: absolute;
+  right: 2rpx;
+  bottom: 2rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: #078B4B;
+  color: #FFFFFF;
+  font-size: 18rpx;
+}
+
+.sheet-save {
+  height: 82rpx;
+  margin: 30rpx 0 0;
+  border-radius: 14rpx;
+  background: #078B4B;
+  color: #FFFFFF;
+  font-size: 27rpx;
+  font-weight: 700;
+  line-height: 82rpx;
+}
+
+.sheet-save[disabled] {
+  opacity: 0.6;
 }
 
 .detail-name {

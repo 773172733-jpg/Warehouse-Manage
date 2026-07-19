@@ -1,5 +1,6 @@
 const { ERROR_CODES } = require('../../constants/errors.js');
 const { createRequestKey } = require('../../utils/request-key.js');
+const avatarCatalog = require('../../constants/member-avatars.js');
 
 const ROLE_META = {
   owner: {
@@ -18,8 +19,6 @@ const ROLE_META = {
     description: '普通成员可查看团队数据，也可以主动退出团队。'
   }
 };
-
-const AVATAR_COLORS = ['#078B4B', '#3F7D66', '#56758A', '#8A6F4D', '#7A668B'];
 
 const INVITE_ERROR_MESSAGES = {
   [ERROR_CODES.FORBIDDEN]: '只有团队创建者可以管理邀请码',
@@ -108,20 +107,6 @@ function formatDateTime(value) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function getAvatarText(name) {
-  const text = getSafeText(name, '微');
-  return text.charAt(0);
-}
-
-function getAvatarColor(id) {
-  const text = String(id || 'member');
-  let total = 0;
-  for (let index = 0; index < text.length; index += 1) {
-    total += text.charCodeAt(index);
-  }
-  return AVATAR_COLORS[total % AVATAR_COLORS.length];
-}
-
 function mapMember(member, expectedStatus) {
   if (!member || !member.id) {
     return null;
@@ -137,8 +122,9 @@ function mapMember(member, expectedStatus) {
   return {
     id: String(member.id),
     name,
-    avatarText: getAvatarText(name),
-    avatarColor: getAvatarColor(member.id),
+    teamNickname: member.teamNickname || '',
+    avatarKey: avatarCatalog.normalizeAvatarKey(member.avatarKey, member.id),
+    avatarPath: avatarCatalog.getAvatarPath(member.avatarKey, member.id),
     role,
     roleLabel: roleMeta.label,
     roleClass: roleMeta.className,
@@ -147,8 +133,9 @@ function mapMember(member, expectedStatus) {
     statusLabel: status === 'pending' ? '待审核' : '已加入',
     joinedAtText: formatDateTime(member.joinedAt),
     appliedAtText: formatDateTime(member.appliedAt),
-    remark: getSafeText(member.memberRemark),
-    isCurrentUser: Boolean(member.isCurrentUser)
+    isCurrentUser: Boolean(member.isCurrentUser),
+    hasAdminNoteAccess: Object.prototype.hasOwnProperty.call(member, 'adminNote'),
+    adminNote: Object.prototype.hasOwnProperty.call(member, 'adminNote') ? member.adminNote : ''
   };
 }
 
@@ -163,7 +150,7 @@ function filterMembers(members, filters = {}) {
   return members.filter((member) => {
     const matchesKeyword = !keyword ||
       normalizeText(member.name).includes(keyword) ||
-      normalizeText(member.remark).includes(keyword);
+      normalizeText(member.adminNote).includes(keyword);
     const matchesRole = role === 'all' || member.role === role;
     return matchesKeyword && matchesRole;
   });
@@ -183,12 +170,15 @@ function getMemberStatistics(activeMembers, pendingMembers, isOwner) {
 function getPagePermissionFlags(currentRole) {
   const isOwner = currentRole === 'owner';
   const canLeaveTeam = currentRole === 'admin' || currentRole === 'viewer';
+  const canManageAdminNotes = currentRole === 'owner' || currentRole === 'admin';
   return {
     isOwner,
     canManageInvites: isOwner,
     canViewPending: isOwner,
     canReviewMembers: isOwner,
     canManageMembers: isOwner,
+    canManageAdminNotes,
+    canEditTeamName: isOwner,
     canLeaveTeam,
     canSeeReadonlyNotice: canLeaveTeam
   };
@@ -201,7 +191,7 @@ function getMemberDetailActions(currentRole, member) {
   );
   const targetRole = manageable && member.role === 'viewer' ? 'admin' :
     (manageable && member.role === 'admin' ? 'viewer' : '');
-  return {
+  const actions = {
     canChangeRole: Boolean(targetRole),
     canRemove: manageable,
     targetRole,
@@ -209,6 +199,11 @@ function getMemberDetailActions(currentRole, member) {
       (targetRole === 'viewer' ? '取消管理员' : ''),
     isOwnerSelf: Boolean(member && member.isCurrentUser && member.role === 'owner')
   };
+  if (member && member.status === 'active' && !member.isCurrentUser &&
+      ['owner', 'admin'].includes(currentRole)) {
+    actions.canEditAdminNote = true;
+  }
+  return actions;
 }
 
 function getRoleOptions() {

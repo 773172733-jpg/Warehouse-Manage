@@ -98,7 +98,7 @@
       <view wx:if="{{pendingMembers.length}}" class="pending-list">
         <view wx:for="{{pendingMembers}}" wx:key="id" class="pending-card">
           <view class="member-summary">
-            <view class="member-avatar" style="background-color: {{item.avatarColor}};">{{item.avatarText}}</view>
+            <image class="member-avatar pixel-image" src="{{item.avatarPath}}" mode="aspectFill"></image>
             <view class="member-main">
               <view class="member-name-row">
                 <text class="member-name">{{item.name}}</text>
@@ -147,7 +147,7 @@
         <input
           class="search-input"
           value="{{keyword}}"
-          placeholder="搜索成员姓名或备注"
+          placeholder="{{permission.canManageAdminNotes ? '搜索团队昵称或管理备注' : '搜索团队昵称'}}"
           confirm-type="search"
           bindinput="onSearchInput"
         />
@@ -180,13 +180,13 @@
           hover-class="member-card--pressed"
           bindtap="handleMemberTap"
         >
-          <view class="member-avatar" style="background-color: {{item.avatarColor}};">{{item.avatarText}}</view>
+          <image class="member-avatar pixel-image" src="{{item.avatarPath}}" mode="aspectFill"></image>
           <view class="member-main">
             <view class="member-name-row">
               <text class="member-name">{{item.name}}</text>
               <text wx:if="{{item.isCurrentUser}}" class="self-badge">我</text>
             </view>
-            <text class="member-remark">{{item.remark}}</text>
+            <text wx:if="{{permission.canManageAdminNotes}}" class="member-remark">管理备注：{{item.adminNote || '未填写'}}</text>
             <view class="member-meta">
               <text class="role-badge role-badge--{{item.roleClass}}">{{item.roleLabel}}</text>
               <text class="member-time">加入 {{item.joinedAtText}}</text>
@@ -244,10 +244,11 @@
       </view>
 
       <view class="sheet-member">
-        <view
-          class="member-avatar member-avatar--large"
-          style="background-color: {{selectedMember.avatarColor}};"
-        >{{selectedMember.avatarText}}</view>
+        <image
+          class="member-avatar member-avatar--large pixel-image"
+          src="{{selectedMember.avatarPath}}"
+          mode="aspectFill"
+        ></image>
         <view class="sheet-member-main">
           <view class="member-name-row">
             <text class="sheet-member-name">{{selectedMember.name}}</text>
@@ -268,6 +269,10 @@
           <text>当前身份</text>
           <text>{{selectedMember.isCurrentUser ? '当前用户' : '团队成员'}}</text>
         </view>
+        <view wx:if="{{permission.canManageAdminNotes && selectedMember.hasAdminNoteAccess}}" class="sheet-detail-row">
+          <text>管理备注</text>
+          <text>{{selectedMember.adminNote || '未填写'}}</text>
+        </view>
       </view>
 
       <text class="role-description">{{selectedMember.roleDescription}}</text>
@@ -277,9 +282,15 @@
       </view>
 
       <view
-        wx:if="{{selectedMember.canChangeRole || selectedMember.canRemove}}"
+        wx:if="{{selectedMember.canEditAdminNote || selectedMember.canChangeRole || selectedMember.canRemove}}"
         class="member-action-list"
       >
+        <button
+          wx:if="{{selectedMember.canEditAdminNote}}"
+          class="member-action-button member-action-button--secondary"
+          disabled="{{memberOperation.memberId || noteSaving}}"
+          bindtap="openAdminNoteEditor"
+        >编辑管理备注</button>
         <button
           wx:if="{{selectedMember.canChangeRole}}"
           class="member-action-button member-action-button--primary"
@@ -294,6 +305,29 @@
           disabled="{{memberOperation.memberId}}"
           bindtap="handleRemoveMember"
         >移出团队</button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{noteEditorOpen && selectedMember}}" class="member-sheet-mask note-editor-mask" bindtap="closeAdminNoteEditor">
+    <view class="member-sheet note-editor" catchtap="stopPropagation">
+      <view class="sheet-handle"></view>
+      <view class="sheet-header">
+        <text class="sheet-title">管理备注</text>
+        <button class="sheet-close" aria-label="关闭管理备注" disabled="{{noteSaving}}" bindtap="closeAdminNoteEditor">×</button>
+      </view>
+      <text class="note-target">仅创建者和管理员可见 · {{selectedMember.name}}</text>
+      <textarea
+        class="note-input"
+        maxlength="40"
+        value="{{draftAdminNote}}"
+        placeholder="填写岗位、负责区域等内部备注，留空可清除"
+        disabled="{{noteSaving}}"
+        bindinput="onAdminNoteInput"
+      ></textarea>
+      <view class="note-actions">
+        <button class="member-action-button member-action-button--secondary" disabled="{{noteSaving}}" bindtap="closeAdminNoteEditor">取消</button>
+        <button class="member-action-button member-action-button--primary" loading="{{noteSaving}}" disabled="{{noteSaving}}" bindtap="saveAdminNote">保存</button>
       </view>
     </view>
   </view>

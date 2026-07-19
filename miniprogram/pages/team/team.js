@@ -32,6 +32,9 @@ Page({
     memberSheetOpen: false,
     selectedMember: null,
     memberOperation: { memberId: '', action: '' },
+    noteEditorOpen: false,
+    draftAdminNote: '',
+    noteSaving: false,
     leaving: false
   },
 
@@ -45,6 +48,7 @@ Page({
     this.memberRoleIntent = null;
     this.memberRemoveIntent = null;
     this.leaveIntent = null;
+    this.setData({ noteEditorOpen: false, noteSaving: false });
   },
 
   onShow() {
@@ -251,7 +255,7 @@ Page({
   },
 
   closeMemberSheet() {
-    if (this.data.memberOperation.memberId) {
+    if (this.data.memberOperation.memberId || this.data.noteSaving) {
       return;
     }
     this.dismissMemberSheet();
@@ -266,6 +270,58 @@ Page({
   },
 
   stopPropagation() {},
+
+  openAdminNoteEditor() {
+    const member = this.data.selectedMember;
+    if (!member || !member.canEditAdminNote || this.data.noteSaving) {
+      return;
+    }
+    this.setData({
+      noteEditorOpen: true,
+      draftAdminNote: member.adminNote || ''
+    });
+  },
+
+  closeAdminNoteEditor() {
+    if (!this.data.noteSaving) {
+      this.setData({ noteEditorOpen: false, draftAdminNote: '' });
+    }
+  },
+
+  onAdminNoteInput(event) {
+    this.setData({ draftAdminNote: event.detail.value || '' });
+  },
+
+  saveAdminNote() {
+    const member = this.data.selectedMember;
+    if (!member || !member.canEditAdminNote || this.data.noteSaving) {
+      return;
+    }
+    this.setData({ noteSaving: true });
+    teamService.updateAdminNote({
+      targetMemberId: member.id,
+      adminNote: this.data.draftAdminNote
+    })
+      .then(() => {
+        if (!this.isActive) return;
+        this.setData({ noteEditorOpen: false, draftAdminNote: '' });
+        wx.showToast({ title: '管理备注已更新', icon: 'success' });
+        return this.refreshPage({ forceBootstrap: false });
+      })
+      .catch((error) => {
+        if (this.isActive) {
+          wx.showToast({
+            title: error && error.message ? error.message : '管理备注保存失败，请重试',
+            icon: 'none'
+          });
+        }
+      })
+      .finally(() => {
+        if (this.isActive) {
+          this.setData({ noteSaving: false });
+        }
+      });
+  },
 
   handleMemberRoleAction() {
     const member = this.data.selectedMember;

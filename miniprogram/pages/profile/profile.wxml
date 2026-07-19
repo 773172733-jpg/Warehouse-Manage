@@ -1,12 +1,12 @@
 <view class="profile-page">
   <view class="user-card" catchtap="openProfileModal">
-    <view class="avatar" style="background-color: {{user.avatarColor}};">{{user.avatarText}}</view>
+    <image class="avatar pixel-image" src="{{user.avatarPath}}" mode="aspectFill"></image>
     <view class="user-main">
       <view class="user-line">
         <text class="user-name">{{user.name}}</text>
         <text class="self-badge">当前用户</text>
       </view>
-      <text class="user-remark">团队备注：{{user.memberRemark}}</text>
+      <text class="user-remark">{{user.teamNickname ? '团队昵称' : '使用默认昵称'}}</text>
       <view class="user-meta">
         <text class="role-badge role-badge--{{user.roleClass}}">{{user.roleLabel}}</text>
       </view>
@@ -14,7 +14,7 @@
     <view class="arrow">›</view>
   </view>
 
-  <view wx:if="{{permission.isViewer}}" class="readonly-note">普通成员视角以查看和个人偏好为主</view>
+  <view wx:if="{{permission.isViewer}}" class="readonly-note">普通成员可修改自己的团队昵称和像素头像</view>
 
   <view class="section-card">
     <view class="section-head">
@@ -22,9 +22,12 @@
       <text class="section-action {{hasTeam ? '' : 'section-action--disabled'}}" data-action="team" data-disabled="{{!hasTeam}}" catchtap="onQuickEntryTap">查看团队成员</text>
     </view>
     <view class="team-grid">
-      <view class="team-item">
+      <view class="team-item {{permission.canEditTeamName ? 'team-item--editable' : ''}}" catchtap="editTeamName">
         <text class="team-label">当前团队</text>
-        <text class="team-value">{{team.name}}</text>
+        <view class="team-value-row">
+          <text class="team-value">{{team.name}}</text>
+          <text wx:if="{{permission.canEditTeamName}}" class="edit-hint">{{teamNameSaving ? '保存中' : '修改'}}</text>
+        </view>
       </view>
       <view class="team-item">
         <text class="team-label">当前仓库</text>
@@ -63,16 +66,12 @@
         <text class="entry-arrow">›</text>
       </view>
       <view class="entry-row" data-modal="privacy" catchtap="openModalFromTap">
-        <view><text class="entry-title">隐私说明</text><text class="entry-desc">数据与图片使用说明</text></view>
+        <view><text class="entry-title">隐私说明</text><text class="entry-desc">数据与头像使用说明</text></view>
         <text class="entry-arrow">›</text>
       </view>
-      <view class="version-row">
-        <text>当前版本</text>
-        <text>{{appInfo.version}}</text>
-      </view>
+      <view class="version-row"><text>当前版本</text><text>{{appInfo.version}}</text></view>
     </view>
   </view>
-
 </view>
 
 <view wx:if="{{modalOpen}}" class="sheet-mask" catchtap="closeModal" catchtouchmove="stopPropagation">
@@ -83,20 +82,25 @@
       <view class="sheet-close" catchtap="closeModal">×</view>
     </view>
     <scroll-view class="sheet-content" scroll-y>
-      <view wx:if="{{activeModal === 'profile'}}" class="profile-detail">
-        <view class="detail-head">
-          <view class="detail-avatar" style="background-color: {{user.avatarColor}};">{{user.avatarText}}</view>
+      <view wx:if="{{activeModal === 'profile'}}" class="profile-editor">
+        <view class="current-avatar-wrap">
+          <image class="detail-avatar pixel-image" src="{{user.avatarPath}}" mode="aspectFill"></image>
           <view>
             <text class="detail-name">{{user.name}}</text>
-            <text class="detail-sub">{{user.roleLabel}} · {{user.memberRemark}}</text>
+            <text class="detail-sub">{{user.roleLabel}} · {{team.name}}</text>
           </view>
         </view>
-        <view class="detail-rows">
-          <view class="detail-row"><text>姓名</text><text>{{user.name}}</text></view>
-          <view class="detail-row"><text>团队备注</text><text>{{user.memberRemark}}</text></view>
-          <view class="detail-row"><text>当前角色</text><text>{{user.roleLabel}}</text></view>
-          <view class="detail-row"><text>加入时间</text><text>{{user.joinedAt}}</text></view>
+        <text class="editor-label">团队昵称</text>
+        <input class="nickname-input" maxlength="20" value="{{draftNickname}}" placeholder="留空则使用默认昵称" bindinput="onNicknameInput" />
+        <text class="editor-help">只影响当前团队内的公开显示，不修改微信资料</text>
+        <text class="editor-label editor-label--avatars">选择像素头像</text>
+        <view class="avatar-grid">
+          <view wx:for="{{avatarOptions}}" wx:key="key" class="avatar-option {{draftAvatarKey === item.key ? 'avatar-option--selected' : ''}}" data-key="{{item.key}}" catchtap="onAvatarSelect">
+            <image class="avatar-option-image pixel-image" src="{{item.src}}" mode="aspectFill"></image>
+            <text wx:if="{{draftAvatarKey === item.key}}" class="avatar-check">✓</text>
+          </view>
         </view>
+        <button class="sheet-save" loading="{{profileSaving}}" disabled="{{profileSaving}}" bindtap="saveProfile">{{profileSaving ? '正在保存' : '保存个人资料'}}</button>
       </view>
 
       <view wx:elif="{{activeModal === 'about'}}" class="about-panel">
