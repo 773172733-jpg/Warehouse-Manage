@@ -503,7 +503,7 @@ async function testAlertPage() {
   };
   const modulePath = require.resolve('../miniprogram/pages/stock-alerts/stock-alerts.js');
   delete require.cache[modulePath];
-  require(modulePath);
+  require('../miniprogram/pages/stock-alerts/stock-alerts.js');
   try {
     productService.listProducts = (params) => {
       calls.push(params);

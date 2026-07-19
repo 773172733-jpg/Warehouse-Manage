@@ -275,7 +275,7 @@ function testInventoryImageErrorHandler() {
   global.Page = (pageConfig) => { config = pageConfig; };
   const pagePath = require.resolve('../miniprogram/pages/inventory/inventory.js');
   delete require.cache[pagePath];
-  require(pagePath);
+  require('../miniprogram/pages/inventory/inventory.js');
   try {
     const image = mapPresented('warehouse_handler_image', {
       type: 'image'

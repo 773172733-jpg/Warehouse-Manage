@@ -310,10 +310,19 @@ function testImageIndexDoesNotBlockPendingAssets() {
     path.join(root, 'docs/阶段2C3C1-产品图片上传与安全绑定部署指南.md'),
     'utf8'
   );
+  const expectedIndexes = [
+    'uidx_image_assets_stage_request',
+    'idx_image_assets_product_status',
+    'idx_image_assets_cleanup'
+  ];
   assert(!/\|\s*`uidx_image_assets_file`\s*\|/.test(indexes));
   assert(!/\|\s*`uidx_image_assets_file`\s*\|/.test(guide));
+  expectedIndexes.forEach((indexName) => {
+    assert(indexes.includes(`\`${indexName}\``));
+    assert(guide.includes(`\`${indexName}\``));
+  });
   assert(indexes.includes('`fileId`不得建立唯一索引'));
-  assert(guide.includes('必须删除该索引'));
+  assert(guide.includes('不创建 `fileId` 唯一索引'));
 }
 
 async function run() {

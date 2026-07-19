@@ -477,8 +477,8 @@ function testStaticSourceRules() {
   );
   assert.ok(!warehouseFunction.includes('MAX_SCAN_RECORDS'));
   const recordsSource = fs.readFileSync(path.join(ROOT, 'miniprogram/pages/records/records.js'), 'utf8');
-  assert.ok(!recordsSource.includes("require('./mock-records"));
-  assert.ok(!recordsSource.includes("require('../inventory/mock-data"));
+  assert.ok(!/require\s*\(\s*['"]\.\/mock-records(?:\.js)?['"]\s*\)/.test(recordsSource));
+  assert.ok(!/require\s*\(\s*['"]\.\.\/inventory\/mock-data(?:\.js)?['"]\s*\)/.test(recordsSource));
   assert.ok(recordsSource.includes('listWarehouseStockRecords'));
   const cleanupWorker = fs.readFileSync(
     path.join(ROOT, 'cloudfunctions/product-image-cleanup-worker/index.js'),
